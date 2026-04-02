@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản Lý Trả Ảnh - Admin</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; background: #e9ecef; }
+        .container { max-width: 800px; margin: auto; }
+        .row { background: white; padding: 15px; margin-bottom: 12px; border-radius: 10px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 5px solid #1a73e8; }
+        .name { font-weight: bold; min-width: 150px; font-size: 18px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; }
+        button { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #218838; }
+        h2 { color: #333; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔔 Khách đang đợi ảnh</h2>
+        <div id="list"></div>
+    </div>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw",
+            authDomain: "tra-anh-khach.firebaseapp.com",
+            databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "tra-anh-khach",
+            storageBucket: "tra-anh-khach.firebasestorage.app",
+            messagingSenderId: "494071357596",
+            appId: "1:494071357596:web:be1a284102ed6176900d59"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        db.ref('sessions').on('value', (s) => {
+            const list = document.getElementById('list');
+            list.innerHTML = "";
+            const data = s.val();
+            for(let id in data) {
+                if(!data[id].link) { // Chỉ hiện những khách chưa được gửi link
+                    list.innerHTML += `
+                        <div class="row">
+                            <div class="name">👤 ${data[id].name}</div>
+                            <input id="i${id}" placeholder="Dán link ảnh (Drive/Dropbox/S.id) vào đây...">
+                            <button onclick="send('${id}')">Gửi Ảnh 🚀</button>
+                        </div>
+                    `;
+                }
+            }
+        });
+
+        function send(id) {
+            const link = document.getElementById('i'+id).value;
+            if(!link.trim()) return alert("Bạn chưa dán link ảnh mà!");
+            db.ref('sessions/'+id).update({ link: link });
+        }
+    </script>
+</body>
+</html>
