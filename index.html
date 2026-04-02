@@ -2,29 +2,41 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nhận Ảnh Của Bạn</title>
+    <title>Nhận Ảnh 📸</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; width: 320px; }
-        h2 { color: #1a73e8; margin-bottom: 10px; }
-        input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
-        button:hover { background: #1557b0; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 15px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { font-family: 'Inter', sans-serif; background: #fafafa; color: #111; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #fff; padding: 40px 30px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); width: 100%; max-width: 320px; text-align: center; border: 1px solid #f0f0f0; }
+        h2 { margin: 0 0 8px 0; font-weight: 600; font-size: 22px; }
+        p { color: #666; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+        input { width: 100%; padding: 14px; margin-bottom: 12px; border: 1px solid #e5e5e5; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+        input:focus { border-color: #111; }
+        button { width: 100%; padding: 14px; background: #111; color: #fff; border: none; border-radius: 8px; font-weight: 500; font-size: 15px; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+        button:hover { background: #333; }
+        .waiting { display: none; }
+        .loader { width: 40px; height: 4px; background: #f0f0f0; margin: 0 auto 20px auto; border-radius: 2px; overflow: hidden; position: relative; }
+        .loader::after { content: ''; position: absolute; left: -20px; top: 0; height: 100%; width: 20px; background: #111; animation: loading 1.5s infinite ease-in-out; border-radius: 2px; }
+        @keyframes loading { 0% { left: -20px; } 100% { left: 40px; } }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>Tiệm Ảnh 📸</h2>
-        <div id="ui">
-            <p style="color: #666;">Vui lòng nhập tên để nhận link ảnh</p>
-            <input type="text" id="nameInput" placeholder="Tên của bạn là gì?">
-            <button onclick="start()">Nhận Ảnh Ngay</button>
+        <div id="form-ui">
+            <h2>Nhận Ảnh Của Bạn</h2>
+            <p>Vui lòng để lại thông tin, hệ thống sẽ gửi link ảnh cho bạn ngay lập tức.</p>
+            <input type="text" id="name" placeholder="Họ và tên">
+            <input type="tel" id="phone" placeholder="Số điện thoại">
+            <button onclick="submit()">Nhận ảnh ngay</button>
+        </div>
+        <div id="waiting-ui" class="waiting">
+            <div class="loader"></div>
+            <h2 id="status-title">Đang xử lý...</h2>
+            <p>Xin chào <b id="guest-name"></b>,<br><span id="status-desc">Bạn giữ nguyên màn hình này nhé, link ảnh sẽ tự động mở ra.</span></p>
         </div>
     </div>
+
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw",
@@ -38,23 +50,60 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        function start() {
-            const name = document.getElementById('nameInput').value;
-            if(!name.trim()) return alert("Bạn hãy nhập tên để mình biết gửi ảnh cho ai nhé!");
-            
-            const id = "K_" + Date.now();
-            db.ref('sessions/' + id).set({ name: name, link: "" });
-            
-            document.getElementById('ui').innerHTML = `
-                <div class="loader"></div>
-                <p>Chào <b>${name}</b>, mình đang chuẩn bị ảnh...</p>
-                <p style="font-size: 12px; color: #999;">Hệ thống sẽ tự động mở link ảnh khi xong. Vui lòng không đóng trang.</p>
-            `;
+        function submit() {
+            const name = document.getElementById('name').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            if (!name || !phone) return alert("Vui lòng điền đủ Tên và Số điện thoại.");
 
-            db.ref('sessions/' + id + '/link').on('value', (s) => {
-                if(s.val()) {
-                    window.location.href = s.val(); 
+            // Tạm ẩn form, hiện màn hình chờ để khách biết hệ thống đang check
+            document.getElementById('form-ui').style.display = 'none';
+            document.getElementById('waiting-ui').style.display = 'block';
+            document.getElementById('guest-name').innerText = name;
+
+            // Kiểm tra xem khách này đã từng gửi yêu cầu chưa
+            db.ref('sessions').once('value').then((snapshot) => {
+                let existingId = null;
+                let existingLink = "";
+
+                snapshot.forEach((child) => {
+                    const data = child.val();
+                    // So sánh: Trùng số điện thoại HOẶC trùng tên (không phân biệt viết hoa/thường)
+                    if (data.phone === phone || data.name.toLowerCase() === name.toLowerCase()) {
+                        existingId = child.key;
+                        existingLink = data.link || "";
+                    }
+                });
+
+                if (existingId) {
+                    // Trạng thái 1: Khách cũ quay lại
+                    if (existingLink !== "") {
+                        document.getElementById('status-title').innerText = "Đã tìm thấy ảnh!";
+                        document.getElementById('status-desc').innerText = "Đang tự động chuyển hướng...";
+                        // Tự động mở link cũ luôn
+                        window.location.href = existingLink;
+                    } else {
+                        // Khách lỡ tay bấm lại nhưng bạn chưa gửi link -> Tiếp tục chờ link từ ID cũ
+                        listenForLink(existingId);
+                    }
+                } else {
+                    // Trạng thái 2: Khách mới hoàn toàn -> Tạo yêu cầu mới
+                    const newId = "S_" + Date.now();
+                    db.ref('sessions/' + newId).set({
+                        name: name,
+                        phone: phone,
+                        link: "",
+                        status: "pending",
+                        time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})
+                    });
+                    listenForLink(newId);
                 }
+            });
+        }
+
+        // Hàm đợi link (dùng chung cho cả khách mới và khách cũ chưa có link)
+        function listenForLink(id) {
+            db.ref('sessions/' + id + '/link').on('value', (s) => {
+                if (s.val()) window.location.href = s.val();
             });
         }
     </script>
