@@ -2,26 +2,39 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nhận Ảnh 📸</title>
+    <title>PHOTO NOIR SELFBOOTH ALBUM</title>
+    <link rel="icon" href="./logo.png" type="image/png">
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #fafafa; color: #111; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-        .card { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 30px rgba(0,0,0,0.05); width: 100%; max-width: 360px; text-align: center; border: 1px solid #f0f0f0; }
-        .logo { width: 90px; height: 90px; object-fit: cover; margin-bottom: 15px; border-radius: 50%; border: 2px solid #f0f0f0; background: #fff; }
-        p { color: #666; font-size: 13px; margin-bottom: 20px; }
-        select, input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e5e5e5; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; font-family: 'Inter', sans-serif; }
-        button.primary-btn { width: 100%; padding: 14px; background: #111; color: #fff; border: none; border-radius: 10px; font-weight: 500; cursor: pointer; transition: 0.2s; }
-        .album-item { background: #f9f9f9; border: 1px solid #eee; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .album-info b { font-size: 14px; display: block; color: #333; margin-bottom: 4px;}
+        .card { background: #fff; padding: 35px 30px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.04); width: 100%; max-width: 360px; text-align: center; border: 1px solid #f0f0f0; }
+        .logo { width: 90px; height: 90px; object-fit: cover; margin-bottom: 15px; border-radius: 50%; border: 1px solid #eaeaea; }
+        p { color: #666; font-size: 13px; margin-bottom: 25px; }
+        select, input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #e5e5e5; border-radius: 12px; box-sizing: border-box; font-size: 14px; outline: none; font-family: 'Inter', sans-serif; background: #fdfdfd; transition: 0.2s; }
+        select:focus, input:focus { border-color: #111; background: #fff; }
+        button.primary-btn { width: 100%; padding: 15px; background: #111; color: #fff; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 15px; }
+        button.primary-btn:hover { background: #333; transform: translateY(-1px); }
+        .album-item { background: #f9f9f9; border: 1px solid #eee; border-radius: 14px; padding: 18px; margin-bottom: 15px; text-align: left; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .album-info b { font-size: 14px; display: block; color: #111; margin-bottom: 4px;}
         .album-info span { font-size: 12px; color: #888; }
-        .link-row { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 10px; border: 1px solid #eaeaea; border-radius: 8px; margin-top: 8px; }
+        .link-row { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 12px; border: 1px solid #eaeaea; border-radius: 10px; margin-top: 10px; }
         .link-row .time { font-size: 11px; color: #888; }
-        .view-btn { background: #111; color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; }
-        .status-msg { font-size: 12px; color: #e67e22; font-weight: 500; margin-top: 10px; display: block; }
-        #result-ui { display: none; margin-top: 20px; text-align: left; }
+        .view-btn { background: #111; color: #fff; text-decoration: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; }
+        
+        /* Khu vực Mạng xã hội dạng lưới 2x2 */
+        .marketing-box { margin-top: 25px; padding-top: 20px; border-top: 1px dashed #eee; }
+        .social-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .social-btn { display: flex; justify-content: center; align-items: center; padding: 12px 10px; border-radius: 10px; text-decoration: none; font-size: 13px; font-weight: 600; border: 1px solid #eaeaea; transition: 0.2s; }
+        .social-btn.fb { background: #f0f4ff; border-color: #dbeafe; color: #1e40af; }
+        .social-btn.ig { background: #fdf4ff; border-color: #fae8ff; color: #c026d3; }
+        .social-btn.tk { background: #f8fafc; border-color: #e2e8f0; color: #0f172a; }
+        .social-btn.gg { background: #fffbeb; border-color: #fef3c7; color: #b45309; }
+        
+        #result-ui { display: none; margin-top: 10px; text-align: left; }
     </style>
 </head>
 <body>
@@ -29,20 +42,31 @@
         <img src="./logo.png" alt="Logo" class="logo" onerror="this.src='https://via.placeholder.com/100?text=Logo'">
         
         <div id="form-ui">
-            <p>Chọn cơ sở và nhập thông tin để xem Album ảnh</p>
+            <p>Vui lòng điền thông tin để lấy Album ảnh</p>
             <select id="branch">
                 <option value="phucyen">PHOTO NOIR PHÚC YÊN</option>
                 <option value="vinhyen">PHOTO NOIR VĨNH YÊN</option>
             </select>
-            <input type="text" id="name" placeholder="Họ và tên">
+            <input type="text" id="name" placeholder="Họ và tên của bạn">
             <input type="tel" id="phone" placeholder="Số điện thoại">
             <button class="primary-btn" onclick="checkData()">Tìm Ảnh Của Tôi</button>
         </div>
 
         <div id="result-ui">
-            <h3 style="font-size: 16px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Lịch sử chụp của bạn</h3>
+            <h3 style="font-size: 16px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; color: #111;">Lịch sử chụp của bạn</h3>
             <div id="album-list"></div>
-            <button onclick="location.reload()" style="background:none; border:none; color:#999; font-size:12px; cursor:pointer; margin-top:20px; width:100%; text-decoration: underline;">← Quay lại</button>
+            
+            <div class="marketing-box" id="marketing-box" style="display:none;">
+                <p style="text-align:center; font-size:13px; margin:0; font-weight: 500;">Ghé thăm cơ sở <span id="ten-coso" style="font-weight:700;"></span> tại:</p>
+                <div class="social-grid">
+                    <a href="#" id="link-fb" target="_blank" class="social-btn fb">Fanpage</a>
+                    <a href="#" id="link-ig" target="_blank" class="social-btn ig">Instagram</a>
+                    <a href="#" id="link-tk" target="_blank" class="social-btn tk">TikTok</a>
+                    <a href="#" id="link-map" target="_blank" class="social-btn gg">Đánh giá 5⭐</a>
+                </div>
+            </div>
+
+            <button onclick="location.reload()" style="background:none; border:none; color:#999; font-size:12px; cursor:pointer; margin-top:20px; width:100%; text-decoration: underline;">← Trở về</button>
         </div>
     </div>
 
@@ -55,14 +79,50 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // DATA LINK MXH TỪNG CƠ SỞ CỦA BẠN
+        const LINKS = {
+            'phucyen': {
+                name: 'Phúc Yên',
+                fb: 'https://www.facebook.com/profile.php?id=61581535177690',
+                ig: 'https://www.instagram.com/photonoirphucyen/',
+                tk: 'https://www.tiktok.com/@photonoir.PY',
+                map: 'https://share.google/1qq6mElCTWSCuK12D'
+            },
+            'vinhyen': {
+                name: 'Vĩnh Yên',
+                fb: 'https://www.facebook.com/profile.php?id=61575627444713#',
+                ig: 'https://www.instagram.com/photonoir.vinhyen/',
+                tk: 'https://www.tiktok.com/@photonoir.vy',
+                map: 'https://share.google/ALz4CDaHAlF9fAlEH'
+            }
+        };
+
+        window.onload = () => {
+            if(localStorage.getItem('pn_name')) document.getElementById('name').value = localStorage.getItem('pn_name');
+            if(localStorage.getItem('pn_phone')) document.getElementById('phone').value = localStorage.getItem('pn_phone');
+            if(localStorage.getItem('pn_branch')) document.getElementById('branch').value = localStorage.getItem('pn_branch');
+        };
+
         function checkData() {
             const branch = document.getElementById('branch').value;
             const name = document.getElementById('name').value.trim();
             const phone = document.getElementById('phone').value.trim();
             if (!name || !phone) return alert("Vui lòng điền đủ Tên và SĐT!");
 
+            localStorage.setItem('pn_name', name);
+            localStorage.setItem('pn_phone', phone);
+            localStorage.setItem('pn_branch', branch);
+
             document.getElementById('form-ui').style.display = 'none';
             document.getElementById('result-ui').style.display = 'block';
+
+            // Gắn link tự động theo cơ sở khách chọn
+            document.getElementById('ten-coso').innerText = LINKS[branch].name;
+            document.getElementById('link-fb').href = LINKS[branch].fb;
+            document.getElementById('link-ig').href = LINKS[branch].ig;
+            document.getElementById('link-tk').href = LINKS[branch].tk;
+            document.getElementById('link-map').href = LINKS[branch].map;
+            document.getElementById('marketing-box').style.display = 'block';
 
             db.ref('data/' + branch).on('value', (snap) => {
                 const albumList = document.getElementById('album-list');
@@ -74,31 +134,17 @@
                     if (data.phone === phone || data.name.toLowerCase() === name.toLowerCase()) {
                         count++;
                         let linksHtml = '';
-                        
-                        // Kiểm tra nếu có danh sách link
                         if (data.links) {
                             Object.keys(data.links).forEach((linkId, index) => {
                                 const l = data.links[linkId];
-                                linksHtml += `
-                                    <div class="link-row">
-                                        <span class="time">${l.addedAt}</span>
-                                        <a href="${l.url}" target="_blank" class="view-btn">Xem ảnh ${index + 1}</a>
-                                    </div>
-                                `;
+                                linksHtml += `<div class="link-row"><span class="time">${l.addedAt}</span><a href="${l.url}" target="_blank" class="view-btn">Xem ảnh ${index + 1}</a></div>`;
                             });
                         } else {
-                            linksHtml = `<span class="status-msg">Đang chờ Admin tải ảnh lên...</span>`;
+                            linksHtml = `<span style="font-size: 13px; color: #e67e22; font-weight: 500; margin-top: 10px; display: block;">⏳ Đang chờ Admin tải ảnh lên...</span>`;
                         }
-
                         const item = document.createElement('div');
                         item.className = 'album-item';
-                        item.innerHTML = `
-                            <div class="album-info">
-                                <b>Yêu cầu lúc: ${data.time}</b>
-                                <span>Mã KH: ${child.key.split('_')[1]}</span>
-                            </div>
-                            <div style="margin-top: 10px;">${linksHtml}</div>
-                        `;
+                        item.innerHTML = `<div class="album-info"><b>Chụp lúc: ${data.time}</b><span>Mã KH: ${child.key.split('_')[1]}</span></div><div style="margin-top: 10px;">${linksHtml}</div>`;
                         albumList.appendChild(item);
                     }
                 });
@@ -108,7 +154,7 @@
                     db.ref('data/' + branch + '/' + id).set({
                         name: name, phone: phone, status: "pending", time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})
                     });
-                    albumList.innerHTML = "<p style='font-size:13px; color:#666; text-align:center; padding: 20px;'>Hệ thống đã ghi nhận. Admin sẽ gửi link ảnh vào đây nhé!</p>";
+                    albumList.innerHTML = "<div style='text-align:center; padding: 20px 10px;'><b style='font-size:14px; color:#111;'>Hệ thống đã nhận yêu cầu!</b><p style='font-size:13px; color:#666; margin-top:5px;'>Tiệm đang chuẩn bị ảnh, bạn đợi một chút xíu nhé.</p></div>";
                 }
             });
         }

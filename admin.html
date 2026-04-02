@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8"><title>Admin - PHOTO NOIR</title>
+    <meta charset="UTF-8">
+    <title>Admin - PHOTO NOIR SELFBOOTH ALBUM</title>
+    <link rel="icon" href="./logo.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -9,11 +11,15 @@
         body { font-family: 'Inter', sans-serif; background: #f4f4f5; margin: 0; padding: 20px; color: #111; }
         #login-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .admin-box { max-width: 1000px; margin: auto; display: none; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid #e4e4e7; padding-bottom: 15px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
         .tab-btn { padding: 10px 25px; border: 1px solid #d4d4d8; border-radius: 8px; cursor: pointer; background: #fff; font-weight: 500; }
         .tab-btn.active { background: #18181b; color: #fff; border-color: #18181b; }
         
-        .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); display: flex; gap: 20px; align-items: flex-start; }
+        .toolbar { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; }
+        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-family: 'Inter', sans-serif; font-size: 14px; }
+        .btn-excel { padding: 12px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+
+        .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 20px; margin-bottom: 15px; display: flex; gap: 20px; align-items: flex-start; }
         .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid #f4f4f5; padding-right: 15px; }
         .client-info h3 { margin: 0 0 5px 0; font-size: 16px; }
         .client-info p { margin: 0; color: #71717a; font-size: 13px; margin-bottom: 5px; }
@@ -26,12 +32,10 @@
         .link-row input { flex-grow: 1; padding: 8px; border: 1px solid #d4d4d8; border-radius: 6px; outline: none; font-size: 13px; }
         .link-row .time-label { font-size: 11px; color: #a1a1aa; width: 100px; }
         
-        button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; transition: 0.2s; }
+        button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; }
         .btn-add { background: #18181b; color: #fff; }
         .btn-save { background: #e4e4e7; color: #18181b; }
-        .btn-save:hover { background: #d4d4d8; }
         .btn-del { background: #fee2e2; color: #ef4444; }
-        .btn-del:hover { background: #fca5a5; }
 
         .add-box { display: flex; gap: 10px; margin-top: 15px; border-top: 1px dashed #e4e4e7; padding-top: 15px; }
         .add-box input { flex-grow: 1; padding: 10px; border: 1px solid #d4d4d8; border-radius: 8px; outline: none; font-size: 13px; }
@@ -40,24 +44,33 @@
 <body>
     <div id="login-screen">
         <div style="text-align:center; width: 300px;">
-            <h3>🔐 Admin Login</h3>
-            <input type="password" id="pass" placeholder="Nhập mật khẩu..." style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd; margin-bottom:15px;">
+            <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 10px;" onerror="this.style.display='none'">
+            <h3>Admin Login</h3>
+            <input type="password" id="pass" placeholder="Nhập mật khẩu..." style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd; margin-bottom:15px; box-sizing: border-box;">
             <button onclick="login()" style="width:100%; padding:12px; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer;">Đăng nhập</button>
         </div>
     </div>
 
     <div class="admin-box" id="admin-box">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <h1>Quản Lý Trả Ảnh</h1>
-            <div class="tabs">
-                <button class="tab-btn active" id="btn-phucyen" onclick="switchB('phucyen')">PN Phúc Yên</button>
-                <button class="tab-btn" id="btn-vinhyen" onclick="switchB('vinhyen')">PN Vĩnh Yên</button>
-            </div>
-            <button onclick="clearData()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600;">Dọn dẹp lịch sử</button>
+            <button onclick="clearData()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600;">🗑 Dọn dẹp dữ liệu</button>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" id="btn-phucyen" onclick="switchB('phucyen')">PN Phúc Yên</button>
+            <button class="tab-btn" id="btn-vinhyen" onclick="switchB('vinhyen')">PN Vĩnh Yên</button>
+        </div>
+
+        <div class="toolbar">
+            <input type="text" id="search-box" class="search-box" placeholder="🔍 Tìm nhanh theo Tên hoặc Số điện thoại..." onkeyup="searchCustomer()">
+            <button class="btn-excel" onclick="exportExcel()">📥 Xuất Excel</button>
         </div>
 
         <div id="list-content">Đang tải dữ liệu...</div>
     </div>
+
+    <audio id="ting-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
     <script>
         const firebaseConfig = {
@@ -68,36 +81,54 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         let br = 'phucyen';
+        let currentData = {};
+        let previousCount = 0;
+        let isFirstLoad = true;
 
         function login() {
             if(document.getElementById('pass').value === "123456") {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('admin-box').style.display = 'block';
+                // Play mồi một lần để trình duyệt cho phép phát âm thanh sau này
+                document.getElementById('ting-sound').volume = 0;
+                document.getElementById('ting-sound').play().catch(()=>{});
                 load();
             } else alert("Sai mật khẩu!");
         }
 
         function switchB(name) {
             br = name;
+            isFirstLoad = true; 
+            previousCount = 0;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('btn-'+name).classList.add('active');
             load();
-        }
-
-        function getCurrentTime() {
-            const now = new Date();
-            return now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + now.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
         }
 
         function load() {
             db.ref('data/' + br).on('value', snap => {
                 const list = document.getElementById('list-content');
                 list.innerHTML = "";
-                const data = snap.val();
-                if(!data) { list.innerHTML = "<p style='text-align:center; color:#a1a1aa;'>Chưa có khách tại cơ sở này.</p>"; return; }
+                currentData = snap.val();
                 
-                Object.keys(data).reverse().forEach(clientId => {
-                    const client = data[clientId];
+                if(!currentData) { 
+                    list.innerHTML = "<p style='text-align:center; color:#a1a1aa;'>Chưa có khách tại cơ sở này.</p>"; 
+                    previousCount = 0;
+                    return; 
+                }
+
+                // Logic chuông báo
+                const currentCount = Object.keys(currentData).length;
+                if(!isFirstLoad && currentCount > previousCount) {
+                    const audio = document.getElementById('ting-sound');
+                    audio.volume = 1;
+                    audio.play();
+                }
+                previousCount = currentCount;
+                isFirstLoad = false;
+                
+                Object.keys(currentData).reverse().forEach(clientId => {
+                    const client = currentData[clientId];
                     const isDone = client.status === 'completed';
                     
                     let linksHtml = '';
@@ -108,7 +139,7 @@
                                 <div class="link-row">
                                     <span class="time-label">${l.addedAt}</span>
                                     <input type="text" id="edit_${clientId}_${linkId}" value="${l.url}">
-                                    <button class="btn btn-save" onclick="updateLink('${clientId}', '${linkId}')">Lưu Sửa</button>
+                                    <button class="btn btn-save" onclick="updateLink('${clientId}', '${linkId}')">Lưu</button>
                                     <button class="btn btn-del" onclick="deleteLink('${clientId}', '${linkId}')">✕</button>
                                 </div>
                             `;
@@ -117,57 +148,81 @@
 
                     const card = document.createElement('div');
                     card.className = 'client-card';
+                    card.setAttribute('data-search', (client.name + " " + client.phone).toLowerCase());
                     card.innerHTML = `
                         <div class="client-info">
                             <h3>${client.name}</h3>
                             <p>📞 ${client.phone}</p>
                             <p>🕒 ${client.time}</p>
-                            <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã có link' : 'Đang chờ ảnh'}</span>
+                            <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã có link' : 'Chờ ảnh'}</span>
                         </div>
                         <div class="link-manager">
                             ${linksHtml}
                             <div class="add-box">
                                 <input type="text" id="new_${clientId}" placeholder="Dán link ảnh mới vào đây...">
-                                <button class="btn btn-add" onclick="addLink('${clientId}')">+ Thêm Link</button>
+                                <button class="btn btn-add" onclick="addLink('${clientId}')">+ Gửi Link</button>
                             </div>
                         </div>
                     `;
                     list.appendChild(card);
                 });
+                searchCustomer(); // Giữ kết quả tìm kiếm khi dữ liệu update
             });
+        }
+
+        // TÍNH NĂNG TÌM KIẾM
+        function searchCustomer() {
+            const query = document.getElementById('search-box').value.toLowerCase();
+            const cards = document.querySelectorAll('.client-card');
+            cards.forEach(card => {
+                const text = card.getAttribute('data-search');
+                if(text.includes(query)) card.style.display = 'flex';
+                else card.style.display = 'none';
+            });
+        }
+
+        // TÍNH NĂNG XUẤT EXCEL (CSV)
+        function exportExcel() {
+            if(!currentData) return alert("Không có dữ liệu để xuất!");
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Unicode UTF-8
+            csvContent += "Tên Khách Hàng,Số Điện Thoại,Giờ Chụp,Cơ Sở\n";
+            
+            Object.keys(currentData).forEach(id => {
+                const c = currentData[id];
+                csvContent += `"${c.name}","${c.phone}","${c.time}","${br === 'phucyen' ? 'Phúc Yên' : 'Vĩnh Yên'}"\n`;
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `KhachHang_${br}_${new Date().toLocaleDateString('vi-VN')}.csv`);
+            document.body.appendChild(link);
+            link.click();
         }
 
         function addLink(clientId) {
             const url = document.getElementById('new_' + clientId).value.trim();
             if(!url) return alert("Vui lòng dán link!");
-            
             const linkId = "L_" + Date.now();
-            const timeStr = getCurrentTime();
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + now.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
             
-            // Thêm link mới và cập nhật trạng thái
-            db.ref('data/' + br + '/' + clientId + '/links/' + linkId).set({
-                url: url, addedAt: timeStr
-            });
+            db.ref('data/' + br + '/' + clientId + '/links/' + linkId).set({ url: url, addedAt: timeStr });
             db.ref('data/' + br + '/' + clientId).update({ status: "completed" });
         }
 
         function updateLink(clientId, linkId) {
             const newUrl = document.getElementById(`edit_${clientId}_${linkId}`).value.trim();
-            if(!newUrl) return alert("Link không được để trống!");
             db.ref('data/' + br + '/' + clientId + '/links/' + linkId).update({ url: newUrl });
-            alert("Đã cập nhật link!");
+            alert("Đã cập nhật!");
         }
 
         function deleteLink(clientId, linkId) {
-            if(confirm("Bạn có chắc muốn xóa link này khỏi danh sách của khách?")) {
-                db.ref('data/' + br + '/' + clientId + '/links/' + linkId).remove();
-            }
+            if(confirm("Xóa link này?")) db.ref('data/' + br + '/' + clientId + '/links/' + linkId).remove();
         }
 
         function clearData() {
-            if(confirm("Xác nhận xóa TOÀN BỘ dữ liệu của cơ sở này?")) {
-                db.ref('data/' + br).remove();
-            }
+            if(confirm("Xác nhận xóa TOÀN BỘ lịch sử?")) db.ref('data/' + br).remove();
         }
     </script>
 </body>
