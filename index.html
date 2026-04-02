@@ -7,33 +7,45 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #fafafa; color: #111; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #fff; padding: 40px 30px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); width: 100%; max-width: 320px; text-align: center; border: 1px solid #f0f0f0; }
-        h2 { margin: 0 0 8px 0; font-weight: 600; font-size: 22px; }
-        p { color: #666; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
-        input { width: 100%; padding: 14px; margin-bottom: 12px; border: 1px solid #e5e5e5; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; transition: all 0.2s; font-family: 'Inter', sans-serif; }
-        input:focus { border-color: #111; }
-        button { width: 100%; padding: 14px; background: #111; color: #fff; border: none; border-radius: 8px; font-weight: 500; font-size: 15px; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
-        button:hover { background: #333; }
-        .waiting { display: none; }
-        .loader { width: 40px; height: 4px; background: #f0f0f0; margin: 0 auto 20px auto; border-radius: 2px; overflow: hidden; position: relative; }
-        .loader::after { content: ''; position: absolute; left: -20px; top: 0; height: 100%; width: 20px; background: #111; animation: loading 1.5s infinite ease-in-out; border-radius: 2px; }
-        @keyframes loading { 0% { left: -20px; } 100% { left: 40px; } }
+        body { font-family: 'Inter', sans-serif; background: #fafafa; color: #111; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .card { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 30px rgba(0,0,0,0.05); width: 100%; max-width: 360px; text-align: center; border: 1px solid #f0f0f0; }
+        /* Logo tự động co giãn theo khung tròn */
+        .logo { width: 90px; height: 90px; object-fit: cover; margin-bottom: 15px; border-radius: 50%; border: 2px solid #f0f0f0; background: #fff; }
+        h2 { margin: 0 0 10px 0; font-weight: 600; font-size: 20px; }
+        p { color: #666; font-size: 13px; margin-bottom: 20px; }
+        select, input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e5e5e5; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; font-family: 'Inter', sans-serif; }
+        button.primary-btn { width: 100%; padding: 14px; background: #111; color: #fff; border: none; border-radius: 10px; font-weight: 500; cursor: pointer; transition: 0.2s; }
+        .album-item { background: #f9f9f9; border: 1px solid #eee; border-radius: 12px; padding: 15px; margin-bottom: 10px; text-align: left; display: flex; justify-content: space-between; align-items: center; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .album-info b { font-size: 14px; display: block; color: #333; }
+        .album-info span { font-size: 11px; color: #888; }
+        .view-btn { background: #111; color: #fff; text-decoration: none; padding: 8px 15px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+        .status-msg { font-size: 12px; color: #e67e22; font-weight: 500; }
+        #result-ui { display: none; margin-top: 20px; text-align: left; }
     </style>
 </head>
 <body>
     <div class="card">
+        <img src="./logo.png" alt="Logo" class="logo" onerror="this.src='https://via.placeholder.com/100?text=Logo'">
+        
         <div id="form-ui">
-            <h2>Nhận Ảnh Của Bạn</h2>
-            <p>Vui lòng để lại thông tin, hệ thống sẽ gửi link ảnh cho bạn ngay lập tức.</p>
+            <h2>Chào bạn 👋</h2>
+            <p>Chọn cơ sở và nhập thông tin để xem Album ảnh</p>
+            <select id="branch">
+                <option value="coso1">Cơ sở 1</option>
+                <option value="coso2">Cơ sở 2</option>
+            </select>
             <input type="text" id="name" placeholder="Họ và tên">
             <input type="tel" id="phone" placeholder="Số điện thoại">
-            <button onclick="submit()">Nhận ảnh ngay</button>
+            <button class="primary-btn" onclick="checkData()">Tìm Ảnh Của Tôi</button>
         </div>
-        <div id="waiting-ui" class="waiting">
-            <div class="loader"></div>
-            <h2 id="status-title">Đang xử lý...</h2>
-            <p>Xin chào <b id="guest-name"></b>,<br><span id="status-desc">Bạn giữ nguyên màn hình này nhé, link ảnh sẽ tự động mở ra.</span></p>
+
+        <div id="result-ui">
+            <h3 style="font-size: 16px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; display: flex; justify-content: space-between;">
+                Album của bạn <span id="count" style="font-size:12px; color:#999"></span>
+            </h3>
+            <div id="album-list"></div>
+            <button onclick="location.reload()" style="background:none; border:none; color:#999; font-size:12px; cursor:pointer; margin-top:20px; width:100%; text-decoration: underline;">← Quay lại nhập tên khác</button>
         </div>
     </div>
 
@@ -50,60 +62,45 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        function submit() {
+        function checkData() {
+            const branch = document.getElementById('branch').value;
             const name = document.getElementById('name').value.trim();
             const phone = document.getElementById('phone').value.trim();
-            if (!name || !phone) return alert("Vui lòng điền đủ Tên và Số điện thoại.");
+            if (!name || !phone) return alert("Vui lòng điền đủ Tên và SĐT!");
 
-            // Tạm ẩn form, hiện màn hình chờ để khách biết hệ thống đang check
             document.getElementById('form-ui').style.display = 'none';
-            document.getElementById('waiting-ui').style.display = 'block';
-            document.getElementById('guest-name').innerText = name;
+            document.getElementById('result-ui').style.display = 'block';
 
-            // Kiểm tra xem khách này đã từng gửi yêu cầu chưa
-            db.ref('sessions').once('value').then((snapshot) => {
-                let existingId = null;
-                let existingLink = "";
+            db.ref('data/' + branch).on('value', (snap) => {
+                const albumList = document.getElementById('album-list');
+                albumList.innerHTML = "";
+                let count = 0;
 
-                snapshot.forEach((child) => {
+                snap.forEach(child => {
                     const data = child.val();
-                    // So sánh: Trùng số điện thoại HOẶC trùng tên (không phân biệt viết hoa/thường)
                     if (data.phone === phone || data.name.toLowerCase() === name.toLowerCase()) {
-                        existingId = child.key;
-                        existingLink = data.link || "";
+                        count++;
+                        const item = document.createElement('div');
+                        item.className = 'album-item';
+                        item.innerHTML = `
+                            <div class="album-info">
+                                <b>Lần chụp: ${data.time}</b>
+                                <span>Mã: ${child.key.split('_')[1]}</span>
+                            </div>
+                            ${data.link ? `<a href="${data.link}" target="_blank" class="view-btn">Xem ảnh</a>` : `<span class="status-msg">Đang chờ ảnh...</span>`}
+                        `;
+                        albumList.appendChild(item);
                     }
                 });
 
-                if (existingId) {
-                    // Trạng thái 1: Khách cũ quay lại
-                    if (existingLink !== "") {
-                        document.getElementById('status-title').innerText = "Đã tìm thấy ảnh!";
-                        document.getElementById('status-desc').innerText = "Đang tự động chuyển hướng...";
-                        // Tự động mở link cũ luôn
-                        window.location.href = existingLink;
-                    } else {
-                        // Khách lỡ tay bấm lại nhưng bạn chưa gửi link -> Tiếp tục chờ link từ ID cũ
-                        listenForLink(existingId);
-                    }
-                } else {
-                    // Trạng thái 2: Khách mới hoàn toàn -> Tạo yêu cầu mới
-                    const newId = "S_" + Date.now();
-                    db.ref('sessions/' + newId).set({
-                        name: name,
-                        phone: phone,
-                        link: "",
-                        status: "pending",
-                        time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})
+                if (count === 0) {
+                    const id = "S_" + Date.now();
+                    db.ref('data/' + branch + '/' + id).set({
+                        name: name, phone: phone, link: "", status: "pending", time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})
                     });
-                    listenForLink(newId);
+                    albumList.innerHTML = "<p style='font-size:13px; color:#666; text-align:center; padding: 20px;'>Hệ thống đã nhận yêu cầu. Bạn vui lòng đợi Admin gửi link vào đây nhé!</p>";
                 }
-            });
-        }
-
-        // Hàm đợi link (dùng chung cho cả khách mới và khách cũ chưa có link)
-        function listenForLink(id) {
-            db.ref('sessions/' + id + '/link').on('value', (s) => {
-                if (s.val()) window.location.href = s.val();
+                document.getElementById('count').innerText = "(" + count + ")";
             });
         }
     </script>

@@ -1,132 +1,111 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8"><title>Bảng Điều Khiển Trả Ảnh</title>
+    <meta charset="UTF-8"><title>Admin - Quản Lý 2 Cơ Sở</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #fafafa; margin: 0; padding: 40px 20px; color: #111; }
-        .container { max-width: 1000px; margin: auto; }
-        .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #eaeaea; padding-bottom: 20px; margin-bottom: 30px; }
-        h1 { margin: 0; font-weight: 600; font-size: 24px; letter-spacing: -0.5px; }
-        .btn-clear { background: transparent; border: 1px solid #ddd; color: #666; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; transition: 0.2s; }
-        .btn-clear:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
-        
-        .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #888; font-weight: 600; margin-bottom: 16px; margin-top: 40px; }
-        
-        .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.03); border: 1px solid #f0f0f0; padding: 24px; }
-        .row { display: grid; grid-template-columns: 2fr 1fr 3fr 100px; gap: 20px; align-items: center; padding: 16px 0; border-bottom: 1px solid #f5f5f5; }
-        .row:last-child { border-bottom: none; padding-bottom: 0; }
-        .row:first-child { padding-top: 0; }
-        
-        .info strong { display: block; font-size: 15px; margin-bottom: 4px; }
-        .info span { color: #666; font-size: 13px; }
-        .status { font-size: 12px; font-weight: 500; display: inline-block; padding: 4px 10px; border-radius: 20px; }
-        .status.pending { background: #111; color: #fff; }
-        .status.done { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
-        
-        input { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 13px; outline: none; font-family: 'Inter', sans-serif; }
-        input:focus { border-color: #111; }
-        button.send { background: #111; color: #fff; border: none; padding: 10px 0; width: 100%; border-radius: 6px; font-weight: 500; cursor: pointer; transition: 0.2s; font-family: 'Inter', sans-serif; }
-        button.send:hover { background: #333; }
-        
-        .history-card { opacity: 0.8; background: #fdfdfd; }
-        .link-text { font-size: 13px; color: #666; word-break: break-all; }
-        .empty-state { text-align: center; color: #999; font-size: 14px; padding: 20px 0; }
+        body { font-family: 'Inter', sans-serif; background: #fafafa; margin: 0; padding: 20px; color: #111; }
+        #login-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .admin-box { max-width: 1000px; margin: auto; display: none; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        .tab-btn { padding: 10px 25px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background: #fff; font-weight: 500; }
+        .tab-btn.active { background: #111; color: #fff; border-color: #111; }
+        .card { background: #fff; border-radius: 12px; border: 1px solid #f0f0f0; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        .row { display: grid; grid-template-columns: 180px 100px 1fr 120px; gap: 15px; padding: 15px 0; border-bottom: 1px solid #f5f5f5; align-items: center; }
+        .row:hover { background: #fafafa; }
+        input.link-inp { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px; }
+        button.action-btn { width: 100%; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.2s; }
+        .btn-send { background: #111; color: #fff; }
+        .btn-update { background: #fff; color: #111; border: 1px solid #111; }
+        .btn-update:hover { background: #f0f0f0; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div id="login-screen">
+        <div style="text-align:center; width: 300px;">
+            <h3>🔐 Admin Login</h3>
+            <input type="password" id="pass" placeholder="Nhập mật khẩu..." style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd; margin-bottom:15px;">
+            <button onclick="login()" style="width:100%; padding:12px; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer;">Đăng nhập</button>
+        </div>
+    </div>
+
+    <div class="admin-box" id="admin-box">
         <div class="header">
             <h1>Quản Lý Trả Ảnh</h1>
-            <button class="btn-clear" onclick="clearData()">Xóa dữ liệu cuối ngày</button>
+            <div class="tabs">
+                <button class="tab-btn active" id="btn-coso1" onclick="switchB('coso1')">Cơ sở 1</button>
+                <button class="tab-btn" id="btn-coso2" onclick="switchB('coso2')">Cơ sở 2</button>
+            </div>
+            <button onclick="if(confirm('Xóa hết dữ liệu?')) db.ref('data/'+br).remove()" style="color:red; background:none; border:none; cursor:pointer; font-size:12px;">Dọn dẹp</button>
         </div>
-
-        <div class="section-title">Khách đang chờ</div>
-        <div class="card" id="pending-card">
-            <div id="pending-list"><div class="empty-state">Chưa có khách nào đang đợi...</div></div>
-        </div>
-
-        <div class="section-title">Lịch sử hôm nay</div>
-        <div class="card history-card" id="history-card">
-            <div id="history-list"><div class="empty-state">Chưa có lịch sử...</div></div>
+        <div class="card">
+            <div id="list-header" style="display:grid; grid-template-columns: 180px 100px 1fr 120px; font-size:12px; color:#888; margin-bottom:10px;">
+                <span>KHÁCH HÀNG</span><span>THỜI GIAN</span><span>LINK ẢNH</span><span>THAO TÁC</span>
+            </div>
+            <div id="list-content">Đang tải dữ liệu...</div>
         </div>
     </div>
 
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw",
-            authDomain: "tra-anh-khach.firebaseapp.com",
             databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "tra-anh-khach",
-            storageBucket: "tra-anh-khach.firebasestorage.app",
-            messagingSenderId: "494071357596",
-            appId: "1:494071357596:web:be1a284102ed6176900d59"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        let br = 'coso1';
 
-        db.ref('sessions').on('value', (snapshot) => {
-            const pList = document.getElementById('pending-list');
-            const hList = document.getElementById('history-list');
-            
-            const data = snapshot.val();
-            if (!data) {
-                pList.innerHTML = '<div class="empty-state">Chưa có khách nào đang đợi...</div>';
-                hList.innerHTML = '<div class="empty-state">Chưa có lịch sử...</div>';
-                return;
-            }
-
-            let pHTML = '';
-            let hHTML = '';
-
-            Object.keys(data).reverse().forEach(id => {
-                const item = data[id];
-                const isPending = item.status === 'pending';
-                
-                const html = `
-                    <div class="row">
-                        <div class="info">
-                            <strong>${item.name}</strong>
-                            <span>SĐT: ${item.phone}</span>
-                        </div>
-                        <div>
-                            <span class="status ${isPending ? 'pending' : 'done'}">
-                                ${isPending ? 'Đang chờ' : 'Đã gửi'}
-                            </span>
-                            <div style="font-size:11px; color:#999; margin-top:4px;">${item.time}</div>
-                        </div>
-                        <div>
-                            ${isPending 
-                                ? `<input type="text" id="in_${id}" placeholder="Dán link ảnh vào đây...">` 
-                                : `<div class="link-text">${item.link}</div>`}
-                        </div>
-                        <div>
-                            ${isPending 
-                                ? `<button class="send" onclick="send('${id}')">Gửi đi</button>` 
-                                : `<div style="text-align:center; color:#166534; font-size:18px;">✓</div>`}
-                        </div>
-                    </div>`;
-                
-                if (isPending) pHTML += html;
-                else hHTML += html;
-            });
-
-            pList.innerHTML = pHTML || '<div class="empty-state">Không có khách nào đang chờ.</div>';
-            hList.innerHTML = hHTML || '<div class="empty-state">Chưa có lịch sử.</div>';
-        });
-
-        function send(id) {
-            const link = document.getElementById('in_'+id).value.trim();
-            if (!link) return alert("Vui lòng dán link ảnh.");
-            db.ref('sessions/' + id).update({ link: link, status: "completed" });
+        function login() {
+            if(document.getElementById('pass').value === "123456") {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('admin-box').style.display = 'block';
+                load();
+            } else alert("Sai mật khẩu!");
         }
 
-        function clearData() {
-            if(confirm("Bạn sẽ xóa toàn bộ danh sách khách hôm nay. Tiếp tục?")) {
-                db.ref('sessions').remove();
-            }
+        function switchB(name) {
+            br = name;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-'+name).classList.add('active');
+            load();
+        }
+
+        function load() {
+            db.ref('data/' + br).on('value', snap => {
+                const list = document.getElementById('list-content');
+                list.innerHTML = "";
+                const data = snap.val();
+                if(!data) { list.innerHTML = "<p style='text-align:center; padding:30px; color:#999'>Trống</p>"; return; }
+                
+                Object.keys(data).reverse().forEach(id => {
+                    const item = data[id];
+                    const isDone = item.status === 'completed';
+                    const row = document.createElement('div');
+                    row.className = 'row';
+                    row.innerHTML = `
+                        <div><b>${item.name}</b><br><small>${item.phone}</small></div>
+                        <div style="font-size:12px">${item.time}</div>
+                        <div><input type="text" id="inp_${id}" class="link-inp" value="${item.link}" placeholder="Dán link ảnh..."></div>
+                        <div>
+                            <button class="action-btn ${isDone ? 'btn-update' : 'btn-send'}" onclick="save('${id}')">
+                                ${isDone ? 'Cập nhật' : 'Gửi ảnh'}
+                            </button>
+                        </div>
+                    `;
+                    list.appendChild(row);
+                });
+            });
+        }
+
+        function save(id) {
+            const link = document.getElementById('inp_'+id).value;
+            if(!link) return alert("Vui lòng dán link!");
+            db.ref('data/' + br + '/' + id).update({ link: link, status: "completed" })
+              .then(() => alert("Đã lưu thành công!"));
         }
     </script>
 </body>
