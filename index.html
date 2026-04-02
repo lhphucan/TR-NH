@@ -9,18 +9,18 @@
     <style>
         body { font-family: 'Inter', sans-serif; background: #fafafa; color: #111; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
         .card { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 30px rgba(0,0,0,0.05); width: 100%; max-width: 360px; text-align: center; border: 1px solid #f0f0f0; }
-        /* Logo tự động co giãn theo khung tròn */
         .logo { width: 90px; height: 90px; object-fit: cover; margin-bottom: 15px; border-radius: 50%; border: 2px solid #f0f0f0; background: #fff; }
-        h2 { margin: 0 0 10px 0; font-weight: 600; font-size: 20px; }
         p { color: #666; font-size: 13px; margin-bottom: 20px; }
         select, input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e5e5e5; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; font-family: 'Inter', sans-serif; }
         button.primary-btn { width: 100%; padding: 14px; background: #111; color: #fff; border: none; border-radius: 10px; font-weight: 500; cursor: pointer; transition: 0.2s; }
-        .album-item { background: #f9f9f9; border: 1px solid #eee; border-radius: 12px; padding: 15px; margin-bottom: 10px; text-align: left; display: flex; justify-content: space-between; align-items: center; animation: fadeIn 0.3s ease; }
+        .album-item { background: #f9f9f9; border: 1px solid #eee; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .album-info b { font-size: 14px; display: block; color: #333; }
-        .album-info span { font-size: 11px; color: #888; }
-        .view-btn { background: #111; color: #fff; text-decoration: none; padding: 8px 15px; border-radius: 6px; font-size: 12px; font-weight: 500; }
-        .status-msg { font-size: 12px; color: #e67e22; font-weight: 500; }
+        .album-info b { font-size: 14px; display: block; color: #333; margin-bottom: 4px;}
+        .album-info span { font-size: 12px; color: #888; }
+        .link-row { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 10px; border: 1px solid #eaeaea; border-radius: 8px; margin-top: 8px; }
+        .link-row .time { font-size: 11px; color: #888; }
+        .view-btn { background: #111; color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+        .status-msg { font-size: 12px; color: #e67e22; font-weight: 500; margin-top: 10px; display: block; }
         #result-ui { display: none; margin-top: 20px; text-align: left; }
     </style>
 </head>
@@ -29,11 +29,10 @@
         <img src="./logo.png" alt="Logo" class="logo" onerror="this.src='https://via.placeholder.com/100?text=Logo'">
         
         <div id="form-ui">
-            <h2>Chào bạn 👋</h2>
             <p>Chọn cơ sở và nhập thông tin để xem Album ảnh</p>
             <select id="branch">
-                <option value="coso1">Cơ sở 1</option>
-                <option value="coso2">Cơ sở 2</option>
+                <option value="phucyen">PHOTO NOIR PHÚC YÊN</option>
+                <option value="vinhyen">PHOTO NOIR VĨNH YÊN</option>
             </select>
             <input type="text" id="name" placeholder="Họ và tên">
             <input type="tel" id="phone" placeholder="Số điện thoại">
@@ -41,23 +40,17 @@
         </div>
 
         <div id="result-ui">
-            <h3 style="font-size: 16px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; display: flex; justify-content: space-between;">
-                Album của bạn <span id="count" style="font-size:12px; color:#999"></span>
-            </h3>
+            <h3 style="font-size: 16px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Lịch sử chụp của bạn</h3>
             <div id="album-list"></div>
-            <button onclick="location.reload()" style="background:none; border:none; color:#999; font-size:12px; cursor:pointer; margin-top:20px; width:100%; text-decoration: underline;">← Quay lại nhập tên khác</button>
+            <button onclick="location.reload()" style="background:none; border:none; color:#999; font-size:12px; cursor:pointer; margin-top:20px; width:100%; text-decoration: underline;">← Quay lại</button>
         </div>
     </div>
 
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw",
-            authDomain: "tra-anh-khach.firebaseapp.com",
             databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "tra-anh-khach",
-            storageBucket: "tra-anh-khach.firebasestorage.app",
-            messagingSenderId: "494071357596",
-            appId: "1:494071357596:web:be1a284102ed6176900d59"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -80,14 +73,31 @@
                     const data = child.val();
                     if (data.phone === phone || data.name.toLowerCase() === name.toLowerCase()) {
                         count++;
+                        let linksHtml = '';
+                        
+                        // Kiểm tra nếu có danh sách link
+                        if (data.links) {
+                            Object.keys(data.links).forEach((linkId, index) => {
+                                const l = data.links[linkId];
+                                linksHtml += `
+                                    <div class="link-row">
+                                        <span class="time">${l.addedAt}</span>
+                                        <a href="${l.url}" target="_blank" class="view-btn">Xem ảnh ${index + 1}</a>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            linksHtml = `<span class="status-msg">Đang chờ Admin tải ảnh lên...</span>`;
+                        }
+
                         const item = document.createElement('div');
                         item.className = 'album-item';
                         item.innerHTML = `
                             <div class="album-info">
-                                <b>Lần chụp: ${data.time}</b>
-                                <span>Mã: ${child.key.split('_')[1]}</span>
+                                <b>Yêu cầu lúc: ${data.time}</b>
+                                <span>Mã KH: ${child.key.split('_')[1]}</span>
                             </div>
-                            ${data.link ? `<a href="${data.link}" target="_blank" class="view-btn">Xem ảnh</a>` : `<span class="status-msg">Đang chờ ảnh...</span>`}
+                            <div style="margin-top: 10px;">${linksHtml}</div>
                         `;
                         albumList.appendChild(item);
                     }
@@ -96,11 +106,10 @@
                 if (count === 0) {
                     const id = "S_" + Date.now();
                     db.ref('data/' + branch + '/' + id).set({
-                        name: name, phone: phone, link: "", status: "pending", time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})
+                        name: name, phone: phone, status: "pending", time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})
                     });
-                    albumList.innerHTML = "<p style='font-size:13px; color:#666; text-align:center; padding: 20px;'>Hệ thống đã nhận yêu cầu. Bạn vui lòng đợi Admin gửi link vào đây nhé!</p>";
+                    albumList.innerHTML = "<p style='font-size:13px; color:#666; text-align:center; padding: 20px;'>Hệ thống đã ghi nhận. Admin sẽ gửi link ảnh vào đây nhé!</p>";
                 }
-                document.getElementById('count').innerText = "(" + count + ")";
             });
         }
     </script>

@@ -1,26 +1,40 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8"><title>Admin - Quản Lý 2 Cơ Sở</title>
+    <meta charset="UTF-8"><title>Admin - PHOTO NOIR</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #fafafa; margin: 0; padding: 20px; color: #111; }
+        body { font-family: 'Inter', sans-serif; background: #f4f4f5; margin: 0; padding: 20px; color: #111; }
         #login-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .admin-box { max-width: 1000px; margin: auto; display: none; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-        .tab-btn { padding: 10px 25px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background: #fff; font-weight: 500; }
-        .tab-btn.active { background: #111; color: #fff; border-color: #111; }
-        .card { background: #fff; border-radius: 12px; border: 1px solid #f0f0f0; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
-        .row { display: grid; grid-template-columns: 180px 100px 1fr 120px; gap: 15px; padding: 15px 0; border-bottom: 1px solid #f5f5f5; align-items: center; }
-        .row:hover { background: #fafafa; }
-        input.link-inp { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px; }
-        button.action-btn { width: 100%; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.2s; }
-        .btn-send { background: #111; color: #fff; }
-        .btn-update { background: #fff; color: #111; border: 1px solid #111; }
-        .btn-update:hover { background: #f0f0f0; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid #e4e4e7; padding-bottom: 15px; }
+        .tab-btn { padding: 10px 25px; border: 1px solid #d4d4d8; border-radius: 8px; cursor: pointer; background: #fff; font-weight: 500; }
+        .tab-btn.active { background: #18181b; color: #fff; border-color: #18181b; }
+        
+        .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); display: flex; gap: 20px; align-items: flex-start; }
+        .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid #f4f4f5; padding-right: 15px; }
+        .client-info h3 { margin: 0 0 5px 0; font-size: 16px; }
+        .client-info p { margin: 0; color: #71717a; font-size: 13px; margin-bottom: 5px; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .badge.pending { background: #fef3c7; color: #b45309; }
+        .badge.done { background: #dcfce7; color: #166534; }
+
+        .link-manager { flex-grow: 1; }
+        .link-row { display: flex; gap: 10px; align-items: center; background: #fafafa; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f4f4f5; }
+        .link-row input { flex-grow: 1; padding: 8px; border: 1px solid #d4d4d8; border-radius: 6px; outline: none; font-size: 13px; }
+        .link-row .time-label { font-size: 11px; color: #a1a1aa; width: 100px; }
+        
+        button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; transition: 0.2s; }
+        .btn-add { background: #18181b; color: #fff; }
+        .btn-save { background: #e4e4e7; color: #18181b; }
+        .btn-save:hover { background: #d4d4d8; }
+        .btn-del { background: #fee2e2; color: #ef4444; }
+        .btn-del:hover { background: #fca5a5; }
+
+        .add-box { display: flex; gap: 10px; margin-top: 15px; border-top: 1px dashed #e4e4e7; padding-top: 15px; }
+        .add-box input { flex-grow: 1; padding: 10px; border: 1px solid #d4d4d8; border-radius: 8px; outline: none; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -33,20 +47,16 @@
     </div>
 
     <div class="admin-box" id="admin-box">
-        <div class="header">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h1>Quản Lý Trả Ảnh</h1>
             <div class="tabs">
-                <button class="tab-btn active" id="btn-coso1" onclick="switchB('coso1')">Cơ sở 1</button>
-                <button class="tab-btn" id="btn-coso2" onclick="switchB('coso2')">Cơ sở 2</button>
+                <button class="tab-btn active" id="btn-phucyen" onclick="switchB('phucyen')">PN Phúc Yên</button>
+                <button class="tab-btn" id="btn-vinhyen" onclick="switchB('vinhyen')">PN Vĩnh Yên</button>
             </div>
-            <button onclick="if(confirm('Xóa hết dữ liệu?')) db.ref('data/'+br).remove()" style="color:red; background:none; border:none; cursor:pointer; font-size:12px;">Dọn dẹp</button>
+            <button onclick="clearData()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600;">Dọn dẹp lịch sử</button>
         </div>
-        <div class="card">
-            <div id="list-header" style="display:grid; grid-template-columns: 180px 100px 1fr 120px; font-size:12px; color:#888; margin-bottom:10px;">
-                <span>KHÁCH HÀNG</span><span>THỜI GIAN</span><span>LINK ẢNH</span><span>THAO TÁC</span>
-            </div>
-            <div id="list-content">Đang tải dữ liệu...</div>
-        </div>
+
+        <div id="list-content">Đang tải dữ liệu...</div>
     </div>
 
     <script>
@@ -57,7 +67,7 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        let br = 'coso1';
+        let br = 'phucyen';
 
         function login() {
             if(document.getElementById('pass').value === "123456") {
@@ -74,38 +84,90 @@
             load();
         }
 
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + now.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
+        }
+
         function load() {
             db.ref('data/' + br).on('value', snap => {
                 const list = document.getElementById('list-content');
                 list.innerHTML = "";
                 const data = snap.val();
-                if(!data) { list.innerHTML = "<p style='text-align:center; padding:30px; color:#999'>Trống</p>"; return; }
+                if(!data) { list.innerHTML = "<p style='text-align:center; color:#a1a1aa;'>Chưa có khách tại cơ sở này.</p>"; return; }
                 
-                Object.keys(data).reverse().forEach(id => {
-                    const item = data[id];
-                    const isDone = item.status === 'completed';
-                    const row = document.createElement('div');
-                    row.className = 'row';
-                    row.innerHTML = `
-                        <div><b>${item.name}</b><br><small>${item.phone}</small></div>
-                        <div style="font-size:12px">${item.time}</div>
-                        <div><input type="text" id="inp_${id}" class="link-inp" value="${item.link}" placeholder="Dán link ảnh..."></div>
-                        <div>
-                            <button class="action-btn ${isDone ? 'btn-update' : 'btn-send'}" onclick="save('${id}')">
-                                ${isDone ? 'Cập nhật' : 'Gửi ảnh'}
-                            </button>
+                Object.keys(data).reverse().forEach(clientId => {
+                    const client = data[clientId];
+                    const isDone = client.status === 'completed';
+                    
+                    let linksHtml = '';
+                    if (client.links) {
+                        Object.keys(client.links).forEach(linkId => {
+                            const l = client.links[linkId];
+                            linksHtml += `
+                                <div class="link-row">
+                                    <span class="time-label">${l.addedAt}</span>
+                                    <input type="text" id="edit_${clientId}_${linkId}" value="${l.url}">
+                                    <button class="btn btn-save" onclick="updateLink('${clientId}', '${linkId}')">Lưu Sửa</button>
+                                    <button class="btn btn-del" onclick="deleteLink('${clientId}', '${linkId}')">✕</button>
+                                </div>
+                            `;
+                        });
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'client-card';
+                    card.innerHTML = `
+                        <div class="client-info">
+                            <h3>${client.name}</h3>
+                            <p>📞 ${client.phone}</p>
+                            <p>🕒 ${client.time}</p>
+                            <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã có link' : 'Đang chờ ảnh'}</span>
+                        </div>
+                        <div class="link-manager">
+                            ${linksHtml}
+                            <div class="add-box">
+                                <input type="text" id="new_${clientId}" placeholder="Dán link ảnh mới vào đây...">
+                                <button class="btn btn-add" onclick="addLink('${clientId}')">+ Thêm Link</button>
+                            </div>
                         </div>
                     `;
-                    list.appendChild(row);
+                    list.appendChild(card);
                 });
             });
         }
 
-        function save(id) {
-            const link = document.getElementById('inp_'+id).value;
-            if(!link) return alert("Vui lòng dán link!");
-            db.ref('data/' + br + '/' + id).update({ link: link, status: "completed" })
-              .then(() => alert("Đã lưu thành công!"));
+        function addLink(clientId) {
+            const url = document.getElementById('new_' + clientId).value.trim();
+            if(!url) return alert("Vui lòng dán link!");
+            
+            const linkId = "L_" + Date.now();
+            const timeStr = getCurrentTime();
+            
+            // Thêm link mới và cập nhật trạng thái
+            db.ref('data/' + br + '/' + clientId + '/links/' + linkId).set({
+                url: url, addedAt: timeStr
+            });
+            db.ref('data/' + br + '/' + clientId).update({ status: "completed" });
+        }
+
+        function updateLink(clientId, linkId) {
+            const newUrl = document.getElementById(`edit_${clientId}_${linkId}`).value.trim();
+            if(!newUrl) return alert("Link không được để trống!");
+            db.ref('data/' + br + '/' + clientId + '/links/' + linkId).update({ url: newUrl });
+            alert("Đã cập nhật link!");
+        }
+
+        function deleteLink(clientId, linkId) {
+            if(confirm("Bạn có chắc muốn xóa link này khỏi danh sách của khách?")) {
+                db.ref('data/' + br + '/' + clientId + '/links/' + linkId).remove();
+            }
+        }
+
+        function clearData() {
+            if(confirm("Xác nhận xóa TOÀN BỘ dữ liệu của cơ sở này?")) {
+                db.ref('data/' + br).remove();
+            }
         }
     </script>
 </body>
