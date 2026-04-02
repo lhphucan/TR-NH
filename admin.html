@@ -8,71 +8,70 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        :root { --bg: #111111; --card: #1f1f23; --text: #fdfdfd; --grey: #a1a1aa; --charcoal: #3f3f46; --white: #fff; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
-        #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; border: 1px solid var(--charcoal); }
+        body { font-family: 'Inter', sans-serif; background: #f4f4f5; margin: 0; padding: 20px; color: #111; }
+        #login-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .admin-box { max-width: 1000px; margin: auto; display: none; }
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { padding: 10px 25px; border: 1px solid var(--charcoal); border-radius: 8px; cursor: pointer; background: var(--card); color: var(--text); font-weight: 500; transition: 0.2s; }
-        .tab-btn.active { background: var(--white); color: var(--bg); border-color: var(--white); }
+        .tab-btn { padding: 10px 25px; border: 1px solid #d4d4d8; border-radius: 8px; cursor: pointer; background: #fff; color: #111; font-weight: 500; transition: 0.2s; }
+        .tab-btn.active { background: #18181b; color: #fff; border-color: #18181b; }
         
         .toolbar { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; }
-        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--charcoal); outline: none; font-family: 'Inter', sans-serif; font-size: 14px; background: var(--card); color: var(--text); }
-        .search-box:focus { border-color: var(--white); }
+        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-family: 'Inter', sans-serif; font-size: 14px; background: #fff; color: #111; }
+        .search-box:focus { border-color: #18181b; }
         .btn-excel { padding: 12px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; transition: 0.2s; text-transform: uppercase; font-size: 13px;}
         .btn-excel:hover { background: #059669; }
 
         /* Style cho phần Ngày Tháng */
-        .date-header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 10px; border-bottom: 2px solid var(--white); margin: 35px 0 15px 0; font-weight: 700; font-size: 17px; color: var(--white); }
-        .date-header span.count { font-size: 13px; color: var(--grey); font-weight: 500; }
+        .date-header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 10px; border-bottom: 2px solid #18181b; margin: 35px 0 15px 0; font-weight: 700; font-size: 17px; color: #18181b; }
+        .date-header span.count { font-size: 13px; color: #71717a; font-weight: 500; }
         .date-group { animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .client-card { background: var(--card); border-radius: 12px; border: 1px solid var(--charcoal); padding: 20px; margin-bottom: 12px; display: flex; gap: 20px; align-items: flex-start; transition: 0.2s; }
-        .client-card:hover { border-color: var(--grey); box-shadow: 0 4px 12px rgba(255,255,255,0.02); }
-        .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid var(--charcoal); padding-right: 15px; position: relative; }
-        .client-info h3 { margin: 0 0 5px 0; font-size: 16px; color: var(--white); }
-        .client-info p { margin: 0; color: var(--grey); font-size: 13px; margin-bottom: 5px; }
+        .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 20px; margin-bottom: 12px; display: flex; gap: 20px; align-items: flex-start; transition: 0.2s; }
+        .client-card:hover { border-color: #a1a1aa; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+        .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid #f4f4f5; padding-right: 15px; position: relative; }
+        .client-info h3 { margin: 0 0 5px 0; font-size: 16px; color: #111; }
+        .client-info p { margin: 0; color: #71717a; font-size: 13px; margin-bottom: 5px; }
         .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
         .badge.pending { background: #fef3c7; color: #b45309; }
         .badge.done { background: #dcfce7; color: #166534; }
         
         /* Hiển thị Mã KH nổi bật bên Admin */
-        .makh-display { font-size: 11px; color: var(--charcoal); position: absolute; top: 0; right: 15px; font-family: monospace; }
+        .makh-display { font-size: 11px; color: #71717a; position: absolute; top: 0; right: 15px; font-family: monospace; font-weight: 600;}
 
         .link-manager { flex-grow: 1; }
-        .link-row { display: flex; gap: 10px; align-items: center; background: var(--bg); padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--charcoal); }
-        .link-row input { flex-grow: 1; padding: 8px; border: 1px solid var(--charcoal); border-radius: 6px; outline: none; font-size: 13px; font-family: 'Inter', sans-serif; background: var(--card); color: var(--text); }
-        .link-row input:focus { border-color: var(--white); }
-        .link-row .time-label { font-size: 11px; color: var(--grey); width: 100px; }
+        .link-row { display: flex; gap: 10px; align-items: center; background: #fafafa; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f4f4f5; }
+        .link-row input { flex-grow: 1; padding: 8px; border: 1px solid #d4d4d8; border-radius: 6px; outline: none; font-size: 13px; font-family: 'Inter', sans-serif; background: #fff; color: #111; }
+        .link-row input:focus { border-color: #18181b; }
+        .link-row .time-label { font-size: 11px; color: #a1a1aa; width: 100px; }
         
         button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; text-transform: uppercase; transition: 0.2s;}
-        .btn-add { background: var(--white); color: var(--bg); }
-        .btn-add:hover { background: #e4e4e7; }
-        .btn-save { background: var(--charcoal); color: var(--white); border: 1px solid var(--charcoal); }
-        .btn-save:hover { background: var(--card); border-color: var(--grey); }
+        .btn-add { background: #18181b; color: #fff; }
+        .btn-add:hover { background: #3f3f46; }
+        .btn-save { background: #e4e4e7; color: #18181b; }
+        .btn-save:hover { background: #d4d4d8; }
         .btn-del { background: #fee2e2; color: #ef4444; }
         .btn-del:hover { background: #fca5a5; }
 
-        .add-box { display: flex; gap: 10px; margin-top: 15px; border-top: 1px dashed var(--charcoal); padding-top: 15px; }
-        .add-box input { flex-grow: 1; padding: 10px; border: 1px solid var(--charcoal); border-radius: 8px; outline: none; font-size: 13px; font-family: 'Inter', sans-serif; background: var(--card); color: var(--text); }
-        .add-box input:focus { border-color: var(--white); }
+        .add-box { display: flex; gap: 10px; margin-top: 15px; border-top: 1px dashed #e4e4e7; padding-top: 15px; }
+        .add-box input { flex-grow: 1; padding: 10px; border: 1px solid #d4d4d8; border-radius: 8px; outline: none; font-size: 13px; font-family: 'Inter', sans-serif; background: #fff; color: #111; }
+        .add-box input:focus { border-color: #18181b; }
     </style>
 </head>
 <body>
     <div id="login-screen">
         <div style="text-align:center; width: 300px;">
-            <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 2px solid var(--charcoal);" onerror="this.style.display='none'">
+            <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 1px solid #eee;" onerror="this.style.display='none'">
             <h3 style="margin-bottom: 20px;">PN ADMIN LOGIN</h3>
-            <input type="password" id="pass" placeholder="Nhập mật khẩu..." style="width:100%; padding:14px; border-radius:10px; border:1px solid var(--charcoal); margin-bottom:15px; box-sizing: border-box; background: var(--card); color: var(--text);">
-            <button onclick="login()" style="width:100%; padding:14px; background:var(--white); color:var(--bg); border:none; border-radius:10px; cursor:pointer; font-weight:700; text-transform: uppercase;">Đăng nhập</button>
+            <input type="password" id="pass" placeholder="Nhập mật khẩu..." style="width:100%; padding:14px; border-radius:10px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; background: #fff; color: #111;">
+            <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:10px; cursor:pointer; font-weight:700; text-transform: uppercase;">Đăng nhập</button>
         </div>
     </div>
 
     <div class="admin-box" id="admin-box">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h1 style="margin: 0; color: var(--white);">QUẢN LÝ TRẢ ẢNH</h1>
-            <button onclick="clearData()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px;">🗑 dọn dữ liệu</button>
+            <h1 style="margin: 0; color: #111;">QUẢN LÝ TRẢ ẢNH</h1>
+            <button onclick="clearData()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px;">🗑 Dọn dữ liệu</button>
         </div>
         
         <div class="tabs">
@@ -172,7 +171,7 @@
 
                     sortedClients.forEach(client => {
                         const isDone = client.status === 'completed';
-                        const maKh = client.id.split('_')[1].slice(-4); // Lấy 4 số cuối của mã
+                        const maKh = client.id.split('_')[1].slice(-4); 
                         let linksHtml = '';
                         if (client.links) {
                             Object.keys(client.links).forEach(linkId => {
