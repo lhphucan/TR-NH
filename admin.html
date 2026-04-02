@@ -4,57 +4,75 @@
     <meta charset="UTF-8">
     <title>Admin - PHOTO NOIR SELFBOOTH ALBUM</title>
     <link rel="icon" href="./logo.png" type="image/png">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #f4f4f5; margin: 0; padding: 20px; color: #111; }
-        #login-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        :root { --bg: #111111; --card: #1f1f23; --text: #fdfdfd; --grey: #a1a1aa; --charcoal: #3f3f46; --white: #fff; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
+        #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; border: 1px solid var(--charcoal); }
         .admin-box { max-width: 1000px; margin: auto; display: none; }
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { padding: 10px 25px; border: 1px solid #d4d4d8; border-radius: 8px; cursor: pointer; background: #fff; font-weight: 500; }
-        .tab-btn.active { background: #18181b; color: #fff; border-color: #18181b; }
+        .tab-btn { padding: 10px 25px; border: 1px solid var(--charcoal); border-radius: 8px; cursor: pointer; background: var(--card); color: var(--text); font-weight: 500; transition: 0.2s; }
+        .tab-btn.active { background: var(--white); color: var(--bg); border-color: var(--white); }
         
         .toolbar { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; }
-        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-family: 'Inter', sans-serif; font-size: 14px; }
-        .btn-excel { padding: 12px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--charcoal); outline: none; font-family: 'Inter', sans-serif; font-size: 14px; background: var(--card); color: var(--text); }
+        .search-box:focus { border-color: var(--white); }
+        .btn-excel { padding: 12px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; transition: 0.2s; text-transform: uppercase; font-size: 13px;}
+        .btn-excel:hover { background: #059669; }
 
-        .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 20px; margin-bottom: 15px; display: flex; gap: 20px; align-items: flex-start; }
-        .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid #f4f4f5; padding-right: 15px; }
-        .client-info h3 { margin: 0 0 5px 0; font-size: 16px; }
-        .client-info p { margin: 0; color: #71717a; font-size: 13px; margin-bottom: 5px; }
+        /* Style cho phần Ngày Tháng */
+        .date-header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 10px; border-bottom: 2px solid var(--white); margin: 35px 0 15px 0; font-weight: 700; font-size: 17px; color: var(--white); }
+        .date-header span.count { font-size: 13px; color: var(--grey); font-weight: 500; }
+        .date-group { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .client-card { background: var(--card); border-radius: 12px; border: 1px solid var(--charcoal); padding: 20px; margin-bottom: 12px; display: flex; gap: 20px; align-items: flex-start; transition: 0.2s; }
+        .client-card:hover { border-color: var(--grey); box-shadow: 0 4px 12px rgba(255,255,255,0.02); }
+        .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid var(--charcoal); padding-right: 15px; position: relative; }
+        .client-info h3 { margin: 0 0 5px 0; font-size: 16px; color: var(--white); }
+        .client-info p { margin: 0; color: var(--grey); font-size: 13px; margin-bottom: 5px; }
         .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
         .badge.pending { background: #fef3c7; color: #b45309; }
         .badge.done { background: #dcfce7; color: #166534; }
+        
+        /* Hiển thị Mã KH nổi bật bên Admin */
+        .makh-display { font-size: 11px; color: var(--charcoal); position: absolute; top: 0; right: 15px; font-family: monospace; }
 
         .link-manager { flex-grow: 1; }
-        .link-row { display: flex; gap: 10px; align-items: center; background: #fafafa; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f4f4f5; }
-        .link-row input { flex-grow: 1; padding: 8px; border: 1px solid #d4d4d8; border-radius: 6px; outline: none; font-size: 13px; }
-        .link-row .time-label { font-size: 11px; color: #a1a1aa; width: 100px; }
+        .link-row { display: flex; gap: 10px; align-items: center; background: var(--bg); padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--charcoal); }
+        .link-row input { flex-grow: 1; padding: 8px; border: 1px solid var(--charcoal); border-radius: 6px; outline: none; font-size: 13px; font-family: 'Inter', sans-serif; background: var(--card); color: var(--text); }
+        .link-row input:focus { border-color: var(--white); }
+        .link-row .time-label { font-size: 11px; color: var(--grey); width: 100px; }
         
-        button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 12px; }
-        .btn-add { background: #18181b; color: #fff; }
-        .btn-save { background: #e4e4e7; color: #18181b; }
+        button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; text-transform: uppercase; transition: 0.2s;}
+        .btn-add { background: var(--white); color: var(--bg); }
+        .btn-add:hover { background: #e4e4e7; }
+        .btn-save { background: var(--charcoal); color: var(--white); border: 1px solid var(--charcoal); }
+        .btn-save:hover { background: var(--card); border-color: var(--grey); }
         .btn-del { background: #fee2e2; color: #ef4444; }
+        .btn-del:hover { background: #fca5a5; }
 
-        .add-box { display: flex; gap: 10px; margin-top: 15px; border-top: 1px dashed #e4e4e7; padding-top: 15px; }
-        .add-box input { flex-grow: 1; padding: 10px; border: 1px solid #d4d4d8; border-radius: 8px; outline: none; font-size: 13px; }
+        .add-box { display: flex; gap: 10px; margin-top: 15px; border-top: 1px dashed var(--charcoal); padding-top: 15px; }
+        .add-box input { flex-grow: 1; padding: 10px; border: 1px solid var(--charcoal); border-radius: 8px; outline: none; font-size: 13px; font-family: 'Inter', sans-serif; background: var(--card); color: var(--text); }
+        .add-box input:focus { border-color: var(--white); }
     </style>
 </head>
 <body>
     <div id="login-screen">
         <div style="text-align:center; width: 300px;">
-            <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 10px;" onerror="this.style.display='none'">
-            <h3>Admin Login</h3>
-            <input type="password" id="pass" placeholder="Nhập mật khẩu..." style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd; margin-bottom:15px; box-sizing: border-box;">
-            <button onclick="login()" style="width:100%; padding:12px; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer;">Đăng nhập</button>
+            <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 2px solid var(--charcoal);" onerror="this.style.display='none'">
+            <h3 style="margin-bottom: 20px;">PN ADMIN LOGIN</h3>
+            <input type="password" id="pass" placeholder="Nhập mật khẩu..." style="width:100%; padding:14px; border-radius:10px; border:1px solid var(--charcoal); margin-bottom:15px; box-sizing: border-box; background: var(--card); color: var(--text);">
+            <button onclick="login()" style="width:100%; padding:14px; background:var(--white); color:var(--bg); border:none; border-radius:10px; cursor:pointer; font-weight:700; text-transform: uppercase;">Đăng nhập</button>
         </div>
     </div>
 
     <div class="admin-box" id="admin-box">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h1>Quản Lý Trả Ảnh</h1>
-            <button onclick="clearData()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600;">🗑 Dọn dẹp dữ liệu</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h1 style="margin: 0; color: var(--white);">QUẢN LÝ TRẢ ẢNH</h1>
+            <button onclick="clearData()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px;">🗑 dọn dữ liệu</button>
         </div>
         
         <div class="tabs">
@@ -63,7 +81,7 @@
         </div>
 
         <div class="toolbar">
-            <input type="text" id="search-box" class="search-box" placeholder="🔍 Tìm nhanh theo Tên hoặc Số điện thoại..." onkeyup="searchCustomer()">
+            <input type="text" id="search-box" class="search-box" placeholder="🔍 Tìm nhanh Tên hoặc Số điện thoại..." onkeyup="searchCustomer()">
             <button class="btn-excel" onclick="exportExcel()">📥 Xuất Excel</button>
         </div>
 
@@ -89,7 +107,6 @@
             if(document.getElementById('pass').value === "123456") {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('admin-box').style.display = 'block';
-                // Play mồi một lần để trình duyệt cho phép phát âm thanh sau này
                 document.getElementById('ting-sound').volume = 0;
                 document.getElementById('ting-sound').play().catch(()=>{});
                 load();
@@ -105,6 +122,10 @@
             load();
         }
 
+        function getTodayString() {
+            return new Date().toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric'});
+        }
+
         function load() {
             db.ref('data/' + br).on('value', snap => {
                 const list = document.getElementById('list-content');
@@ -112,12 +133,11 @@
                 currentData = snap.val();
                 
                 if(!currentData) { 
-                    list.innerHTML = "<p style='text-align:center; color:#a1a1aa;'>Chưa có khách tại cơ sở này.</p>"; 
+                    list.innerHTML = "<p style='text-align:center; color:#a1a1aa; padding: 50px 0;'>Chưa có khách tại cơ sở này.</p>"; 
                     previousCount = 0;
                     return; 
                 }
 
-                // Logic chuông báo
                 const currentCount = Object.keys(currentData).length;
                 if(!isFirstLoad && currentCount > previousCount) {
                     const audio = document.getElementById('ting-sound');
@@ -127,75 +147,101 @@
                 previousCount = currentCount;
                 isFirstLoad = false;
                 
-                Object.keys(currentData).reverse().forEach(clientId => {
-                    const client = currentData[clientId];
-                    const isDone = client.status === 'completed';
-                    
-                    let linksHtml = '';
-                    if (client.links) {
-                        Object.keys(client.links).forEach(linkId => {
-                            const l = client.links[linkId];
-                            linksHtml += `
-                                <div class="link-row">
-                                    <span class="time-label">${l.addedAt}</span>
-                                    <input type="text" id="edit_${clientId}_${linkId}" value="${l.url}">
-                                    <button class="btn btn-save" onclick="updateLink('${clientId}', '${linkId}')">Lưu</button>
-                                    <button class="btn btn-del" onclick="deleteLink('${clientId}', '${linkId}')">✕</button>
-                                </div>
-                            `;
-                        });
-                    }
+                const groupedData = {};
+                const todayStr = getTodayString();
 
-                    const card = document.createElement('div');
-                    card.className = 'client-card';
-                    card.setAttribute('data-search', (client.name + " " + client.phone).toLowerCase());
-                    card.innerHTML = `
-                        <div class="client-info">
-                            <h3>${client.name}</h3>
-                            <p>📞 ${client.phone}</p>
-                            <p>🕒 ${client.time}</p>
-                            <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã có link' : 'Chờ ảnh'}</span>
-                        </div>
-                        <div class="link-manager">
-                            ${linksHtml}
-                            <div class="add-box">
-                                <input type="text" id="new_${clientId}" placeholder="Dán link ảnh mới vào đây...">
-                                <button class="btn btn-add" onclick="addLink('${clientId}')">+ Gửi Link</button>
-                            </div>
-                        </div>
-                    `;
-                    list.appendChild(card);
+                Object.keys(currentData).forEach(clientId => {
+                    const client = currentData[clientId];
+                    const timestamp = parseInt(clientId.split('_')[1]) || Date.now();
+                    const dateObj = new Date(timestamp);
+                    const dateStr = dateObj.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric'});
+                    
+                    if(!groupedData[dateStr]) groupedData[dateStr] = { timestamp: timestamp, clients: [] };
+                    groupedData[dateStr].clients.push({ id: clientId, ...client, ts: timestamp });
                 });
-                searchCustomer(); // Giữ kết quả tìm kiếm khi dữ liệu update
+
+                const sortedDates = Object.keys(groupedData).sort((a, b) => groupedData[b].timestamp - groupedData[a].timestamp);
+
+                sortedDates.forEach(date => {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = 'date-group';
+                    const dateLabel = (date === todayStr) ? "Hôm nay, " + date : date;
+                    
+                    let html = `<div class="date-header"><span>📅 ${dateLabel}</span><span class="count">${groupedData[date].clients.length} khách</span></div>`;
+                    const sortedClients = groupedData[date].clients.sort((a, b) => b.ts - a.ts);
+
+                    sortedClients.forEach(client => {
+                        const isDone = client.status === 'completed';
+                        const maKh = client.id.split('_')[1].slice(-4); // Lấy 4 số cuối của mã
+                        let linksHtml = '';
+                        if (client.links) {
+                            Object.keys(client.links).forEach(linkId => {
+                                const l = client.links[linkId];
+                                linksHtml += `<div class="link-row"><span class="time-label">${l.addedAt}</span><input type="text" id="edit_${client.id}_${linkId}" value="${l.url}"><button class="btn btn-save" onclick="updateLink('${client.id}', '${linkId}')">Sửa</button><button class="btn btn-del" onclick="deleteLink('${client.id}', '${linkId}')">✕</button></div>`;
+                            });
+                        }
+
+                        html += `
+                            <div class="client-card" data-search="${(client.name + " " + client.phone + " " + maKh).toLowerCase()}">
+                                <div class="client-info">
+                                    <span class="makh-display">#${maKh}</span>
+                                    <h3>${client.name}</h3>
+                                    <p>📞 ${client.phone}</p>
+                                    <p>🕒 ${client.time}</p>
+                                    <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã có' : 'Chờ ảnh'}</span>
+                                </div>
+                                <div class="link-manager">
+                                    ${linksHtml}
+                                    <div class="add-box">
+                                        <input type="text" id="new_${client.id}" placeholder="Dán link ảnh mới vào đây...">
+                                        <button class="btn btn-add" onclick="addLink('${client.id}')">+ Thêm</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    groupDiv.innerHTML = html;
+                    list.appendChild(groupDiv);
+                });
+                searchCustomer();
             });
         }
 
-        // TÍNH NĂNG TÌM KIẾM
         function searchCustomer() {
             const query = document.getElementById('search-box').value.toLowerCase();
-            const cards = document.querySelectorAll('.client-card');
-            cards.forEach(card => {
-                const text = card.getAttribute('data-search');
-                if(text.includes(query)) card.style.display = 'flex';
-                else card.style.display = 'none';
+            const groups = document.querySelectorAll('.date-group');
+            
+            groups.forEach(group => {
+                let hasVisible = false;
+                const cards = group.querySelectorAll('.client-card');
+                cards.forEach(card => {
+                    const text = card.getAttribute('data-search');
+                    if(text.includes(query)) {
+                        card.style.display = 'flex';
+                        hasVisible = true;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                group.style.display = hasVisible ? 'block' : 'none';
             });
         }
 
-        // TÍNH NĂNG XUẤT EXCEL (CSV)
         function exportExcel() {
-            if(!currentData) return alert("Không có dữ liệu để xuất!");
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Unicode UTF-8
-            csvContent += "Tên Khách Hàng,Số Điện Thoại,Giờ Chụp,Cơ Sở\n";
-            
+            if(!currentData) return alert("Không có dữ liệu!");
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; csvContent += "Ngày,Giờ,Mã KH,Họ Tên,SĐT,Cơ Sở\n";
             Object.keys(currentData).forEach(id => {
                 const c = currentData[id];
-                csvContent += `"${c.name}","${c.phone}","${c.time}","${br === 'phucyen' ? 'Phúc Yên' : 'Vĩnh Yên'}"\n`;
+                const ts = parseInt(id.split('_')[1]) || Date.now();
+                const d = new Date(ts).toLocaleDateString('vi-VN');
+                const mk = id.split('_')[1].slice(-4);
+                csvContent += `"${d}","${c.time}","#${mk}","${c.name}","${c.phone}","${br === 'phucyen' ? 'Phúc Yên' : 'Vĩnh Yên'}"\n`;
             });
-            
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `KhachHang_${br}_${new Date().toLocaleDateString('vi-VN')}.csv`);
+            link.setAttribute("download", `PHOTO_NOIR_KhachHang_${new Date().toLocaleDateString('vi-VN')}.csv`);
             document.body.appendChild(link);
             link.click();
         }
@@ -206,13 +252,13 @@
             const linkId = "L_" + Date.now();
             const now = new Date();
             const timeStr = now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + now.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
-            
             db.ref('data/' + br + '/' + clientId + '/links/' + linkId).set({ url: url, addedAt: timeStr });
             db.ref('data/' + br + '/' + clientId).update({ status: "completed" });
         }
 
         function updateLink(clientId, linkId) {
             const newUrl = document.getElementById(`edit_${clientId}_${linkId}`).value.trim();
+            if(!newUrl) return alert("Link không được để trống!");
             db.ref('data/' + br + '/' + clientId + '/links/' + linkId).update({ url: newUrl });
             alert("Đã cập nhật!");
         }
@@ -222,7 +268,7 @@
         }
 
         function clearData() {
-            if(confirm("Xác nhận xóa TOÀN BỘ lịch sử?")) db.ref('data/' + br).remove();
+            if(confirm("Hành động này sẽ xóa TOÀN BỘ dữ liệu của cơ sở đang chọn. Bạn có chắc?")) db.ref('data/' + br).remove();
         }
     </script>
 </body>
