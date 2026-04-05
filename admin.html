@@ -13,23 +13,20 @@
         #login-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
         .admin-box { max-width: 1000px; margin: auto; display: none; padding-bottom: 50px; }
         
-        /* Ẩn các tính năng của Admin khi Nhân viên đăng nhập */
         body.role-staff .admin-only { display: none !important; }
 
-        /* Responsive Tabs */
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
         .tab-btn { padding: 10px 20px; border: 1px solid #d4d4d8; border-radius: 8px; cursor: pointer; background: #fff; color: #111; font-weight: 500; transition: 0.2s; white-space: nowrap; flex-shrink: 0; }
         .tab-btn.active { background: #18181b; color: #fff; border-color: #18181b; }
         
-        /* Toolbar */
-        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-size: 14px; background: #fff; }
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: #fff; padding: 15px; border-radius: 12px; border: 1px solid #e4e4e7; align-items: center;}
+        .toolbar-label { font-size: 13px; font-weight: 600; color: #52525b; margin-right: 5px;}
+        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-size: 14px; background: #fff; font-family: 'Inter', sans-serif;}
         .btn-excel { padding: 12px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; text-transform: uppercase; font-size: 13px; width: 100%; }
         @media (min-width: 768px) { .btn-excel { width: auto; } }
 
         .date-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid #18181b; margin: 30px 0 15px 0; font-weight: 700; font-size: 16px; }
         
-        /* Client Card Responsive */
         .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 15px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 15px; transition: 0.2s; }
         @media (min-width: 768px) {
             .client-card { flex-direction: row; padding: 20px; gap: 20px; align-items: flex-start; }
@@ -66,14 +63,15 @@
         .add-box input { flex-grow: 1; padding: 10px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; outline: none; }
         
         .trash-notice { background: #fee2e2; color: #ef4444; padding: 12px; border-radius: 8px; text-align: center; font-weight: 700; margin-bottom: 20px; font-size: 13px; border: 1px solid #fca5a5; }
+        #empty-msg { text-align: center; color: #a1a1aa; padding: 50px 0; display: none; font-size: 14px; background: #fff; border-radius: 12px; border: 1px dashed #d4d4d8; margin-top: 20px; }
     </style>
 </head>
 <body>
     <div id="login-screen">
         <div style="text-align:center; width: 100%; max-width: 320px;">
             <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 1px solid #eee;" onerror="this.style.display='none'">
-            <h3 style="margin-bottom: 25px; letter-spacing: 1px;">PHOTO NOIR ADMIN LOGIN</h3>
-            <input type="password" id="pass" placeholder="Mật khẩu hệ thống..." style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 16px;">
+            <h3 style="margin-bottom: 25px; letter-spacing: 1px;">PHOTO NOIR ADMIN</h3>
+            <input type="password" id="pass" placeholder="Nhập mật khẩu..." style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 16px; text-align: center;">
             <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase;">Đăng nhập</button>
         </div>
     </div>
@@ -91,17 +89,23 @@
         </div>
         
         <div class="tabs">
-            <button class="tab-btn active" id="btn-phucyen" onclick="switchB('phucyen')">Chi nhánh Phúc Yên</button>
-            <button class="tab-btn" id="btn-vinhyen" onclick="switchB('vinhyen')">Chi nhánh Vĩnh Yên</button>
+            <button class="tab-btn active" id="btn-phucyen" onclick="switchB('phucyen')">Cơ sở Phúc Yên</button>
+            <button class="tab-btn" id="btn-vinhyen" onclick="switchB('vinhyen')">Cơ sở Vĩnh Yên</button>
         </div>
 
         <div class="toolbar">
-            <input type="date" id="date-filter" class="search-box" style="max-width: 150px; cursor: pointer;" onchange="filterData()">
-            <input type="text" id="search-box" class="search-box" placeholder="🔍 Tìm tên, SĐT hoặc mã KH..." onkeyup="filterData()">
-            <button class="btn-excel admin-only" onclick="exportExcel()">Xuất báo cáo</button>
+            <div style="display: flex; align-items: center; width: 100%; md:width: auto; gap: 10px; border-right: 1px solid #e4e4e7; padding-right: 15px;">
+                <span class="toolbar-label">Ngày xem:</span>
+                <input type="date" id="date-filter" class="search-box" style="cursor: pointer; flex-grow: 0;" onchange="filterData()">
+                <button onclick="clearDateFilter()" style="background: none; border: none; font-size: 12px; color: #3b82f6; cursor: pointer; font-weight: 600; white-space: nowrap;">Tất cả</button>
+            </div>
+            
+            <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5;" placeholder="🔍 Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
+            <button class="btn-excel admin-only" onclick="exportExcel()">Xuất Excel</button>
         </div>
 
         <div id="list-content">Đang tải danh sách...</div>
+        <div id="empty-msg">Không có khách hàng nào trong ngày này.</div>
     </div>
 
     <audio id="ting-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
@@ -118,13 +122,28 @@
         const PASS_STAFF = "123456";
         const PASS_ADMIN = "Anle123456";
         
-        let userRole = ''; // 'staff' hoặc 'admin'
-        let dbPath = 'data/'; // Mặc định truy cập dữ liệu chính, đổi thành 'trash/' nếu vào thùng rác
+        let userRole = ''; 
+        let dbPath = 'data/'; 
         
         let br = 'phucyen';
         let currentData = {};
         let previousCount = 0;
         let isFirstLoad = true;
+
+        // HÀM LẤY ĐỊNH DẠNG NGÀY HÔM NAY CHO Ô INPUT
+        function getTodayForInput() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        // CHỨC NĂNG XÓA BỘ LỌC ĐỂ XEM TOÀN BỘ LỊCH SỬ
+        function clearDateFilter() {
+            document.getElementById('date-filter').value = "";
+            filterData();
+        }
 
         function login() {
             const p = document.getElementById('pass').value;
@@ -133,6 +152,9 @@
                 document.body.classList.add('role-' + userRole);
                 document.getElementById('role-badge').innerText = (userRole === 'admin') ? 'ADMIN' : 'NHÂN VIÊN';
                 document.getElementById('role-badge').style.background = (userRole === 'admin') ? '#dc2626' : '#18181b';
+                
+                // Gán mặc định ô chọn ngày là Hôm Nay
+                document.getElementById('date-filter').value = getTodayForInput();
                 
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('admin-box').style.display = 'block';
@@ -153,11 +175,11 @@
 
         function toggleTrash() {
             if (dbPath === 'data/') {
-                dbPath = 'trash/'; // Chuyển luồng đọc sang thùng rác
+                dbPath = 'trash/'; 
                 document.getElementById('btn-trash').innerHTML = '👈 QUAY LẠI CHÍNH';
                 document.getElementById('btn-trash').style.color = '#18181b';
             } else {
-                dbPath = 'data/'; // Trở lại bình thường
+                dbPath = 'data/'; 
                 document.getElementById('btn-trash').innerHTML = '🗑 THÙNG RÁC';
                 document.getElementById('btn-trash').style.color = '#f59e0b';
             }
@@ -169,17 +191,17 @@
         function getTodayString() { return new Date().toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric'}); }
 
         function load() {
-            // Hủy lắng nghe luồng cũ để tránh chập chờn khi chuyển đổi giữa data/trash
             db.ref('data/' + br).off();
             db.ref('trash/' + br).off();
 
             db.ref(dbPath + br).on('value', snap => {
                 const list = document.getElementById('list-content');
                 list.innerHTML = "";
+                document.getElementById('empty-msg').style.display = 'none';
                 currentData = snap.val();
                 
                 if(!currentData) { 
-                    list.innerHTML = (dbPath === 'trash/') ? "<p style='text-align:center; color:#a1a1aa; padding: 50px 0;'>Thùng rác đang trống.</p>" : "<p style='text-align:center; color:#a1a1aa; padding: 50px 0;'>Hôm nay chưa có dữ liệu khách hàng.</p>"; 
+                    list.innerHTML = (dbPath === 'trash/') ? "<p style='text-align:center; color:#a1a1aa; padding: 50px 0;'>Thùng rác đang trống.</p>" : "<p style='text-align:center; color:#a1a1aa; padding: 50px 0;'>Chưa có dữ liệu trong cơ sở này.</p>"; 
                     previousCount = 0;
                     return; 
                 }
@@ -232,7 +254,6 @@
                             });
                         }
 
-                        // Xử lý nút hiển thị dựa theo việc đang ở Trang chính hay Thùng rác
                         let actionButtons = '';
                         if (dbPath === 'trash/') {
                             actionButtons = `
@@ -267,29 +288,32 @@
                     groupDiv.innerHTML += html;
                     list.appendChild(groupDiv);
                 });
-                filterData(); // Chạy bộ lọc ngay sau khi render xong
+                
+                // Bắt buộc gọi bộ lọc ngay sau khi load xong để áp dụng luật "Chỉ hiện Hôm nay"
+                filterData(); 
             });
         }
 
-        // HÀM GỘP CHUNG BỘ LỌC TÌM KIẾM VÀ NGÀY THÁNG
+        // HÀM LỌC: BẮT BUỘC ẨN CÁC NGÀY KHÔNG ĐƯỢC CHỌN
         function filterData() {
             const query = document.getElementById('search-box').value.toLowerCase();
             const dateInput = document.getElementById('date-filter').value;
             let targetDate = "";
+            let visibleGroupCount = 0;
             
             if (dateInput) {
                 const parts = dateInput.split('-');
-                targetDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                targetDate = `${parts[2]}/${parts[1]}/${parts[0]}`; // Đổi YYYY-MM-DD sang DD/MM/YYYY
             }
 
             document.querySelectorAll('.date-group').forEach(group => {
                 let hasVisibleCard = false;
                 const headerDate = group.querySelector('.date-header span:first-child').innerText;
                 
-                // Kiểm tra xem nhóm này có khớp ngày không (nếu có chọn ngày)
+                // Nếu người dùng có chọn ngày trên lịch, mà nhóm này KHÔNG khớp ngày -> ẨN luôn
                 if (targetDate && !headerDate.includes(targetDate)) {
                     group.style.display = 'none';
-                    return; // Bỏ qua group này luôn
+                    return; 
                 }
 
                 group.querySelectorAll('.client-card').forEach(card => {
@@ -300,8 +324,20 @@
                     } else card.style.display = 'none';
                 });
 
-                group.style.display = hasVisibleCard ? 'block' : 'none';
+                if (hasVisibleCard) {
+                    group.style.display = 'block';
+                    visibleGroupCount++;
+                } else {
+                    group.style.display = 'none';
+                }
             });
+
+            // Xử lý thông báo "Không có khách nào" khi chọn trúng ngày vắng khách
+            if (visibleGroupCount === 0 && document.getElementById('list-content').innerHTML !== "") {
+                document.getElementById('empty-msg').style.display = 'block';
+            } else {
+                document.getElementById('empty-msg').style.display = 'none';
+            }
         }
 
         function exportExcel() {
@@ -345,13 +381,11 @@
             if(confirm("Bạn muốn xóa link ảnh này?")) db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove();
         }
 
-        // CHUYỂN KHÁCH VÀO THÙNG RÁC
         function softDeleteCustomer(clientId, clientName) {
             if(userRole !== 'admin') return;
             if (confirm("Chuyển khách '" + clientName + "' vào Thùng Rác?")) {
                 db.ref('data/' + br + '/' + clientId).once('value').then(snap => {
                     const data = snap.val();
-                    // Copy sang thùng rác, sau đó xóa ở nhánh chính
                     return db.ref('trash/' + br + '/' + clientId).set(data).then(() => {
                         return db.ref('data/' + br + '/' + clientId).remove();
                     });
@@ -359,7 +393,6 @@
             }
         }
 
-        // KHÔI PHỤC KHÁCH TỪ THÙNG RÁC
         function restoreCustomer(clientId) {
             if(userRole !== 'admin') return;
             db.ref('trash/' + br + '/' + clientId).once('value').then(snap => {
@@ -370,7 +403,6 @@
             }).catch((error) => alert("Lỗi: " + error.message));
         }
 
-        // XÓA VĨNH VIỄN
         function hardDeleteCustomer(clientId, clientName) {
             if(userRole !== 'admin') return;
             const pass = prompt(`XÓA VĨNH VIỄN khách '${clientName}'?\nNhập mật khẩu Admin để xác nhận:`);
