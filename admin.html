@@ -72,20 +72,23 @@
         <div style="text-align:center; width: 100%; max-width: 320px;">
             <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 1px solid #eee;" onerror="this.style.display='none'">
             <h3 style="margin-bottom: 25px; letter-spacing: 2px;">PHOTONOIR</h3>
-            <input type="password" id="pass" placeholder="Nhập mật khẩu..." style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 16px; text-align: center;">
+            <input type="password" id="pass" placeholder="Nhập mật khẩu..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 16px; text-align: center;">
             <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase;">Đăng nhập</button>
         </div>
     </div>
 
     <div class="admin-box" id="admin-box">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap: wrap; gap: 15px;">
             <h2 style="margin: 0; font-size: 20px; display: flex; align-items: center;">
                 QUẢN LÝ TRẢ ẢNH 
                 <span id="role-badge" style="font-size:11px; background:#18181b; color:#fff; padding:3px 10px; border-radius:12px; margin-left:12px; font-weight: 600;"></span>
             </h2>
-            <div class="admin-only" style="display: flex; gap: 15px;">
-                <button id="btn-trash" onclick="toggleTrash()" style="color:#f59e0b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 12px;">🗑 THÙNG RÁC</button>
-                <button onclick="openClearModal()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600; font-size: 12px;">DỌN DỮ LIỆU</button>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div class="admin-only" style="display: flex; gap: 15px;">
+                    <button id="btn-trash" onclick="toggleTrash()" style="color:#f59e0b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 12px;">🗑 THÙNG RÁC</button>
+                    <button onclick="openClearModal()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600; font-size: 12px;">DỌN DỮ LIỆU</button>
+                </div>
+                <button onclick="logout()" style="color:#52525b; background:#e4e4e7; padding: 6px 12px; border-radius: 6px; border:none; cursor:pointer; font-weight:700; font-size: 11px;">🚪 ĐĂNG XUẤT</button>
             </div>
         </div>
         
@@ -142,6 +145,15 @@
         let userRole = ''; let dbPath = 'data/'; let br = 'phucyen';
         let currentData = {}; let previousCount = 0; let isFirstLoad = true;
 
+        // KIỂM TRA PHIÊN ĐĂNG NHẬP (TỰ ĐỘNG LOGIN)
+        window.onload = () => {
+            const savedRole = localStorage.getItem('pn_admin_role');
+            if (savedRole === 'admin' || savedRole === 'staff') {
+                userRole = savedRole;
+                setupUI();
+            }
+        };
+
         function getTodayForInput() {
             const today = new Date();
             return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -153,15 +165,32 @@
             const p = document.getElementById('pass').value;
             if(p === PASS_ADMIN || p === PASS_STAFF) {
                 userRole = (p === PASS_ADMIN) ? 'admin' : 'staff';
-                document.body.classList.add('role-' + userRole);
-                document.getElementById('role-badge').innerText = (userRole === 'admin') ? 'ADMIN' : 'NHÂN VIÊN';
-                document.getElementById('role-badge').style.background = (userRole === 'admin') ? '#dc2626' : '#18181b';
-                document.getElementById('date-filter').value = getTodayForInput();
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('admin-box').style.display = 'block';
-                document.getElementById('ting-sound').volume = 0; document.getElementById('ting-sound').play().catch(()=>{});
-                load();
+                // Lưu lại phiên đăng nhập
+                localStorage.setItem('pn_admin_role', userRole);
+                
+                document.getElementById('ting-sound').volume = 0; 
+                document.getElementById('ting-sound').play().catch(()=>{});
+                setupUI();
             } else alert("Mật khẩu không chính xác!");
+        }
+
+        // HÀM ĐĂNG XUẤT
+        function logout() {
+            if(confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+                localStorage.removeItem('pn_admin_role');
+                location.reload();
+            }
+        }
+
+        // Tách riêng hàm setup giao diện để dùng chung cho Login và Auto-login
+        function setupUI() {
+            document.body.classList.add('role-' + userRole);
+            document.getElementById('role-badge').innerText = (userRole === 'admin') ? 'ADMIN' : 'NHÂN VIÊN';
+            document.getElementById('role-badge').style.background = (userRole === 'admin') ? '#dc2626' : '#18181b';
+            document.getElementById('date-filter').value = getTodayForInput();
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('admin-box').style.display = 'block';
+            load();
         }
 
         function switchB(name) { br = name; isFirstLoad = true; previousCount = 0; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById('btn-'+name).classList.add('active'); load(); }
@@ -186,7 +215,6 @@
                     previousCount = 0; return; 
                 }
 
-                // Render Header cho Thùng Rác (Tích Chọn Tất Cả)
                 if (dbPath === 'trash/') {
                     trashHeader.style.display = 'block';
                     trashHeader.innerHTML = `
@@ -244,7 +272,6 @@
                             `<button class="btn-restore admin-only" onclick="restoreCustomer('${client.id}')">Khôi phục</button><button class="btn-del-client admin-only" onclick="hardDeleteCustomer('${client.id}', '${safeName}')">Xóa Vĩnh Viễn</button>` : 
                             `<button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')">Xóa Khách Này</button>`;
 
-                        // Tích hợp Checkbox vào thẻ Card khi ở Thùng Rác
                         let checkboxHtml = (dbPath === 'trash/') ? 
                             `<div style="display:flex; align-items:flex-start; margin-right:15px; padding-top:2px;"><input type="checkbox" class="trash-cb" value="${client.id}" style="width:20px; height:20px; cursor:pointer;"></div>` : '';
 
@@ -270,11 +297,9 @@
             });
         }
 
-        // CHỨC NĂNG CHỌN TẤT CẢ VÀ XÓA HÀNG LOẠT TRONG THÙNG RÁC
         function toggleSelectAllTrash(source) {
             const checkboxes = document.querySelectorAll('.trash-cb');
             checkboxes.forEach(cb => {
-                // Chỉ check những ô đang được hiển thị trên màn hình (đã qua bộ lọc tìm kiếm/ngày)
                 if(cb.closest('.client-card').style.display !== 'none') {
                     cb.checked = source.checked;
                 }
@@ -363,7 +388,6 @@
         function restoreCustomer(clientId) { if(userRole !== 'admin') return; db.ref('trash/' + br + '/' + clientId).once('value').then(snap => db.ref('data/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('trash/' + br + '/' + clientId).remove())).catch(err => alert("Lỗi: " + err.message)); }
         function hardDeleteCustomer(clientId, clientName) { if(userRole !== 'admin') return; if (prompt(`XÓA VĨNH VIỄN '${clientName}'?\nNhập Pass:`) === PASS_ADMIN) db.ref('trash/' + br + '/' + clientId).remove().catch(err => alert("Lỗi: " + err.message)); }
         
-        // --- CHỨC NĂNG MODAL DỌN DỮ LIỆU CHUYÊN NGHIỆP ---
         function openClearModal() {
             if(userRole !== 'admin') return alert("Chỉ Admin mới thao tác được!");
             document.getElementById('clear-pass').value = '';
@@ -380,13 +404,11 @@
             if (confirm(`Hành động này sẽ XÓA SẠCH VÀ VĨNH VIỄN toàn bộ dữ liệu của ${confirmMsg} (Bao gồm cả ảnh trong Thùng Rác).\n\nBạn chắc chắn chứ?`)) {
                 
                 if (target === 'all') {
-                    // Xóa trắng mọi thứ
                     db.ref('data/phucyen').remove();
                     db.ref('data/vinhyen').remove();
                     db.ref('trash/phucyen').remove();
                     db.ref('trash/vinhyen').remove();
                 } else {
-                    // Xóa riêng từng nhánh
                     db.ref('data/' + target).remove();
                     db.ref('trash/' + target).remove();
                 }
