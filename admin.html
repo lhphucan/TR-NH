@@ -28,15 +28,10 @@
         .date-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid #18181b; margin: 30px 0 15px 0; font-weight: 700; font-size: 16px; }
         
         .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 15px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 15px; transition: 0.2s; }
-        @media (min-width: 768px) {
-            .client-card { flex-direction: row; padding: 20px; gap: 20px; align-items: flex-start; }
-            body { padding: 20px; }
-        }
+        @media (min-width: 768px) { .client-card { flex-direction: row; padding: 20px; gap: 20px; align-items: flex-start; } body { padding: 20px; } }
 
         .client-info { width: 100%; position: relative; border-bottom: 1px solid #f4f4f5; padding-bottom: 15px; }
-        @media (min-width: 768px) {
-            .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid #f4f4f5; border-bottom: none; padding-bottom: 0; padding-right: 15px; }
-        }
+        @media (min-width: 768px) { .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid #f4f4f5; border-bottom: none; padding-bottom: 0; padding-right: 15px; } }
 
         .client-info h3 { margin: 0 0 5px 0; font-size: 16px; color: #111; }
         .client-info p { margin: 0 0 5px 0; color: #71717a; font-size: 13px; }
@@ -52,18 +47,24 @@
         @media (min-width: 480px) { .link-row .time-label { width: 100px; } }
 
         button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; }
-        .btn-add { background: #18181b; color: #fff; width: 80px; }
+        .btn-add { background: #18181b; color: #fff; width: 80px; align-self: flex-start; margin-top: 10px;}
         .btn-save { background: #e4e4e7; color: #18181b; }
         .btn-del { background: #fee2e2; color: #ef4444; }
         
         .btn-del-client { background: #fff; border: 1px solid #fee2e2; color: #ef4444; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; width: 100%; margin-top: 15px; }
         .btn-restore { background: #10b981; color: #fff; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; width: 100%; margin-top: 15px; }
 
-        .add-box { display: flex; gap: 8px; margin-top: 10px; border-top: 1px dashed #e4e4e7; padding-top: 15px; }
-        .add-box input { flex-grow: 1; padding: 10px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; outline: none; }
+        .add-box { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; border-top: 1px dashed #e4e4e7; padding-top: 15px; }
+        .add-box textarea { flex-grow: 1; padding: 10px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; font-family: 'Inter', sans-serif; outline: none; min-height: 50px; resize: vertical; }
         
-        .trash-notice { background: #fee2e2; color: #ef4444; padding: 12px; border-radius: 8px; text-align: center; font-weight: 700; margin-bottom: 20px; font-size: 13px; border: 1px solid #fca5a5; }
+        .trash-notice { background: #fee2e2; color: #ef4444; padding: 15px; border-radius: 8px; font-size: 13px; border: 1px solid #fca5a5; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
+        @media (min-width: 768px) { .trash-notice { flex-direction: row; justify-content: space-between; align-items: center; } }
+        
         #empty-msg { text-align: center; color: #a1a1aa; padding: 50px 0; display: none; font-size: 14px; background: #fff; border-radius: 12px; border: 1px dashed #d4d4d8; margin-top: 20px; }
+
+        /* Modal Dọn Dữ Liệu */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; }
+        .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -84,7 +85,7 @@
             </h2>
             <div class="admin-only" style="display: flex; gap: 15px;">
                 <button id="btn-trash" onclick="toggleTrash()" style="color:#f59e0b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 12px;">🗑 THÙNG RÁC</button>
-                <button onclick="clearData()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600; font-size: 12px;">DỌN DỮ LIỆU</button>
+                <button onclick="openClearModal()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600; font-size: 12px;">DỌN DỮ LIỆU</button>
             </div>
         </div>
         
@@ -99,49 +100,54 @@
                 <input type="date" id="date-filter" class="search-box" style="cursor: pointer; flex-grow: 0;" onchange="filterData()">
                 <button onclick="clearDateFilter()" style="background: none; border: none; font-size: 12px; color: #3b82f6; cursor: pointer; font-weight: 600; white-space: nowrap;">Tất cả</button>
             </div>
-            
             <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5;" placeholder="🔍 Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
             <button class="btn-excel admin-only" onclick="exportExcel()">Xuất Excel</button>
         </div>
+
+        <div id="trash-header" style="display: none;"></div>
 
         <div id="list-content">Đang tải danh sách...</div>
         <div id="empty-msg">Không có khách hàng nào trong ngày này.</div>
     </div>
 
+    <div id="clear-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:#ef4444; font-size: 18px; margin-bottom: 10px;">⚠️ DỌN DẸP DỮ LIỆU</h3>
+            <p style="font-size:13px; color:#666; margin-bottom: 20px; line-height: 1.5;">Chọn chi nhánh bạn muốn dọn sạch dữ liệu (Hành động này sẽ xóa cả dữ liệu trong Thùng Rác và <b>không thể hoàn tác</b>):</p>
+            
+            <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Chọn khu vực dọn:</label>
+            <select id="clear-target" class="search-box" style="width:100%; margin-bottom:20px; border: 1px solid #d4d4d8;">
+                <option value="phucyen">Chỉ dọn Cơ sở Phúc Yên</option>
+                <option value="vinhyen">Chỉ dọn Cơ sở Vĩnh Yên</option>
+                <option value="all" style="color: #ef4444; font-weight: bold;">🚨 DỌN SẠCH TẤT CẢ CƠ SỞ</option>
+            </select>
+            
+            <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Mật khẩu xác nhận:</label>
+            <input type="password" id="clear-pass" class="search-box" placeholder="Nhập Pass Admin..." style="width:100%; margin-bottom:25px; border: 1px solid #d4d4d8;">
+            
+            <div style="display:flex; gap:10px;">
+                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600;">Hủy Bỏ</button>
+                <button onclick="executeClearData()" style="flex:1; padding:12px; background:#ef4444; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight: 700;">Tiến Hành Xóa</button>
+            </div>
+        </div>
+    </div>
+
     <audio id="ting-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw",
-            databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "tra-anh-khach",
-        };
+        const firebaseConfig = { apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw", databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "tra-anh-khach" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        
-        const PASS_STAFF = "123456";
-        const PASS_ADMIN = "Anle123456";
-        
-        let userRole = ''; 
-        let dbPath = 'data/'; 
-        
-        let br = 'phucyen';
-        let currentData = {};
-        let previousCount = 0;
-        let isFirstLoad = true;
+        const PASS_STAFF = "123456"; const PASS_ADMIN = "Anle123456";
+        let userRole = ''; let dbPath = 'data/'; let br = 'phucyen';
+        let currentData = {}; let previousCount = 0; let isFirstLoad = true;
 
         function getTodayForInput() {
             const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}`;
+            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         }
 
-        function clearDateFilter() {
-            document.getElementById('date-filter').value = "";
-            filterData();
-        }
+        function clearDateFilter() { document.getElementById('date-filter').value = ""; filterData(); }
 
         function login() {
             const p = document.getElementById('pass').value;
@@ -150,95 +156,78 @@
                 document.body.classList.add('role-' + userRole);
                 document.getElementById('role-badge').innerText = (userRole === 'admin') ? 'ADMIN' : 'NHÂN VIÊN';
                 document.getElementById('role-badge').style.background = (userRole === 'admin') ? '#dc2626' : '#18181b';
-                
                 document.getElementById('date-filter').value = getTodayForInput();
-                
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('admin-box').style.display = 'block';
-                document.getElementById('ting-sound').volume = 0;
-                document.getElementById('ting-sound').play().catch(()=>{});
+                document.getElementById('ting-sound').volume = 0; document.getElementById('ting-sound').play().catch(()=>{});
                 load();
             } else alert("Mật khẩu không chính xác!");
         }
 
-        function switchB(name) {
-            br = name;
-            isFirstLoad = true; 
-            previousCount = 0;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('btn-'+name).classList.add('active');
-            load();
-        }
+        function switchB(name) { br = name; isFirstLoad = true; previousCount = 0; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById('btn-'+name).classList.add('active'); load(); }
 
         function toggleTrash() {
-            if (dbPath === 'data/') {
-                dbPath = 'trash/'; 
-                document.getElementById('btn-trash').innerHTML = '👈 QUAY LẠI CHÍNH';
-                document.getElementById('btn-trash').style.color = '#18181b';
-            } else {
-                dbPath = 'data/'; 
-                document.getElementById('btn-trash').innerHTML = '🗑 THÙNG RÁC';
-                document.getElementById('btn-trash').style.color = '#f59e0b';
-            }
-            isFirstLoad = true;
-            previousCount = 0;
-            load();
+            if (dbPath === 'data/') { dbPath = 'trash/'; document.getElementById('btn-trash').innerHTML = '👈 QUAY LẠI CHÍNH'; document.getElementById('btn-trash').style.color = '#18181b'; } 
+            else { dbPath = 'data/'; document.getElementById('btn-trash').innerHTML = '🗑 THÙNG RÁC'; document.getElementById('btn-trash').style.color = '#f59e0b'; }
+            isFirstLoad = true; previousCount = 0; load();
         }
 
-        function getTodayString() { return new Date().toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric'}); }
-
         function load() {
-            db.ref('data/' + br).off();
-            db.ref('trash/' + br).off();
-
+            db.ref('data/' + br).off(); db.ref('trash/' + br).off();
             db.ref(dbPath + br).on('value', snap => {
                 const list = document.getElementById('list-content');
-                list.innerHTML = "";
-                document.getElementById('empty-msg').style.display = 'none';
+                const trashHeader = document.getElementById('trash-header');
+                list.innerHTML = ""; document.getElementById('empty-msg').style.display = 'none';
                 currentData = snap.val();
                 
                 if(!currentData) { 
                     list.innerHTML = (dbPath === 'trash/') ? "<p style='text-align:center; color:#a1a1aa; padding: 50px 0;'>Thùng rác đang trống.</p>" : "<p style='text-align:center; color:#a1a1aa; padding: 50px 0;'>Chưa có dữ liệu trong cơ sở này.</p>"; 
-                    previousCount = 0;
-                    return; 
+                    trashHeader.style.display = 'none';
+                    previousCount = 0; return; 
                 }
 
+                // Render Header cho Thùng Rác (Tích Chọn Tất Cả)
                 if (dbPath === 'trash/') {
-                    list.innerHTML = `<div class="trash-notice">BẠN ĐANG Ở TRONG THÙNG RÁC - DỮ LIỆU NÀY KHÔNG HIỂN THỊ VỚI KHÁCH HÀNG</div>`;
+                    trashHeader.style.display = 'block';
+                    trashHeader.innerHTML = `
+                        <div class="trash-notice">
+                            <div>
+                                <b style="display:block; margin-bottom:5px;">⚠️ BẠN ĐANG Ở TRONG THÙNG RÁC</b>
+                                <span style="color:#666;">Dữ liệu tại đây bị ẩn khỏi web khách hàng.</span>
+                                <label style="display:flex; align-items:center; gap:8px; margin-top:12px; cursor:pointer; color:#111; font-weight:600;">
+                                    <input type="checkbox" onclick="toggleSelectAllTrash(this)" style="width:16px; height:16px; cursor:pointer;">
+                                    CHỌN TẤT CẢ TRONG LỊCH TRÌNH BÊN DƯỚI
+                                </label>
+                            </div>
+                            <button onclick="deleteSelectedTrash()" style="background:#ef4444; color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:12px; height:fit-content; white-space:nowrap;">✕ XÓA MỤC ĐÃ CHỌN</button>
+                        </div>
+                    `;
+                } else {
+                    trashHeader.style.display = 'none';
                 }
 
                 const currentCount = Object.keys(currentData).length;
-                if(!isFirstLoad && currentCount > previousCount && dbPath === 'data/') {
-                    const audio = document.getElementById('ting-sound');
-                    audio.volume = 1; audio.play();
-                }
-                previousCount = currentCount;
-                isFirstLoad = false;
+                if(!isFirstLoad && currentCount > previousCount && dbPath === 'data/') { const audio = document.getElementById('ting-sound'); audio.volume = 1; audio.play(); }
+                previousCount = currentCount; isFirstLoad = false;
                 
                 const groupedData = {};
-                const todayStr = getTodayString();
-
                 Object.keys(currentData).forEach(clientId => {
                     const client = currentData[clientId];
                     const timestamp = parseInt(clientId.split('_')[1]) || Date.now();
-                    const dateObj = new Date(timestamp);
-                    const dateStr = dateObj.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric'});
-                    
+                    const dateStr = new Date(timestamp).toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric'});
                     if(!groupedData[dateStr]) groupedData[dateStr] = { timestamp: timestamp, clients: [] };
                     groupedData[dateStr].clients.push({ id: clientId, ...client, ts: timestamp });
                 });
 
                 const sortedDates = Object.keys(groupedData).sort((a, b) => groupedData[b].timestamp - groupedData[a].timestamp);
+                const todayStr = new Date().toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric'});
 
                 sortedDates.forEach(date => {
-                    const groupDiv = document.createElement('div');
-                    groupDiv.className = 'date-group';
+                    const groupDiv = document.createElement('div'); groupDiv.className = 'date-group';
                     const dateLabel = (date === todayStr) ? "Hôm nay, " + date : date;
-                    
                     let html = `<div class="date-header"><span>📅 ${dateLabel}</span><span style="font-size:12px; color:#71717a;">${groupedData[date].clients.length} khách</span></div>`;
-                    const sortedClients = groupedData[date].clients.sort((a, b) => b.ts - a.ts);
-
-                    sortedClients.forEach(client => {
+                    
+                    groupedData[date].clients.sort((a, b) => b.ts - a.ts).forEach(client => {
                         const isDone = client.status === 'completed';
                         const maKh = client.id.split('_')[1].slice(-4); 
                         const safeName = client.name ? client.name.replace(/'/g, "\\'") : "Khách hàng"; 
@@ -251,173 +240,159 @@
                             });
                         }
 
-                        let actionButtons = '';
-                        if (dbPath === 'trash/') {
-                            actionButtons = `
-                                <button class="btn-restore admin-only" onclick="restoreCustomer('${client.id}')">Khôi phục Khách Này</button>
-                                <button class="btn-del-client admin-only" onclick="hardDeleteCustomer('${client.id}', '${safeName}')">Xóa Vĩnh Viễn</button>
-                            `;
-                        } else {
-                            actionButtons = `<button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')">Xóa Khách Này</button>`;
-                        }
+                        let actionButtons = (dbPath === 'trash/') ? 
+                            `<button class="btn-restore admin-only" onclick="restoreCustomer('${client.id}')">Khôi phục</button><button class="btn-del-client admin-only" onclick="hardDeleteCustomer('${client.id}', '${safeName}')">Xóa Vĩnh Viễn</button>` : 
+                            `<button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')">Xóa Khách Này</button>`;
+
+                        // Tích hợp Checkbox vào thẻ Card khi ở Thùng Rác
+                        let checkboxHtml = (dbPath === 'trash/') ? 
+                            `<div style="display:flex; align-items:flex-start; margin-right:15px; padding-top:2px;"><input type="checkbox" class="trash-cb" value="${client.id}" style="width:20px; height:20px; cursor:pointer;"></div>` : '';
 
                         html += `
                             <div class="client-card" data-search="${(client.name + " " + client.phone + " " + maKh).toLowerCase()}">
+                                ${checkboxHtml}
                                 <div class="client-info">
-                                    <span class="makh-display">#${maKh}</span>
-                                    <h3>${client.name}</h3>
-                                    <p>SĐT: ${client.phone}</p>
-                                    <p>Giờ: ${client.time}</p>
-                                    <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã trả ảnh' : 'Đang chờ'}</span>
+                                    <span class="makh-display">#${maKh}</span><h3>${client.name}</h3><p>SĐT: ${client.phone}</p><p>Giờ: ${client.time}</p><span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã trả ảnh' : 'Đang chờ'}</span>
                                     ${actionButtons}
                                 </div>
                                 <div class="link-manager">
                                     ${linksHtml}
                                     <div class="add-box">
-                                        <input type="text" id="new_${client.id}" placeholder="Dán link ảnh tại đây...">
-                                        <button class="btn btn-add" onclick="addLink('${client.id}')">Lưu</button>
+                                        <textarea id="new_${client.id}" placeholder="Dán 1 hoặc nhiều link ảnh (mỗi link 1 dòng)..."></textarea>
+                                        <button class="btn btn-add" onclick="addLink('${client.id}')">Lưu Link</button>
                                     </div>
                                 </div>
-                            </div>
-                        `;
+                            </div>`;
                     });
-                    
-                    groupDiv.innerHTML += html;
-                    list.appendChild(groupDiv);
+                    groupDiv.innerHTML += html; list.appendChild(groupDiv);
                 });
-                
                 filterData(); 
             });
+        }
+
+        // CHỨC NĂNG CHỌN TẤT CẢ VÀ XÓA HÀNG LOẠT TRONG THÙNG RÁC
+        function toggleSelectAllTrash(source) {
+            const checkboxes = document.querySelectorAll('.trash-cb');
+            checkboxes.forEach(cb => {
+                // Chỉ check những ô đang được hiển thị trên màn hình (đã qua bộ lọc tìm kiếm/ngày)
+                if(cb.closest('.client-card').style.display !== 'none') {
+                    cb.checked = source.checked;
+                }
+            });
+        }
+
+        function deleteSelectedTrash() {
+            if(userRole !== 'admin') return;
+            const checkboxes = document.querySelectorAll('.trash-cb:checked');
+            if(checkboxes.length === 0) return alert("Bạn chưa tích chọn khách hàng nào!");
+            
+            const pass = prompt(`CẢNH BÁO: Đang chuẩn bị XÓA VĨNH VIỄN ${checkboxes.length} khách hàng đã chọn.\nNhập mật khẩu Admin để xác nhận:`);
+            if (pass === PASS_ADMIN) {
+                const promises = [];
+                checkboxes.forEach(cb => {
+                    promises.push(db.ref('trash/' + br + '/' + cb.value).remove());
+                });
+                
+                Promise.all(promises)
+                    .then(() => alert(`✅ Đã xóa vĩnh viễn ${checkboxes.length} mục!`))
+                    .catch(err => alert("Lỗi: " + err.message));
+            } else if (pass !== null) {
+                alert("Mật khẩu sai!");
+            }
         }
 
         function filterData() {
             const query = document.getElementById('search-box').value.toLowerCase();
             const dateInput = document.getElementById('date-filter').value;
-            let targetDate = "";
-            let visibleGroupCount = 0;
+            let targetDate = ""; let visibleGroupCount = 0;
             
-            if (dateInput) {
-                const parts = dateInput.split('-');
-                targetDate = `${parts[2]}/${parts[1]}/${parts[0]}`; 
-            }
+            if (dateInput) { const parts = dateInput.split('-'); targetDate = `${parts[2]}/${parts[1]}/${parts[0]}`; }
 
             document.querySelectorAll('.date-group').forEach(group => {
                 let hasVisibleCard = false;
                 const headerDate = group.querySelector('.date-header span:first-child').innerText;
-                
-                if (targetDate && !headerDate.includes(targetDate)) {
-                    group.style.display = 'none';
-                    return; 
-                }
-
+                if (targetDate && !headerDate.includes(targetDate)) { group.style.display = 'none'; return; }
                 group.querySelectorAll('.client-card').forEach(card => {
                     const text = card.getAttribute('data-search');
-                    if(text.includes(query)) {
-                        card.style.display = 'flex';
-                        hasVisibleCard = true;
-                    } else card.style.display = 'none';
+                    if(text.includes(query)) { card.style.display = 'flex'; hasVisibleCard = true; } else card.style.display = 'none';
                 });
-
-                if (hasVisibleCard) {
-                    group.style.display = 'block';
-                    visibleGroupCount++;
-                } else {
-                    group.style.display = 'none';
-                }
+                if (hasVisibleCard) { group.style.display = 'block'; visibleGroupCount++; } else group.style.display = 'none';
             });
 
-            if (visibleGroupCount === 0 && document.getElementById('list-content').innerHTML !== "") {
-                document.getElementById('empty-msg').style.display = 'block';
-            } else {
-                document.getElementById('empty-msg').style.display = 'none';
-            }
+            document.getElementById('empty-msg').style.display = (visibleGroupCount === 0 && document.getElementById('list-content').innerHTML !== "") ? 'block' : 'none';
         }
 
         function exportExcel() {
-            if(userRole !== 'admin') return alert("Bạn không có quyền thực hiện thao tác này!");
-            if(!currentData) return alert("Không có dữ liệu để xuất!");
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-            csvContent += "Ngày,Giờ,Mã KH,Họ Tên,SĐT,Cơ Sở\n";
+            if(userRole !== 'admin') return alert("Bạn không có quyền!");
+            if(!currentData) return alert("Không có dữ liệu!");
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFFNgày,Giờ,Mã KH,Họ Tên,SĐT,Cơ Sở\n";
             Object.keys(currentData).forEach(id => {
-                const c = currentData[id];
-                const ts = parseInt(id.split('_')[1]) || Date.now();
-                const d = new Date(ts).toLocaleDateString('vi-VN');
-                const mk = id.split('_')[1].slice(-4);
+                const c = currentData[id]; const ts = parseInt(id.split('_')[1]) || Date.now();
+                const d = new Date(ts).toLocaleDateString('vi-VN'); const mk = id.split('_')[1].slice(-4);
                 csvContent += `"${d}","${c.time}","#${mk}","${c.name}","${c.phone}","${br === 'phucyen' ? 'Phúc Yên' : 'Vĩnh Yên'}"\n`;
             });
-            const link = document.createElement("a");
-            link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", `PHOTONOIR_Report_${new Date().toLocaleDateString('vi-VN')}.csv`);
-            document.body.appendChild(link);
-            link.click();
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", `PHOTONOIR_Report_${new Date().toLocaleDateString('vi-VN')}.csv`);
+            document.body.appendChild(link); link.click();
         }
 
         function addLink(clientId) {
-            const url = document.getElementById('new_' + clientId).value.trim();
-            if(!url) return alert("Chưa có link ảnh!");
-            const linkId = "L_" + Date.now();
+            const text = document.getElementById('new_' + clientId).value.trim();
+            if(!text) return alert("Chưa có link ảnh!");
+            const urls = text.split(/\r?\n/).map(u => u.trim()).filter(u => u !== ""); 
+            if(urls.length === 0) return;
             const now = new Date();
             const timeStr = now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + now.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
-            db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).set({ url: url, addedAt: timeStr });
+            
+            urls.forEach((url, index) => {
+                const linkId = "L_" + Date.now() + "_" + index; 
+                db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).set({ url: url, addedAt: timeStr });
+            });
             db.ref(dbPath + br + '/' + clientId).update({ status: "completed" });
+            document.getElementById('new_' + clientId).value = ""; 
         }
 
         function updateLink(clientId, linkId) {
             const newUrl = document.getElementById(`edit_${clientId}_${linkId}`).value.trim();
-            if(!newUrl) return alert("Link không được để trống!");
+            if(!newUrl) return alert("Link trống!");
             db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).update({ url: newUrl });
-            alert("Đã cập nhật link!");
+            alert("Đã cập nhật!");
         }
 
-        function deleteLink(clientId, linkId) {
-            if(userRole !== 'admin') return alert("Bạn không có quyền thực hiện thao tác này!");
-            if(confirm("Bạn muốn xóa link ảnh này?")) db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove();
+        function deleteLink(clientId, linkId) { if(userRole !== 'admin') return alert("Bạn không có quyền!"); if(confirm("Xóa link ảnh này?")) db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove(); }
+        function softDeleteCustomer(clientId, clientName) { if(userRole !== 'admin') return; if (confirm("Chuyển khách '" + clientName + "' vào Thùng Rác?")) db.ref('data/' + br + '/' + clientId).once('value').then(snap => db.ref('trash/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('data/' + br + '/' + clientId).remove())).catch(err => alert("Lỗi: " + err.message)); }
+        function restoreCustomer(clientId) { if(userRole !== 'admin') return; db.ref('trash/' + br + '/' + clientId).once('value').then(snap => db.ref('data/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('trash/' + br + '/' + clientId).remove())).catch(err => alert("Lỗi: " + err.message)); }
+        function hardDeleteCustomer(clientId, clientName) { if(userRole !== 'admin') return; if (prompt(`XÓA VĨNH VIỄN '${clientName}'?\nNhập Pass:`) === PASS_ADMIN) db.ref('trash/' + br + '/' + clientId).remove().catch(err => alert("Lỗi: " + err.message)); }
+        
+        // --- CHỨC NĂNG MODAL DỌN DỮ LIỆU CHUYÊN NGHIỆP ---
+        function openClearModal() {
+            if(userRole !== 'admin') return alert("Chỉ Admin mới thao tác được!");
+            document.getElementById('clear-pass').value = '';
+            document.getElementById('clear-modal').style.display = 'flex';
         }
 
-        function softDeleteCustomer(clientId, clientName) {
-            if(userRole !== 'admin') return;
-            if (confirm("Chuyển khách '" + clientName + "' vào Thùng Rác?")) {
-                db.ref('data/' + br + '/' + clientId).once('value').then(snap => {
-                    const data = snap.val();
-                    return db.ref('trash/' + br + '/' + clientId).set(data).then(() => {
-                        return db.ref('data/' + br + '/' + clientId).remove();
-                    });
-                }).catch((error) => alert("Lỗi: " + error.message));
-            }
-        }
+        function executeClearData() {
+            const target = document.getElementById('clear-target').value;
+            const pass = document.getElementById('clear-pass').value;
 
-        function restoreCustomer(clientId) {
-            if(userRole !== 'admin') return;
-            db.ref('trash/' + br + '/' + clientId).once('value').then(snap => {
-                const data = snap.val();
-                return db.ref('data/' + br + '/' + clientId).set(data).then(() => {
-                    return db.ref('trash/' + br + '/' + clientId).remove();
-                });
-            }).catch((error) => alert("Lỗi: " + error.message));
-        }
+            if (pass !== PASS_ADMIN) return alert("Mật khẩu Admin không chính xác!");
 
-        function hardDeleteCustomer(clientId, clientName) {
-            if(userRole !== 'admin') return;
-            const pass = prompt(`XÓA VĨNH VIỄN khách '${clientName}'?\nNhập mật khẩu Admin để xác nhận:`);
-            if (pass === PASS_ADMIN) {
-                db.ref('trash/' + br + '/' + clientId).remove()
-                .catch((error) => alert("Lỗi: " + error.message));
-            } else if (pass !== null) {
-                alert("Mật khẩu sai!");
-            }
-        }
-
-        function clearData() {
-            if(userRole !== 'admin') return alert("Chỉ Admin mới có thể dọn dữ liệu!");
-            const pass = prompt("DỌN SẠCH DỮ LIỆU TOÀN BỘ CHI NHÁNH\nNhập mật khẩu Admin để xác nhận:");
-            if (pass === PASS_ADMIN) {
-                if(confirm("Tất cả dữ liệu tại chi nhánh này sẽ bị xóa vĩnh viễn và không thể khôi phục. Bạn chắc chắn chứ?")) {
-                    db.ref('data/' + br).remove()
-                    .then(() => alert("Đã dọn sạch dữ liệu!"))
-                    .catch((err) => alert("Lỗi: " + err.message));
+            let confirmMsg = target === 'all' ? "TẤT CẢ CƠ SỞ" : (target === 'phucyen' ? "CƠ SỞ PHÚC YÊN" : "CƠ SỞ VĨNH YÊN");
+            if (confirm(`Hành động này sẽ XÓA SẠCH VÀ VĨNH VIỄN toàn bộ dữ liệu của ${confirmMsg} (Bao gồm cả ảnh trong Thùng Rác).\n\nBạn chắc chắn chứ?`)) {
+                
+                if (target === 'all') {
+                    // Xóa trắng mọi thứ
+                    db.ref('data/phucyen').remove();
+                    db.ref('data/vinhyen').remove();
+                    db.ref('trash/phucyen').remove();
+                    db.ref('trash/vinhyen').remove();
+                } else {
+                    // Xóa riêng từng nhánh
+                    db.ref('data/' + target).remove();
+                    db.ref('trash/' + target).remove();
                 }
-            } else if (pass !== null) {
-                alert("Mật khẩu sai!");
+
+                document.getElementById('clear-modal').style.display = 'none';
+                alert(`✅ Đã dọn sạch hệ thống cho ${confirmMsg}!`);
             }
         }
     </script>
