@@ -53,6 +53,10 @@
         .btn-del { background: #fee2e2; color: #ef4444; }
         .btn-del:hover { background: #fca5a5; }
 
+        /* Nút xóa toàn bộ khách hàng */
+        .btn-del-client { background: #fff; border: 1px solid #fee2e2; color: #ef4444; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; transition: 0.2s; width: 100%; margin-top: 15px; }
+        .btn-del-client:hover { background: #fee2e2; }
+
         .add-box { display: flex; gap: 10px; margin-top: 15px; border-top: 1px dashed #e4e4e7; padding-top: 15px; }
         .add-box input { flex-grow: 1; padding: 10px; border: 1px solid #d4d4d8; border-radius: 8px; outline: none; font-size: 13px; font-family: 'Inter', sans-serif; background: #fff; color: #111; }
         .add-box input:focus { border-color: #18181b; }
@@ -172,6 +176,9 @@
                     sortedClients.forEach(client => {
                         const isDone = client.status === 'completed';
                         const maKh = client.id.split('_')[1].slice(-4); 
+                        // Thoát các ký tự đặc biệt trong tên để tránh lỗi Javascript
+                        const safeName = client.name ? client.name.replace(/'/g, "\\'") : "Khách hàng"; 
+
                         let linksHtml = '';
                         if (client.links) {
                             Object.keys(client.links).forEach(linkId => {
@@ -188,6 +195,10 @@
                                     <p>📞 ${client.phone}</p>
                                     <p>🕒 ${client.time}</p>
                                     <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã có' : 'Chờ ảnh'}</span>
+                                    
+                                    <button class="btn-del-client" onclick="deleteCustomer('${client.id}', '${safeName}')">
+                                        ✕ Xóa Khách Này
+                                    </button>
                                 </div>
                                 <div class="link-manager">
                                     ${linksHtml}
@@ -264,6 +275,19 @@
 
         function deleteLink(clientId, linkId) {
             if(confirm("Xóa link này?")) db.ref('data/' + br + '/' + clientId + '/links/' + linkId).remove();
+        }
+
+        // --- HÀM XÓA KHÁCH HÀNG MỚI ĐƯỢC THÊM ---
+        function deleteCustomer(clientId, clientName) {
+            if(confirm("CẢNH BÁO: Bạn có chắc chắn muốn xóa khách hàng '" + clientName + "' không?\n\nToàn bộ thông tin và link ảnh của khách này sẽ biến mất. Hành động này không thể hoàn tác!")) {
+                db.ref('data/' + br + '/' + clientId).remove()
+                .then(() => {
+                    // Xóa thành công, Firebase sẽ tự động cập nhật lại giao diện, không cần tải lại trang
+                })
+                .catch((error) => {
+                    alert("Có lỗi xảy ra: " + error.message);
+                });
+            }
         }
 
         function clearData() {
