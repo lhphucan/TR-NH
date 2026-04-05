@@ -8,6 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; background: #f4f4f5; margin: 0; padding: 10px; color: #111; }
         #login-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
@@ -19,51 +22,67 @@
         .tab-btn { padding: 10px 20px; border: 1px solid #d4d4d8; border-radius: 8px; cursor: pointer; background: #fff; color: #111; font-weight: 500; transition: 0.2s; white-space: nowrap; flex-shrink: 0; }
         .tab-btn.active { background: #18181b; color: #fff; border-color: #18181b; }
         
-        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: #fff; padding: 15px; border-radius: 12px; border: 1px solid #e4e4e7; align-items: center;}
+        /* Sticky Toolbar Nâng Cấp */
+        .toolbar-wrapper { position: sticky; top: 10px; z-index: 100; margin-bottom: 20px; }
+        .toolbar { display: flex; gap: 10px; flex-wrap: wrap; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 15px; border-radius: 12px; border: 1px solid #e4e4e7; box-shadow: 0 4px 20px rgba(0,0,0,0.06); align-items: center; transition: 0.3s;}
+        
         .toolbar-label { font-size: 13px; font-weight: 600; color: #52525b; margin-right: 5px;}
-        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-size: 14px; background: #fff; font-family: 'Inter', sans-serif;}
-        .btn-excel { padding: 12px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; text-transform: uppercase; font-size: 13px; width: 100%; }
+        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-size: 14px; background: #fff; font-family: 'Inter', sans-serif; transition: 0.2s;}
+        .search-box:focus { border-color: #111; }
+        .btn-excel { padding: 12px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; text-transform: uppercase; font-size: 13px; width: 100%; transition: 0.2s;}
+        .btn-excel:hover { opacity: 0.9; transform: translateY(-2px); }
         @media (min-width: 768px) { .btn-excel { width: auto; } }
 
         .date-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid #18181b; margin: 30px 0 15px 0; font-weight: 700; font-size: 16px; }
         
-        .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 15px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 15px; transition: 0.2s; }
+        .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 15px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 15px; transition: 0.2s; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @media (min-width: 768px) { .client-card { flex-direction: row; padding: 20px; gap: 20px; align-items: flex-start; } body { padding: 20px; } }
+        .client-card:hover { border-color: #a1a1aa; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
 
         .client-info { width: 100%; position: relative; border-bottom: 1px solid #f4f4f5; padding-bottom: 15px; }
         @media (min-width: 768px) { .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid #f4f4f5; border-bottom: none; padding-bottom: 0; padding-right: 15px; } }
 
         .client-info h3 { margin: 0 0 5px 0; font-size: 16px; color: #111; }
         .client-info p { margin: 0 0 5px 0; color: #71717a; font-size: 13px; }
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
         .badge.pending { background: #fef3c7; color: #b45309; }
         .badge.done { background: #dcfce7; color: #166534; }
         .makh-display { font-size: 11px; color: #71717a; position: absolute; top: 0; right: 0; font-family: monospace; font-weight: 600;}
 
         .link-manager { flex-grow: 1; width: 100%; }
-        .link-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fafafa; padding: 8px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f4f4f5; }
-        .link-row input { flex-grow: 1; min-width: 150px; padding: 8px; border: 1px solid #d4d4d8; border-radius: 6px; font-size: 13px; }
-        .link-row .time-label { font-size: 11px; color: #a1a1aa; width: 100%; }
+        .link-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fafafa; padding: 8px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f4f4f5; transition: 0.2s; }
+        .link-row:focus-within { border-color: #d4d4d8; background: #fff; }
+        .link-row input { flex-grow: 1; min-width: 150px; padding: 8px; border: 1px solid #d4d4d8; border-radius: 6px; font-size: 13px; outline: none; transition: 0.2s;}
+        .link-row input:focus { border-color: #111; }
+        .link-row .time-label { font-size: 11px; color: #a1a1aa; width: 100%; font-weight: 500;}
         @media (min-width: 480px) { .link-row .time-label { width: 100px; } }
 
-        button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; }
-        .btn-add { background: #18181b; color: #fff; width: 80px; align-self: flex-start; margin-top: 10px;}
+        button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; transition: 0.2s; }
+        .btn-add { background: #18181b; color: #fff; width: 90px; align-self: flex-start; margin-top: 10px;}
+        .btn-add:hover { background: #3f3f46; transform: translateY(-1px); }
         .btn-save { background: #e4e4e7; color: #18181b; }
+        .btn-save:hover { background: #d4d4d8; }
         .btn-del { background: #fee2e2; color: #ef4444; }
         
-        .btn-del-client { background: #fff; border: 1px solid #fee2e2; color: #ef4444; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; width: 100%; margin-top: 15px; }
-        .btn-restore { background: #10b981; color: #fff; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; width: 100%; margin-top: 15px; }
+        .btn-del-client { background: #fff; border: 1px solid #fee2e2; color: #ef4444; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; width: 100%; margin-top: 15px; transition: 0.2s;}
+        .btn-del-client:hover { background: #fef2f2; }
+        .btn-restore { background: #10b981; color: #fff; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; width: 100%; margin-top: 15px; transition: 0.2s;}
+        .btn-restore:hover { opacity: 0.9; }
 
         .add-box { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; border-top: 1px dashed #e4e4e7; padding-top: 15px; }
-        .add-box textarea { flex-grow: 1; padding: 10px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; font-family: 'Inter', sans-serif; outline: none; min-height: 50px; resize: vertical; }
+        .add-box textarea { flex-grow: 1; padding: 12px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; font-family: 'Inter', sans-serif; outline: none; min-height: 50px; resize: vertical; transition: 0.2s; }
+        .add-box textarea:focus { border-color: #111; }
         
-        .trash-notice { background: #fee2e2; color: #ef4444; padding: 15px; border-radius: 8px; font-size: 13px; border: 1px solid #fca5a5; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
+        .trash-notice { background: #fff1f2; color: #be123c; padding: 15px; border-radius: 12px; font-size: 13px; border: 1px solid #fecdd3; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
         @media (min-width: 768px) { .trash-notice { flex-direction: row; justify-content: space-between; align-items: center; } }
         
-        #empty-msg { text-align: center; color: #a1a1aa; padding: 50px 0; display: none; font-size: 14px; background: #fff; border-radius: 12px; border: 1px dashed #d4d4d8; margin-top: 20px; }
+        /* Cải tiến Empty State */
+        #empty-msg { text-align: center; padding: 60px 20px; display: none; background: #fff; border-radius: 16px; border: 1px dashed #d4d4d8; margin-top: 20px; }
+        .empty-icon { font-size: 40px; margin-bottom: 15px; opacity: 0.5; }
+        .empty-text { font-size: 14px; color: #71717a; font-weight: 500; }
 
-        /* Modal Dọn Dữ Liệu */
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; }
         .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
     </style>
 </head>
@@ -72,23 +91,23 @@
         <div style="text-align:center; width: 100%; max-width: 320px;">
             <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 1px solid #eee;" onerror="this.style.display='none'">
             <h3 style="margin-bottom: 25px; letter-spacing: 2px;">PHOTONOIR</h3>
-            <input type="password" id="pass" placeholder="Nhập mật khẩu..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 16px; text-align: center;">
-            <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase;">Đăng nhập</button>
+            <input type="password" id="pass" placeholder="Nhập mật khẩu..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 16px; text-align: center; outline: none; transition: 0.2s;">
+            <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase; transition: 0.2s;">Đăng nhập</button>
         </div>
     </div>
 
     <div class="admin-box" id="admin-box">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap: wrap; gap: 15px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap: wrap; gap: 15px;">
             <h2 style="margin: 0; font-size: 20px; display: flex; align-items: center;">
                 QUẢN LÝ TRẢ ẢNH 
-                <span id="role-badge" style="font-size:11px; background:#18181b; color:#fff; padding:3px 10px; border-radius:12px; margin-left:12px; font-weight: 600;"></span>
+                <span id="role-badge" style="font-size:11px; background:#18181b; color:#fff; padding:4px 10px; border-radius:20px; margin-left:12px; font-weight: 600; letter-spacing: 0.5px;"></span>
             </h2>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <div class="admin-only" style="display: flex; gap: 15px;">
-                    <button id="btn-trash" onclick="toggleTrash()" style="color:#f59e0b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 12px;">🗑 THÙNG RÁC</button>
-                    <button onclick="openClearModal()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600; font-size: 12px;">DỌN DỮ LIỆU</button>
+                    <button id="btn-trash" onclick="toggleTrash()" style="color:#f59e0b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s;">🗑 THÙNG RÁC</button>
+                    <button onclick="openClearModal()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s;">⚠️ DỌN DỮ LIỆU</button>
                 </div>
-                <button onclick="logout()" style="color:#52525b; background:#e4e4e7; padding: 6px 12px; border-radius: 6px; border:none; cursor:pointer; font-weight:700; font-size: 11px;">🚪 ĐĂNG XUẤT</button>
+                <button onclick="logout()" style="color:#52525b; background:#e4e4e7; padding: 8px 14px; border-radius: 8px; border:none; cursor:pointer; font-weight:700; font-size: 11px; transition: 0.2s;">🚪 ĐĂNG XUẤT</button>
             </div>
         </div>
         
@@ -97,37 +116,40 @@
             <button class="tab-btn" id="btn-vinhyen" onclick="switchB('vinhyen')">Cơ sở Vĩnh Yên</button>
         </div>
 
-        <div class="toolbar">
-            <div style="display: flex; align-items: center; width: 100%; md:width: auto; gap: 10px; border-right: 1px solid #e4e4e7; padding-right: 15px;">
-                <span class="toolbar-label">Ngày xem:</span>
-                <input type="date" id="date-filter" class="search-box" style="cursor: pointer; flex-grow: 0;" onchange="filterData()">
-                <button onclick="clearDateFilter()" style="background: none; border: none; font-size: 12px; color: #3b82f6; cursor: pointer; font-weight: 600; white-space: nowrap;">Tất cả</button>
+        <div class="toolbar-wrapper">
+            <div class="toolbar">
+                <div style="display: flex; align-items: center; width: 100%; md:width: auto; gap: 10px; border-right: 1px solid #e4e4e7; padding-right: 15px;">
+                    <span class="toolbar-label">Ngày xem:</span>
+                    <input type="date" id="date-filter" class="search-box" style="cursor: pointer; flex-grow: 0;" onchange="filterData()">
+                    <button onclick="clearDateFilter()" style="background: none; border: none; font-size: 12px; color: #3b82f6; cursor: pointer; font-weight: 600; white-space: nowrap; padding: 5px;">Tất cả</button>
+                </div>
+                <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5;" placeholder="🔍 Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
+                <button class="btn-excel admin-only" onclick="exportExcel()">Xuất Excel</button>
             </div>
-            <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5;" placeholder="🔍 Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
-            <button class="btn-excel admin-only" onclick="exportExcel()">Xuất Excel</button>
         </div>
 
         <div id="trash-header" style="display: none;"></div>
 
-        <div id="list-content">Đang tải danh sách...</div>
-        <div id="empty-msg">Không có khách hàng nào trong ngày này.</div>
+        <div id="list-content"></div>
+        
+        <div id="empty-msg">
+            <div class="empty-icon">📭</div>
+            <div class="empty-text">Hôm nay chưa có dữ liệu nào.</div>
+        </div>
     </div>
 
     <div id="clear-modal" class="modal-overlay">
         <div class="modal-content">
             <h3 style="margin-top:0; color:#ef4444; font-size: 18px; margin-bottom: 10px;">⚠️ DỌN DẸP DỮ LIỆU</h3>
-            <p style="font-size:13px; color:#666; margin-bottom: 20px; line-height: 1.5;">Chọn chi nhánh bạn muốn dọn sạch dữ liệu (Hành động này sẽ xóa cả dữ liệu trong Thùng Rác và <b>không thể hoàn tác</b>):</p>
-            
+            <p style="font-size:13px; color:#666; margin-bottom: 20px; line-height: 1.5;">Hành động này sẽ xóa cả dữ liệu trong Thùng Rác và <b>không thể hoàn tác</b>:</p>
             <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Chọn khu vực dọn:</label>
             <select id="clear-target" class="search-box" style="width:100%; margin-bottom:20px; border: 1px solid #d4d4d8;">
                 <option value="phucyen">Chỉ dọn Cơ sở Phúc Yên</option>
                 <option value="vinhyen">Chỉ dọn Cơ sở Vĩnh Yên</option>
                 <option value="all" style="color: #ef4444; font-weight: bold;">🚨 DỌN SẠCH TẤT CẢ CƠ SỞ</option>
             </select>
-            
             <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Mật khẩu xác nhận:</label>
             <input type="password" id="clear-pass" class="search-box" placeholder="Nhập Pass Admin..." style="width:100%; margin-bottom:25px; border: 1px solid #d4d4d8;">
-            
             <div style="display:flex; gap:10px;">
                 <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600;">Hủy Bỏ</button>
                 <button onclick="executeClearData()" style="flex:1; padding:12px; background:#ef4444; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight: 700;">Tiến Hành Xóa</button>
@@ -145,13 +167,15 @@
         let userRole = ''; let dbPath = 'data/'; let br = 'phucyen';
         let currentData = {}; let previousCount = 0; let isFirstLoad = true;
 
-        // KIỂM TRA PHIÊN ĐĂNG NHẬP (TỰ ĐỘNG LOGIN)
+        // Cấu hình Toast Notification cho SweetAlert2
+        const Toast = Swal.mixin({
+            toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
+            timerProgressBar: true, didOpen: (toast) => { toast.addEventListener('mouseenter', Swal.stopTimer); toast.addEventListener('mouseleave', Swal.resumeTimer); }
+        });
+
         window.onload = () => {
             const savedRole = localStorage.getItem('pn_admin_role');
-            if (savedRole === 'admin' || savedRole === 'staff') {
-                userRole = savedRole;
-                setupUI();
-            }
+            if (savedRole === 'admin' || savedRole === 'staff') { userRole = savedRole; setupUI(); }
         };
 
         function getTodayForInput() {
@@ -165,24 +189,26 @@
             const p = document.getElementById('pass').value;
             if(p === PASS_ADMIN || p === PASS_STAFF) {
                 userRole = (p === PASS_ADMIN) ? 'admin' : 'staff';
-                // Lưu lại phiên đăng nhập
                 localStorage.setItem('pn_admin_role', userRole);
-                
-                document.getElementById('ting-sound').volume = 0; 
-                document.getElementById('ting-sound').play().catch(()=>{});
+                document.getElementById('ting-sound').volume = 0; document.getElementById('ting-sound').play().catch(()=>{});
                 setupUI();
-            } else alert("Mật khẩu không chính xác!");
-        }
-
-        // HÀM ĐĂNG XUẤT
-        function logout() {
-            if(confirm("Bạn có chắc chắn muốn đăng xuất?")) {
-                localStorage.removeItem('pn_admin_role');
-                location.reload();
+                Toast.fire({ icon: 'success', title: 'Đăng nhập thành công' });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Sai mật khẩu!', text: 'Vui lòng kiểm tra lại.', confirmButtonColor: '#111' });
             }
         }
 
-        // Tách riêng hàm setup giao diện để dùng chung cho Login và Auto-login
+        function logout() {
+            Swal.fire({
+                title: 'Đăng xuất?', text: "Bạn sẽ cần nhập lại mật khẩu để vào hệ thống.", icon: 'question',
+                showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#d33', confirmButtonText: 'Đăng xuất', cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    localStorage.removeItem('pn_admin_role'); location.reload();
+                }
+            });
+        }
+
         function setupUI() {
             document.body.classList.add('role-' + userRole);
             document.getElementById('role-badge').innerText = (userRole === 'admin') ? 'ADMIN' : 'NHÂN VIÊN';
@@ -210,9 +236,9 @@
                 currentData = snap.val();
                 
                 if(!currentData) { 
-                    list.innerHTML = (dbPath === 'trash/') ? "<p style='text-align:center; color:#a1a1aa; padding: 50px 0;'>Thùng rác đang trống.</p>" : "<p style='text-align:center; color:#a1a1aa; padding: 50px 0;'>Chưa có dữ liệu trong cơ sở này.</p>"; 
-                    trashHeader.style.display = 'none';
-                    previousCount = 0; return; 
+                    document.querySelector('.empty-text').innerText = (dbPath === 'trash/') ? "Thùng rác đang trống." : "Hôm nay chưa có dữ liệu nào.";
+                    document.getElementById('empty-msg').style.display = 'block';
+                    trashHeader.style.display = 'none'; previousCount = 0; return; 
                 }
 
                 if (dbPath === 'trash/') {
@@ -220,22 +246,19 @@
                     trashHeader.innerHTML = `
                         <div class="trash-notice">
                             <div>
-                                <b style="display:block; margin-bottom:5px;">⚠️ BẠN ĐANG Ở TRONG THÙNG RÁC</b>
-                                <span style="color:#666;">Dữ liệu tại đây bị ẩn khỏi web khách hàng.</span>
-                                <label style="display:flex; align-items:center; gap:8px; margin-top:12px; cursor:pointer; color:#111; font-weight:600;">
+                                <b style="display:block; margin-bottom:5px;">⚠️ ĐANG MỞ THÙNG RÁC</b>
+                                <span style="color:#9f1239;">Dữ liệu tại đây bị ẩn khỏi web khách hàng.</span>
+                                <label style="display:flex; align-items:center; gap:8px; margin-top:12px; cursor:pointer; color:#881337; font-weight:600;">
                                     <input type="checkbox" onclick="toggleSelectAllTrash(this)" style="width:16px; height:16px; cursor:pointer;">
-                                    CHỌN TẤT CẢ TRONG LỊCH TRÌNH BÊN DƯỚI
+                                    CHỌN TẤT CẢ BÊN DƯỚI
                                 </label>
                             </div>
-                            <button onclick="deleteSelectedTrash()" style="background:#ef4444; color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:12px; height:fit-content; white-space:nowrap;">✕ XÓA MỤC ĐÃ CHỌN</button>
-                        </div>
-                    `;
-                } else {
-                    trashHeader.style.display = 'none';
-                }
+                            <button onclick="deleteSelectedTrash()" style="background:#e11d48; color:#fff; border:none; padding:12px 20px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s; white-space:nowrap;">✕ XÓA MỤC ĐÃ CHỌN</button>
+                        </div>`;
+                } else { trashHeader.style.display = 'none'; }
 
                 const currentCount = Object.keys(currentData).length;
-                if(!isFirstLoad && currentCount > previousCount && dbPath === 'data/') { const audio = document.getElementById('ting-sound'); audio.volume = 1; audio.play(); }
+                if(!isFirstLoad && currentCount > previousCount && dbPath === 'data/') { const audio = document.getElementById('ting-sound'); audio.volume = 1; audio.play(); Toast.fire({ icon: 'info', title: 'Có khách hàng mới!' });}
                 previousCount = currentCount; isFirstLoad = false;
                 
                 const groupedData = {};
@@ -256,9 +279,7 @@
                     let html = `<div class="date-header"><span>📅 ${dateLabel}</span><span style="font-size:12px; color:#71717a;">${groupedData[date].clients.length} khách</span></div>`;
                     
                     groupedData[date].clients.sort((a, b) => b.ts - a.ts).forEach(client => {
-                        const isDone = client.status === 'completed';
-                        const maKh = client.id.split('_')[1].slice(-4); 
-                        const safeName = client.name ? client.name.replace(/'/g, "\\'") : "Khách hàng"; 
+                        const isDone = client.status === 'completed'; const maKh = client.id.split('_')[1].slice(-4); const safeName = client.name ? client.name.replace(/'/g, "\\'") : "Khách hàng"; 
 
                         let linksHtml = '';
                         if (client.links) {
@@ -269,17 +290,16 @@
                         }
 
                         let actionButtons = (dbPath === 'trash/') ? 
-                            `<button class="btn-restore admin-only" onclick="restoreCustomer('${client.id}')">Khôi phục</button><button class="btn-del-client admin-only" onclick="hardDeleteCustomer('${client.id}', '${safeName}')">Xóa Vĩnh Viễn</button>` : 
+                            `<button class="btn-restore admin-only" onclick="restoreCustomer('${client.id}', '${safeName}')">Khôi phục</button><button class="btn-del-client admin-only" onclick="hardDeleteCustomer('${client.id}', '${safeName}')">Xóa Vĩnh Viễn</button>` : 
                             `<button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')">Xóa Khách Này</button>`;
 
-                        let checkboxHtml = (dbPath === 'trash/') ? 
-                            `<div style="display:flex; align-items:flex-start; margin-right:15px; padding-top:2px;"><input type="checkbox" class="trash-cb" value="${client.id}" style="width:20px; height:20px; cursor:pointer;"></div>` : '';
+                        let checkboxHtml = (dbPath === 'trash/') ? `<div style="display:flex; align-items:flex-start; margin-right:15px; padding-top:2px;"><input type="checkbox" class="trash-cb" value="${client.id}" style="width:20px; height:20px; cursor:pointer;"></div>` : '';
 
                         html += `
                             <div class="client-card" data-search="${(client.name + " " + client.phone + " " + maKh).toLowerCase()}">
                                 ${checkboxHtml}
                                 <div class="client-info">
-                                    <span class="makh-display">#${maKh}</span><h3>${client.name}</h3><p>SĐT: ${client.phone}</p><p>Giờ: ${client.time}</p><span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã trả ảnh' : 'Đang chờ'}</span>
+                                    <span class="makh-display">#${maKh}</span><h3 style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${client.name}">${client.name}</h3><p>SĐT: ${client.phone}</p><p>Giờ: ${client.time}</p><span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã trả ảnh' : 'Đang chờ'}</span>
                                     ${actionButtons}
                                 </div>
                                 <div class="link-manager">
@@ -297,33 +317,25 @@
             });
         }
 
-        function toggleSelectAllTrash(source) {
-            const checkboxes = document.querySelectorAll('.trash-cb');
-            checkboxes.forEach(cb => {
-                if(cb.closest('.client-card').style.display !== 'none') {
-                    cb.checked = source.checked;
-                }
-            });
-        }
+        function toggleSelectAllTrash(source) { document.querySelectorAll('.trash-cb').forEach(cb => { if(cb.closest('.client-card').style.display !== 'none') cb.checked = source.checked; }); }
 
         function deleteSelectedTrash() {
             if(userRole !== 'admin') return;
             const checkboxes = document.querySelectorAll('.trash-cb:checked');
-            if(checkboxes.length === 0) return alert("Bạn chưa tích chọn khách hàng nào!");
+            if(checkboxes.length === 0) { Toast.fire({ icon: 'warning', title: 'Chưa chọn khách nào!' }); return; }
             
-            const pass = prompt(`CẢNH BÁO: Đang chuẩn bị XÓA VĨNH VIỄN ${checkboxes.length} khách hàng đã chọn.\nNhập mật khẩu Admin để xác nhận:`);
-            if (pass === PASS_ADMIN) {
-                const promises = [];
-                checkboxes.forEach(cb => {
-                    promises.push(db.ref('trash/' + br + '/' + cb.value).remove());
-                });
-                
-                Promise.all(promises)
-                    .then(() => alert(`✅ Đã xóa vĩnh viễn ${checkboxes.length} mục!`))
-                    .catch(err => alert("Lỗi: " + err.message));
-            } else if (pass !== null) {
-                alert("Mật khẩu sai!");
-            }
+            Swal.fire({
+                title: 'Xác nhận xóa hàng loạt', text: `Sẽ xóa VĨNH VIỄN ${checkboxes.length} mục đã chọn.`, icon: 'warning',
+                input: 'password', inputPlaceholder: 'Nhập mật khẩu Admin', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Xóa Vĩnh Viễn'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if(result.value === PASS_ADMIN) {
+                        const promises = [];
+                        checkboxes.forEach(cb => promises.push(db.ref('trash/' + br + '/' + cb.value).remove()));
+                        Promise.all(promises).then(() => Toast.fire({ icon: 'success', title: `Đã xóa ${checkboxes.length} mục!` })).catch(err => Swal.fire('Lỗi', err.message, 'error'));
+                    } else { Swal.fire('Thất bại', 'Sai mật khẩu!', 'error'); }
+                }
+            });
         }
 
         function filterData() {
@@ -343,13 +355,14 @@
                 });
                 if (hasVisibleCard) { group.style.display = 'block'; visibleGroupCount++; } else group.style.display = 'none';
             });
-
+            
+            document.querySelector('.empty-text').innerText = "Không tìm thấy khách hàng nào khớp với tìm kiếm/ngày chọn.";
             document.getElementById('empty-msg').style.display = (visibleGroupCount === 0 && document.getElementById('list-content').innerHTML !== "") ? 'block' : 'none';
         }
 
         function exportExcel() {
-            if(userRole !== 'admin') return alert("Bạn không có quyền!");
-            if(!currentData) return alert("Không có dữ liệu!");
+            if(userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Không có quyền' });
+            if(!currentData) return Toast.fire({ icon: 'warning', title: 'Không có dữ liệu!' });
             let csvContent = "data:text/csv;charset=utf-8,\uFEFFNgày,Giờ,Mã KH,Họ Tên,SĐT,Cơ Sở\n";
             Object.keys(currentData).forEach(id => {
                 const c = currentData[id]; const ts = parseInt(id.split('_')[1]) || Date.now();
@@ -357,12 +370,12 @@
                 csvContent += `"${d}","${c.time}","#${mk}","${c.name}","${c.phone}","${br === 'phucyen' ? 'Phúc Yên' : 'Vĩnh Yên'}"\n`;
             });
             const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", `PHOTONOIR_Report_${new Date().toLocaleDateString('vi-VN')}.csv`);
-            document.body.appendChild(link); link.click();
+            document.body.appendChild(link); link.click(); Toast.fire({ icon: 'success', title: 'Đã xuất Excel' });
         }
 
         function addLink(clientId) {
             const text = document.getElementById('new_' + clientId).value.trim();
-            if(!text) return alert("Chưa có link ảnh!");
+            if(!text) return Toast.fire({ icon: 'warning', title: 'Chưa dán link!' });
             const urls = text.split(/\r?\n/).map(u => u.trim()).filter(u => u !== ""); 
             if(urls.length === 0) return;
             const now = new Date();
@@ -374,22 +387,47 @@
             });
             db.ref(dbPath + br + '/' + clientId).update({ status: "completed" });
             document.getElementById('new_' + clientId).value = ""; 
+            Toast.fire({ icon: 'success', title: 'Đã lưu link' });
         }
 
         function updateLink(clientId, linkId) {
             const newUrl = document.getElementById(`edit_${clientId}_${linkId}`).value.trim();
-            if(!newUrl) return alert("Link trống!");
+            if(!newUrl) return Toast.fire({ icon: 'error', title: 'Link trống!' });
             db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).update({ url: newUrl });
-            alert("Đã cập nhật!");
+            Toast.fire({ icon: 'success', title: 'Đã cập nhật!' });
         }
 
-        function deleteLink(clientId, linkId) { if(userRole !== 'admin') return alert("Bạn không có quyền!"); if(confirm("Xóa link ảnh này?")) db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove(); }
-        function softDeleteCustomer(clientId, clientName) { if(userRole !== 'admin') return; if (confirm("Chuyển khách '" + clientName + "' vào Thùng Rác?")) db.ref('data/' + br + '/' + clientId).once('value').then(snap => db.ref('trash/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('data/' + br + '/' + clientId).remove())).catch(err => alert("Lỗi: " + err.message)); }
-        function restoreCustomer(clientId) { if(userRole !== 'admin') return; db.ref('trash/' + br + '/' + clientId).once('value').then(snap => db.ref('data/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('trash/' + br + '/' + clientId).remove())).catch(err => alert("Lỗi: " + err.message)); }
-        function hardDeleteCustomer(clientId, clientName) { if(userRole !== 'admin') return; if (prompt(`XÓA VĨNH VIỄN '${clientName}'?\nNhập Pass:`) === PASS_ADMIN) db.ref('trash/' + br + '/' + clientId).remove().catch(err => alert("Lỗi: " + err.message)); }
+        function deleteLink(clientId, linkId) { 
+            if(userRole !== 'admin') return; 
+            Swal.fire({ title: 'Xóa link này?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Xóa' }).then(r => { if(r.isConfirmed) { db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove(); Toast.fire({ icon: 'success', title: 'Đã xóa link' }); }}); 
+        }
+
+        function softDeleteCustomer(clientId, clientName) { 
+            if(userRole !== 'admin') return; 
+            Swal.fire({ title: 'Chuyển vào Thùng Rác?', text: `Khách hàng '${clientName}'`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#f59e0b', confirmButtonText: 'Chuyển' }).then(r => {
+                if (r.isConfirmed) {
+                    db.ref('data/' + br + '/' + clientId).once('value').then(snap => db.ref('trash/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('data/' + br + '/' + clientId).remove())).then(() => Toast.fire({ icon: 'success', title: 'Đã chuyển thùng rác' })).catch(err => Swal.fire('Lỗi', err.message, 'error'));
+                }
+            }); 
+        }
+
+        function restoreCustomer(clientId, clientName) { 
+            if(userRole !== 'admin') return; 
+            db.ref('trash/' + br + '/' + clientId).once('value').then(snap => db.ref('data/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('trash/' + br + '/' + clientId).remove())).then(() => Toast.fire({ icon: 'success', title: `Đã khôi phục '${clientName}'` })).catch(err => Swal.fire('Lỗi', err.message, 'error')); 
+        }
+
+        function hardDeleteCustomer(clientId, clientName) { 
+            if(userRole !== 'admin') return; 
+            Swal.fire({ title: 'Xóa Vĩnh Viễn?', text: `Khách '${clientName}'`, icon: 'warning', input: 'password', inputPlaceholder: 'Nhập Pass Admin', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Xóa' }).then(r => {
+                if (r.isConfirmed) {
+                    if(r.value === PASS_ADMIN) { db.ref('trash/' + br + '/' + clientId).remove().then(() => Toast.fire({ icon: 'success', title: 'Đã xóa vĩnh viễn' })); } 
+                    else { Swal.fire('Thất bại', 'Mật khẩu sai!', 'error'); }
+                }
+            }); 
+        }
         
         function openClearModal() {
-            if(userRole !== 'admin') return alert("Chỉ Admin mới thao tác được!");
+            if(userRole !== 'admin') return Swal.fire('Từ chối', 'Chỉ Admin mới thao tác được!', 'error');
             document.getElementById('clear-pass').value = '';
             document.getElementById('clear-modal').style.display = 'flex';
         }
@@ -397,25 +435,18 @@
         function executeClearData() {
             const target = document.getElementById('clear-target').value;
             const pass = document.getElementById('clear-pass').value;
+            if (pass !== PASS_ADMIN) return Swal.fire('Thất bại', 'Mật khẩu Admin không chính xác!', 'error');
 
-            if (pass !== PASS_ADMIN) return alert("Mật khẩu Admin không chính xác!");
-
-            let confirmMsg = target === 'all' ? "TẤT CẢ CƠ SỞ" : (target === 'phucyen' ? "CƠ SỞ PHÚC YÊN" : "CƠ SỞ VĨNH YÊN");
-            if (confirm(`Hành động này sẽ XÓA SẠCH VÀ VĨNH VIỄN toàn bộ dữ liệu của ${confirmMsg} (Bao gồm cả ảnh trong Thùng Rác).\n\nBạn chắc chắn chứ?`)) {
-                
-                if (target === 'all') {
-                    db.ref('data/phucyen').remove();
-                    db.ref('data/vinhyen').remove();
-                    db.ref('trash/phucyen').remove();
-                    db.ref('trash/vinhyen').remove();
-                } else {
-                    db.ref('data/' + target).remove();
-                    db.ref('trash/' + target).remove();
+            let confirmMsg = target === 'all' ? "TẤT CẢ CƠ SỞ" : (target === 'phucyen' ? "PHÚC YÊN" : "VĨNH YÊN");
+            
+            Swal.fire({ title: 'CẢNH BÁO CUỐI', text: `Hành động này sẽ XÓA SẠCH VÀ VĨNH VIỄN toàn bộ dữ liệu của ${confirmMsg} (Bao gồm cả ảnh trong Thùng Rác).\nBạn chắc chắn chứ?`, icon: 'error', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'TÔI CHẮC CHẮN XÓA' }).then(r => {
+                if (r.isConfirmed) {
+                    if (target === 'all') { db.ref('data/phucyen').remove(); db.ref('data/vinhyen').remove(); db.ref('trash/phucyen').remove(); db.ref('trash/vinhyen').remove(); } 
+                    else { db.ref('data/' + target).remove(); db.ref('trash/' + target).remove(); }
+                    document.getElementById('clear-modal').style.display = 'none';
+                    Swal.fire('Hoàn tất!', `Đã dọn sạch hệ thống cho ${confirmMsg}!`, 'success');
                 }
-
-                document.getElementById('clear-modal').style.display = 'none';
-                alert(`✅ Đã dọn sạch hệ thống cho ${confirmMsg}!`);
-            }
+            });
         }
     </script>
 </body>

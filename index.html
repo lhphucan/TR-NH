@@ -8,48 +8,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <style>
-        :root {
-            --bg-main: #fafafa;
-            --card-bg: #fff;
-            --text-main: #111;
-            --text-muted: #666;
-            --border-color: #f0f0f0;
-            --input-bg: #fdfdfd;
-            --input-border: #e5e5e5;
-            --btn-bg: #111;
-            --btn-text: #fff;
-            --item-bg: #f9f9f9;
-            --link-bg: #fff;
-            --social-border: #eaeaea;
-        }
+    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <style>
+        :root { --bg-main: #fafafa; --card-bg: #fff; --text-main: #111; --text-muted: #666; --border-color: #f0f0f0; --input-bg: #fdfdfd; --input-border: #e5e5e5; --btn-bg: #111; --btn-text: #fff; --item-bg: #f9f9f9; --link-bg: #fff; --social-border: #eaeaea; }
         body { font-family: 'Inter', sans-serif; background: var(--bg-main); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-        
         .card { background: var(--card-bg); padding: 35px 30px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); width: 100%; max-width: 360px; text-align: center; border: 1px solid var(--border-color); position: relative; }
-        
         .logo { width: 90px; height: 90px; object-fit: cover; margin-bottom: 15px; border-radius: 50%; border: 1px solid var(--border-color); background: #fff; padding: 2px; }
-        p { color: var(--text-muted); font-size: 13px; margin-bottom: 25px; }
+        p { color: var(--text-muted); font-size: 13px; margin-bottom: 25px; line-height: 1.5; }
         
         select, input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid var(--input-border); border-radius: 12px; box-sizing: border-box; font-size: 14px; outline: none; font-family: 'Inter', sans-serif; background: var(--input-bg); color: var(--text-main); transition: 0.2s; }
-        select:focus, input:focus { border-color: var(--text-main); }
+        select:focus, input:focus { border-color: var(--text-main); box-shadow: 0 0 0 3px rgba(17,17,17,0.05); }
         
-        button.primary-btn { width: 100%; padding: 15px; background: var(--btn-bg); color: var(--btn-text); border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 15px; text-transform: uppercase; }
-        button.primary-btn:hover { transform: translateY(-2px); opacity: 0.9; }
+        button.primary-btn { width: 100%; padding: 15px; background: var(--btn-bg); color: var(--btn-text); border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 14px; text-transform: uppercase; display: flex; justify-content: center; align-items: center; gap: 8px; letter-spacing: 0.5px;}
+        button.primary-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        button.primary-btn:active:not(:disabled) { transform: translateY(0); }
+        button.primary-btn:disabled { opacity: 0.7; cursor: not-allowed; }
         
-        .album-item { background: var(--item-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 18px; margin-bottom: 15px; text-align: left; animation: fadeIn 0.4s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Loading Spinner */
+        .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s ease-in-out infinite; display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .album-item { background: var(--item-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 18px; margin-bottom: 15px; text-align: left; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .album-info b { font-size: 14px; display: block; color: var(--text-main); margin-bottom: 4px; }
         .album-info span { font-size: 12px; color: var(--text-muted); }
         
-        .link-row { display: flex; justify-content: space-between; align-items: center; background: var(--link-bg); padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; margin-top: 10px; }
-        .link-row .time { font-size: 11px; color: var(--text-muted); }
-        .view-btn { background: var(--btn-bg); color: var(--btn-text); text-decoration: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+        .link-row { display: flex; justify-content: space-between; align-items: center; background: var(--link-bg); padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; margin-top: 10px; transition: 0.2s; }
+        .link-row:hover { border-color: #ccc; }
+        .link-row .time { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+        .view-btn { background: var(--btn-bg); color: var(--btn-text); text-decoration: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; transition: 0.2s;}
+        .view-btn:hover { opacity: 0.8; }
         
-        .marketing-box { margin-top: 25px; padding-top: 20px; border-top: 1px dashed var(--border-color); }
+        .marketing-box { margin-top: 25px; padding-top: 20px; border-top: 1px dashed var(--border-color); animation: fadeIn 0.6s ease; }
         .social-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .social-btn { display: flex; justify-content: center; align-items: center; padding: 12px 10px; border-radius: 10px; text-decoration: none; font-size: 13px; font-weight: 600; border: 1px solid var(--social-border); transition: 0.2s; background: var(--input-bg); color: var(--text-main); }
-        .social-btn:hover { border-color: var(--text-main); }
+        .social-btn:hover { border-color: var(--text-main); background: #f4f4f5; }
         
         #result-ui { display: none; margin-top: 10px; text-align: left; }
     </style>
@@ -59,18 +54,21 @@
         <img src="./logo.png" alt="Logo" class="logo" onerror="this.src='https://via.placeholder.com/100?text=Logo'">
         
         <div id="form-ui">
-            <p>Vui lòng điền thông tin để lấy Album ảnh</p>
+            <p>Vui lòng điền thông tin để lấy Album ảnh của bạn tại tiệm.</p>
             <select id="branch">
                 <option value="phucyen">PHOTO NOIR PHÚC YÊN</option>
                 <option value="vinhyen">PHOTO NOIR VĨNH YÊN</option>
             </select>
             <input type="text" id="name" placeholder="Họ và tên của bạn">
-            <input type="tel" id="phone" placeholder="Số điện thoại">
-            <button class="primary-btn" onclick="checkData()">Tìm Ảnh Của Tôi</button>
+            <input type="tel" id="phone" placeholder="Số điện thoại" onkeypress="if(event.key === 'Enter') checkData()">
+            <button id="btn-submit" class="primary-btn" onclick="checkData()">
+                <div class="spinner" id="spinner"></div>
+                <span id="btn-text">Tìm Ảnh Của Tôi</span>
+            </button>
         </div>
 
         <div id="result-ui">
-            <h3 style="font-size: 16px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main);">Lịch sử chụp của bạn 📸</h3>
+            <h3 style="font-size: 16px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;">Lịch sử chụp của bạn <span>📸</span></h3>
             <div id="album-list"></div>
             
             <div class="marketing-box" id="marketing-box" style="display:none;">
@@ -83,16 +81,12 @@
                 </div>
             </div>
 
-            <button onclick="location.reload()" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; margin-top:20px; width:100%; text-decoration: underline;">← Trở về trang trước</button>
+            <button onclick="location.reload()" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; margin-top:25px; width:100%; text-decoration: underline; font-weight: 500;">← Tìm tài khoản khác</button>
         </div>
     </div>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw",
-            databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "tra-anh-khach",
-        };
+        const firebaseConfig = { apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw", databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "tra-anh-khach" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
@@ -112,68 +106,80 @@
             const name = document.getElementById('name').value.trim();
             const phone = document.getElementById('phone').value.trim();
             
-            // Chỉ cần 1 trong 2 trường là được
-            if (!name && !phone) return alert("Vui lòng nhập Tên hoặc Số điện thoại để tìm ảnh!");
+            if (!name && !phone) {
+                Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng nhập Tên hoặc Số điện thoại để tìm ảnh!', confirmButtonColor: '#111' });
+                return;
+            }
+
+            // Hiệu ứng Loading tương tác
+            const btn = document.getElementById('btn-submit');
+            document.getElementById('spinner').style.display = 'block';
+            document.getElementById('btn-text').innerText = 'Đang tìm kiếm...';
+            btn.disabled = true;
 
             localStorage.setItem('pn_name', name);
             localStorage.setItem('pn_phone', phone);
             localStorage.setItem('pn_branch', branch);
 
-            document.getElementById('form-ui').style.display = 'none';
-            document.getElementById('result-ui').style.display = 'block';
+            // Tạo độ trễ ảo nhẹ (800ms) để giao diện trông mượt mà hơn
+            setTimeout(() => {
+                document.getElementById('form-ui').style.display = 'none';
+                document.getElementById('result-ui').style.display = 'block';
 
-            document.getElementById('ten-coso').innerText = LINKS[branch].name;
-            document.getElementById('link-fb').href = LINKS[branch].fb;
-            document.getElementById('link-ig').href = LINKS[branch].ig;
-            document.getElementById('link-tk').href = LINKS[branch].tk;
-            document.getElementById('link-map').href = LINKS[branch].map;
-            document.getElementById('marketing-box').style.display = 'block';
+                document.getElementById('ten-coso').innerText = LINKS[branch].name;
+                document.getElementById('link-fb').href = LINKS[branch].fb;
+                document.getElementById('link-ig').href = LINKS[branch].ig;
+                document.getElementById('link-tk').href = LINKS[branch].tk;
+                document.getElementById('link-map').href = LINKS[branch].map;
+                document.getElementById('marketing-box').style.display = 'block';
 
-            db.ref('data/' + branch).once('value', (snap) => {
-                const albumList = document.getElementById('album-list');
-                albumList.innerHTML = "";
-                let count = 0;
+                db.ref('data/' + branch).once('value', (snap) => {
+                    const albumList = document.getElementById('album-list');
+                    albumList.innerHTML = "";
+                    let count = 0;
 
-                snap.forEach(child => {
-                    const data = child.val();
-                    let isMatch = false;
+                    snap.forEach(child => {
+                        const data = child.val();
+                        let isMatch = false;
 
-                    if (phone && data.phone === phone) {
-                        isMatch = true;
-                    }
-                    if (name && data.name && data.name.toLowerCase() === name.toLowerCase()) {
-                        isMatch = true;
-                    }
+                        if (phone && data.phone === phone) isMatch = true;
+                        if (name && data.name && data.name.toLowerCase() === name.toLowerCase()) isMatch = true;
 
-                    if (isMatch) {
-                        count++;
-                        let linksHtml = '';
-                        if (data.links) {
-                            Object.keys(data.links).forEach((linkId, index) => {
-                                const l = data.links[linkId];
-                                linksHtml += `<div class="link-row"><span class="time">${l.addedAt}</span><a href="${l.url}" target="_blank" class="view-btn">Xem ảnh ${index + 1}</a></div>`;
-                            });
-                        } else {
-                            linksHtml = `<span style="font-size: 13px; color: #e67e22; font-weight: 500; margin-top: 10px; display: block;">⏳ Đang chờ hệ thống tải ảnh lên...</span>`;
+                        if (isMatch) {
+                            count++;
+                            let linksHtml = '';
+                            if (data.links) {
+                                Object.keys(data.links).forEach((linkId, index) => {
+                                    const l = data.links[linkId];
+                                    linksHtml += `<div class="link-row"><span class="time">${l.addedAt}</span><a href="${l.url}" target="_blank" class="view-btn">Xem ảnh ${index + 1}</a></div>`;
+                                });
+                            } else {
+                                linksHtml = `<div style="background: #fff8eb; border-radius: 8px; padding: 12px; margin-top: 10px; border: 1px solid #fed7aa; display: flex; align-items: center; gap: 8px;"><div style="width: 8px; height: 8px; background: #f59e0b; border-radius: 50%; animation: pulse 1.5s infinite;"></div><span style="font-size: 13px; color: #b45309; font-weight: 500;">Hệ thống đang tải ảnh lên Cloud...</span></div>`;
+                            }
+                            const item = document.createElement('div');
+                            item.className = 'album-item';
+                            item.innerHTML = `<div class="album-info"><b>Chụp lúc: ${data.time}</b><span style="font-family: monospace;">Mã KH: #${child.key.split('_')[1].slice(-4)}</span></div><div style="margin-top: 10px;">${linksHtml}</div>`;
+                            albumList.appendChild(item);
                         }
-                        const item = document.createElement('div');
-                        item.className = 'album-item';
-                        item.innerHTML = `<div class="album-info"><b>Chụp lúc: ${data.time}</b><span>Mã KH: ${child.key.split('_')[1].slice(-4)}</span></div><div style="margin-top: 10px;">${linksHtml}</div>`;
-                        albumList.appendChild(item);
-                    }
-                });
-
-                if (count === 0) {
-                    const id = "S_" + Date.now();
-                    db.ref('data/' + branch + '/' + id).set({
-                        name: name || "Khách chưa nhập tên",
-                        phone: phone || "",
-                        status: "pending", 
-                        time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})
                     });
-                    albumList.innerHTML = "<div style='text-align:center; padding: 20px 10px;'><b style='font-size:14px; color:var(--text-main);'>Đã nhận yêu cầu!</b><p style='font-size:13px; color:var(--text-muted); margin-top:5px;'>Tiệm đang chuẩn bị ảnh, bạn đợi một chút xíu nhé.</p></div>";
-                }
-            });
+
+                    if (count === 0) {
+                        const id = "S_" + Date.now();
+                        db.ref('data/' + branch + '/' + id).set({ name: name || "Khách chưa nhập tên", phone: phone || "", status: "pending", time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) });
+                        albumList.innerHTML = `
+                            <div style='text-align:center; padding: 30px 10px; background: #f4f4f5; border-radius: 16px;'>
+                                <div style="font-size: 35px; margin-bottom: 10px;">⏳</div>
+                                <b style='font-size:15px; color:#111;'>Đã nhận yêu cầu!</b>
+                                <p style='font-size:13px; color:#666; margin-top:8px; line-height: 1.5;'>Tiệm đang chuẩn bị ảnh sắc nét cho bạn. Vui lòng quay lại đây sau ít phút nhé.</p>
+                            </div>`;
+                    }
+                    
+                    // Reset Button
+                    document.getElementById('spinner').style.display = 'none';
+                    document.getElementById('btn-text').innerText = 'Tìm Ảnh Của Tôi';
+                    btn.disabled = false;
+                });
+            }, 800);
         }
     </script>
 </body>
