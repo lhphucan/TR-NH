@@ -2,93 +2,92 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - PHOTO NOIR SELFBOOTH ALBUM</title>
     <link rel="icon" href="./logo.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #f4f4f5; margin: 0; padding: 20px; color: #111; }
-        #login-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .admin-box { max-width: 1000px; margin: auto; display: none; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { padding: 10px 25px; border: 1px solid #d4d4d8; border-radius: 8px; cursor: pointer; background: #fff; color: #111; font-weight: 500; transition: 0.2s; }
+        body { font-family: 'Inter', sans-serif; background: #f4f4f5; margin: 0; padding: 10px; color: #111; }
+        #login-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .admin-box { max-width: 1000px; margin: auto; display: none; padding-bottom: 50px; }
+        
+        /* Responsive Tabs */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+        .tab-btn { padding: 10px 20px; border: 1px solid #d4d4d8; border-radius: 8px; cursor: pointer; background: #fff; color: #111; font-weight: 500; transition: 0.2s; white-space: nowrap; flex-shrink: 0; }
         .tab-btn.active { background: #18181b; color: #fff; border-color: #18181b; }
         
-        .toolbar { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; }
-        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-family: 'Inter', sans-serif; font-size: 14px; background: #fff; color: #111; }
-        .search-box:focus { border-color: #18181b; }
-        .btn-excel { padding: 12px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; transition: 0.2s; text-transform: uppercase; font-size: 13px;}
-        .btn-excel:hover { background: #059669; }
+        /* Toolbar */
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-size: 14px; background: #fff; }
+        .btn-excel { padding: 12px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; text-transform: uppercase; font-size: 13px; width: 100%; md:width: auto; }
 
-        /* Style cho phần Ngày Tháng */
-        .date-header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 10px; border-bottom: 2px solid #18181b; margin: 35px 0 15px 0; font-weight: 700; font-size: 17px; color: #18181b; }
-        .date-header span.count { font-size: 13px; color: #71717a; font-weight: 500; }
-        .date-group { animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .date-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid #18181b; margin: 30px 0 15px 0; font-weight: 700; font-size: 16px; }
+        
+        /* Client Card Responsive */
+        .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 15px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 15px; transition: 0.2s; }
+        @media (min-width: 768px) {
+            .client-card { flex-direction: row; padding: 20px; gap: 20px; align-items: flex-start; }
+            body { padding: 20px; }
+            .btn-excel { width: auto; }
+        }
 
-        .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 20px; margin-bottom: 12px; display: flex; gap: 20px; align-items: flex-start; transition: 0.2s; }
-        .client-card:hover { border-color: #a1a1aa; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
-        .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid #f4f4f5; padding-right: 15px; position: relative; }
+        .client-info { width: 100%; position: relative; border-bottom: 1px solid #f4f4f5; padding-bottom: 15px; }
+        @media (min-width: 768px) {
+            .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid #f4f4f5; border-bottom: none; padding-bottom: 0; padding-right: 15px; }
+        }
+
         .client-info h3 { margin: 0 0 5px 0; font-size: 16px; color: #111; }
-        .client-info p { margin: 0; color: #71717a; font-size: 13px; margin-bottom: 5px; }
+        .client-info p { margin: 0 0 5px 0; color: #71717a; font-size: 13px; }
         .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
         .badge.pending { background: #fef3c7; color: #b45309; }
         .badge.done { background: #dcfce7; color: #166534; }
-        
-        /* Hiển thị Mã KH nổi bật bên Admin */
-        .makh-display { font-size: 11px; color: #71717a; position: absolute; top: 0; right: 15px; font-family: monospace; font-weight: 600;}
+        .makh-display { font-size: 11px; color: #71717a; position: absolute; top: 0; right: 0; font-family: monospace; font-weight: 600;}
 
-        .link-manager { flex-grow: 1; }
-        .link-row { display: flex; gap: 10px; align-items: center; background: #fafafa; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f4f4f5; }
-        .link-row input { flex-grow: 1; padding: 8px; border: 1px solid #d4d4d8; border-radius: 6px; outline: none; font-size: 13px; font-family: 'Inter', sans-serif; background: #fff; color: #111; }
-        .link-row input:focus { border-color: #18181b; }
-        .link-row .time-label { font-size: 11px; color: #a1a1aa; width: 100px; }
-        
-        button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; text-transform: uppercase; transition: 0.2s;}
-        .btn-add { background: #18181b; color: #fff; }
-        .btn-add:hover { background: #3f3f46; }
+        .link-manager { flex-grow: 1; width: 100%; }
+        .link-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fafafa; padding: 8px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f4f4f5; }
+        .link-row input { flex-grow: 1; min-width: 150px; padding: 8px; border: 1px solid #d4d4d8; border-radius: 6px; font-size: 13px; }
+        .link-row .time-label { font-size: 11px; color: #a1a1aa; width: 100%; }
+        @media (min-width: 480px) { .link-row .time-label { width: 100px; } }
+
+        button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+        .btn-add { background: #18181b; color: #fff; width: 80px; }
         .btn-save { background: #e4e4e7; color: #18181b; }
-        .btn-save:hover { background: #d4d4d8; }
         .btn-del { background: #fee2e2; color: #ef4444; }
-        .btn-del:hover { background: #fca5a5; }
+        .btn-del-client { background: #fff; border: 1px solid #fee2e2; color: #ef4444; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; width: 100%; margin-top: 15px; }
 
-        /* Nút xóa toàn bộ khách hàng */
-        .btn-del-client { background: #fff; border: 1px solid #fee2e2; color: #ef4444; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; transition: 0.2s; width: 100%; margin-top: 15px; }
-        .btn-del-client:hover { background: #fee2e2; }
-
-        .add-box { display: flex; gap: 10px; margin-top: 15px; border-top: 1px dashed #e4e4e7; padding-top: 15px; }
-        .add-box input { flex-grow: 1; padding: 10px; border: 1px solid #d4d4d8; border-radius: 8px; outline: none; font-size: 13px; font-family: 'Inter', sans-serif; background: #fff; color: #111; }
-        .add-box input:focus { border-color: #18181b; }
+        .add-box { display: flex; gap: 8px; margin-top: 10px; border-top: 1px dashed #e4e4e7; padding-top: 15px; }
+        .add-box input { flex-grow: 1; padding: 10px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; outline: none; }
     </style>
 </head>
 <body>
     <div id="login-screen">
-        <div style="text-align:center; width: 300px;">
+        <div style="text-align:center; width: 100%; max-width: 320px;">
             <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 1px solid #eee;" onerror="this.style.display='none'">
-            <h3 style="margin-bottom: 20px;">PN ADMIN LOGIN</h3>
-            <input type="password" id="pass" placeholder="Nhập mật khẩu..." style="width:100%; padding:14px; border-radius:10px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; background: #fff; color: #111;">
-            <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:10px; cursor:pointer; font-weight:700; text-transform: uppercase;">Đăng nhập</button>
+            <h3 style="margin-bottom: 25px; letter-spacing: 1px;">PHOTO NOIR ADMIN LOGIN</h3>
+            <input type="password" id="pass" placeholder="Mật khẩu hệ thống..." style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 16px;">
+            <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase;">Đăng nhập</button>
         </div>
     </div>
 
     <div class="admin-box" id="admin-box">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h1 style="margin: 0; color: #111;">QUẢN LÝ TRẢ ẢNH</h1>
-            <button onclick="clearData()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px;">🗑 Dọn dữ liệu</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+            <h2 style="margin: 0; font-size: 20px;">QUẢN LÝ TRẢ ẢNH</h2>
+            <button onclick="clearData()" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:600; font-size: 12px;">DỌN DỮ LIỆU</button>
         </div>
         
         <div class="tabs">
-            <button class="tab-btn active" id="btn-phucyen" onclick="switchB('phucyen')">PN Phúc Yên</button>
-            <button class="tab-btn" id="btn-vinhyen" onclick="switchB('vinhyen')">PN Vĩnh Yên</button>
+            <button class="tab-btn active" id="btn-phucyen" onclick="switchB('phucyen')">Chi nhánh Phúc Yên</button>
+            <button class="tab-btn" id="btn-vinhyen" onclick="switchB('vinhyen')">Chi nhánh Vĩnh Yên</button>
         </div>
 
         <div class="toolbar">
-            <input type="text" id="search-box" class="search-box" placeholder="🔍 Tìm nhanh Tên hoặc Số điện thoại..." onkeyup="searchCustomer()">
-            <button class="btn-excel" onclick="exportExcel()">📥 Xuất Excel</button>
+            <input type="text" id="search-box" class="search-box" placeholder="🔍 Tìm tên, SĐT hoặc mã KH..." onkeyup="searchCustomer()">
+            <button class="btn-excel" onclick="exportExcel()">Xuất báo cáo</button>
         </div>
 
-        <div id="list-content">Đang tải dữ liệu...</div>
+        <div id="list-content">Đang tải danh sách...</div>
     </div>
 
     <audio id="ting-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
@@ -101,19 +100,20 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const MASTER_PASS = "123456"; // Mật khẩu dùng chung cho login và xóa
         let br = 'phucyen';
         let currentData = {};
         let previousCount = 0;
         let isFirstLoad = true;
 
         function login() {
-            if(document.getElementById('pass').value === "123456") {
+            if(document.getElementById('pass').value === MASTER_PASS) {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('admin-box').style.display = 'block';
                 document.getElementById('ting-sound').volume = 0;
                 document.getElementById('ting-sound').play().catch(()=>{});
                 load();
-            } else alert("Sai mật khẩu!");
+            } else alert("Mật khẩu không chính xác!");
         }
 
         function switchB(name) {
@@ -136,7 +136,7 @@
                 currentData = snap.val();
                 
                 if(!currentData) { 
-                    list.innerHTML = "<p style='text-align:center; color:#a1a1aa; padding: 50px 0;'>Chưa có khách tại cơ sở này.</p>"; 
+                    list.innerHTML = "<p style='text-align:center; color:#a1a1aa; padding: 50px 0;'>Hôm nay chưa có dữ liệu khách hàng.</p>"; 
                     previousCount = 0;
                     return; 
                 }
@@ -170,20 +170,19 @@
                     groupDiv.className = 'date-group';
                     const dateLabel = (date === todayStr) ? "Hôm nay, " + date : date;
                     
-                    let html = `<div class="date-header"><span>📅 ${dateLabel}</span><span class="count">${groupedData[date].clients.length} khách</span></div>`;
+                    let html = `<div class="date-header"><span>📅 ${dateLabel}</span><span style="font-size:12px; color:#71717a;">${groupedData[date].clients.length} khách</span></div>`;
                     const sortedClients = groupedData[date].clients.sort((a, b) => b.ts - a.ts);
 
                     sortedClients.forEach(client => {
                         const isDone = client.status === 'completed';
                         const maKh = client.id.split('_')[1].slice(-4); 
-                        // Thoát các ký tự đặc biệt trong tên để tránh lỗi Javascript
                         const safeName = client.name ? client.name.replace(/'/g, "\\'") : "Khách hàng"; 
 
                         let linksHtml = '';
                         if (client.links) {
                             Object.keys(client.links).forEach(linkId => {
                                 const l = client.links[linkId];
-                                linksHtml += `<div class="link-row"><span class="time-label">${l.addedAt}</span><input type="text" id="edit_${client.id}_${linkId}" value="${l.url}"><button class="btn btn-save" onclick="updateLink('${client.id}', '${linkId}')">Sửa</button><button class="btn btn-del" onclick="deleteLink('${client.id}', '${linkId}')">✕</button></div>`;
+                                linksHtml += `<div class="link-row"><span class="time-label">${l.addedAt}</span><input type="text" id="edit_${client.id}_${linkId}" value="${l.url}"><div style="display:flex; gap:5px;"><button class="btn btn-save" onclick="updateLink('${client.id}', '${linkId}')">Sửa</button><button class="btn btn-del" onclick="deleteLink('${client.id}', '${linkId}')">Xóa</button></div></div>`;
                             });
                         }
 
@@ -192,19 +191,16 @@
                                 <div class="client-info">
                                     <span class="makh-display">#${maKh}</span>
                                     <h3>${client.name}</h3>
-                                    <p>📞 ${client.phone}</p>
-                                    <p>🕒 ${client.time}</p>
-                                    <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã có' : 'Chờ ảnh'}</span>
-                                    
-                                    <button class="btn-del-client" onclick="deleteCustomer('${client.id}', '${safeName}')">
-                                        ✕ Xóa Khách Này
-                                    </button>
+                                    <p>SĐT: ${client.phone}</p>
+                                    <p>Giờ: ${client.time}</p>
+                                    <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'Đã trả ảnh' : 'Đang chờ'}</span>
+                                    <button class="btn-del-client" onclick="deleteCustomer('${client.id}', '${safeName}')">Xóa Khách Này</button>
                                 </div>
                                 <div class="link-manager">
                                     ${linksHtml}
                                     <div class="add-box">
-                                        <input type="text" id="new_${client.id}" placeholder="Dán link ảnh mới vào đây...">
-                                        <button class="btn btn-add" onclick="addLink('${client.id}')">+ Thêm</button>
+                                        <input type="text" id="new_${client.id}" placeholder="Dán link ảnh tại đây...">
+                                        <button class="btn btn-add" onclick="addLink('${client.id}')">Lưu</button>
                                     </div>
                                 </div>
                             </div>
@@ -220,27 +216,23 @@
 
         function searchCustomer() {
             const query = document.getElementById('search-box').value.toLowerCase();
-            const groups = document.querySelectorAll('.date-group');
-            
-            groups.forEach(group => {
+            document.querySelectorAll('.date-group').forEach(group => {
                 let hasVisible = false;
-                const cards = group.querySelectorAll('.client-card');
-                cards.forEach(card => {
+                group.querySelectorAll('.client-card').forEach(card => {
                     const text = card.getAttribute('data-search');
                     if(text.includes(query)) {
                         card.style.display = 'flex';
                         hasVisible = true;
-                    } else {
-                        card.style.display = 'none';
-                    }
+                    } else card.style.display = 'none';
                 });
                 group.style.display = hasVisible ? 'block' : 'none';
             });
         }
 
         function exportExcel() {
-            if(!currentData) return alert("Không có dữ liệu!");
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; csvContent += "Ngày,Giờ,Mã KH,Họ Tên,SĐT,Cơ Sở\n";
+            if(!currentData) return alert("Không có dữ liệu để xuất!");
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+            csvContent += "Ngày,Giờ,Mã KH,Họ Tên,SĐT,Cơ Sở\n";
             Object.keys(currentData).forEach(id => {
                 const c = currentData[id];
                 const ts = parseInt(id.split('_')[1]) || Date.now();
@@ -248,17 +240,16 @@
                 const mk = id.split('_')[1].slice(-4);
                 csvContent += `"${d}","${c.time}","#${mk}","${c.name}","${c.phone}","${br === 'phucyen' ? 'Phúc Yên' : 'Vĩnh Yên'}"\n`;
             });
-            const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `PHOTO_NOIR_KhachHang_${new Date().toLocaleDateString('vi-VN')}.csv`);
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `PHOTO_NOIR_Report_${new Date().toLocaleDateString('vi-VN')}.csv`);
             document.body.appendChild(link);
             link.click();
         }
 
         function addLink(clientId) {
             const url = document.getElementById('new_' + clientId).value.trim();
-            if(!url) return alert("Vui lòng dán link!");
+            if(!url) return alert("Chưa có link ảnh!");
             const linkId = "L_" + Date.now();
             const now = new Date();
             const timeStr = now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + now.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
@@ -270,28 +261,35 @@
             const newUrl = document.getElementById(`edit_${clientId}_${linkId}`).value.trim();
             if(!newUrl) return alert("Link không được để trống!");
             db.ref('data/' + br + '/' + clientId + '/links/' + linkId).update({ url: newUrl });
-            alert("Đã cập nhật!");
+            alert("Đã cập nhật link!");
         }
 
         function deleteLink(clientId, linkId) {
-            if(confirm("Xóa link này?")) db.ref('data/' + br + '/' + clientId + '/links/' + linkId).remove();
+            if(confirm("Bạn muốn xóa link ảnh này?")) db.ref('data/' + br + '/' + clientId + '/links/' + linkId).remove();
         }
 
-        // --- HÀM XÓA KHÁCH HÀNG MỚI ĐƯỢC THÊM ---
+        // Xóa từng khách hàng yêu cầu mật khẩu
         function deleteCustomer(clientId, clientName) {
-            if(confirm("CẢNH BÁO: Bạn có chắc chắn muốn xóa khách hàng '" + clientName + "' không?\n\nToàn bộ thông tin và link ảnh của khách này sẽ biến mất. Hành động này không thể hoàn tác!")) {
+            const pass = prompt("Nhập mật khẩu để xác nhận xóa khách '" + clientName + "':");
+            if (pass === MASTER_PASS) {
                 db.ref('data/' + br + '/' + clientId).remove()
-                .then(() => {
-                    // Xóa thành công, Firebase sẽ tự động cập nhật lại giao diện, không cần tải lại trang
-                })
-                .catch((error) => {
-                    alert("Có lỗi xảy ra: " + error.message);
-                });
+                .catch((error) => alert("Lỗi: " + error.message));
+            } else if (pass !== null) {
+                alert("Mật khẩu sai!");
             }
         }
 
         function clearData() {
-            if(confirm("Hành động này sẽ xóa TOÀN BỘ dữ liệu của cơ sở đang chọn. Bạn có chắc?")) db.ref('data/' + br).remove();
+            const pass = prompt("DỌN DỮ LIỆU TOÀN BỘ CHI NHÁNH\nNhập mật khẩu xác nhận:");
+            if (pass === MASTER_PASS) {
+                if(confirm("Tất cả dữ liệu tại chi nhánh này sẽ bị xóa vĩnh viễn. Bạn chắc chắn chứ?")) {
+                    db.ref('data/' + br).remove()
+                    .then(() => alert("Đã dọn sạch dữ liệu!"))
+                    .catch((err) => alert("Lỗi: " + err.message));
+                }
+            } else if (pass !== null) {
+                alert("Mật khẩu sai!");
+            }
         }
     </script>
 </body>
