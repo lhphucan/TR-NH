@@ -24,30 +24,12 @@
             --social-border: #eaeaea;
         }
 
-        [data-theme="dark"] {
-            --bg-main: #0a0a0a;
-            --card-bg: #141414;
-            --text-main: #ffffff;
-            --text-muted: #a3a3a3;
-            --border-color: #262626;
-            --input-bg: #1c1c1c;
-            --input-border: #333333;
-            --btn-bg: #ffffff;
-            --btn-text: #000000;
-            --item-bg: #1c1c1c;
-            --link-bg: #141414;
-            --social-border: #333333;
-        }
-
-        body { font-family: 'Inter', sans-serif; background: var(--bg-main); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; transition: background-color 0.3s ease, color 0.3s ease; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-main); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
         
-        .card { background: var(--card-bg); padding: 35px 30px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); width: 100%; max-width: 360px; text-align: center; border: 1px solid var(--border-color); position: relative; transition: all 0.3s ease; }
+        .card { background: var(--card-bg); padding: 35px 30px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); width: 100%; max-width: 360px; text-align: center; border: 1px solid var(--border-color); position: relative; }
         
-        .theme-toggle { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-main); opacity: 0.7; transition: 0.2s; }
-        .theme-toggle:hover { opacity: 1; transform: scale(1.1); }
-
         .logo { width: 90px; height: 90px; object-fit: cover; margin-bottom: 15px; border-radius: 50%; border: 1px solid var(--border-color); background: #fff; padding: 2px; }
-        p { color: var(--text-muted); font-size: 13px; margin-bottom: 25px; transition: color 0.3s ease; }
+        p { color: var(--text-muted); font-size: 13px; margin-bottom: 25px; }
         
         select, input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid var(--input-border); border-radius: 12px; box-sizing: border-box; font-size: 14px; outline: none; font-family: 'Inter', sans-serif; background: var(--input-bg); color: var(--text-main); transition: 0.2s; }
         select:focus, input:focus { border-color: var(--text-main); }
@@ -73,13 +55,7 @@
     </style>
 </head>
 <body>
-    <script>
-        const savedTheme = localStorage.getItem('pn_theme') || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-    </script>
-
     <div class="card">
-        <button class="theme-toggle" onclick="toggleTheme()" id="theme-icon">🌗</button>
         <img src="./logo.png" alt="Logo" class="logo" onerror="this.src='https://via.placeholder.com/100?text=Logo'">
         
         <div id="form-ui">
@@ -125,14 +101,6 @@
             'vinhyen': { name: 'Vĩnh Yên', fb: 'https://www.facebook.com/profile.php?id=61575627444713#', ig: 'https://www.instagram.com/photonoir.vinhyen/', tk: 'https://www.tiktok.com/@photonoir.vy', map: 'https://share.google/ALz4CDaHAlF9fAlEH' }
         };
 
-        function toggleTheme() {
-            const root = document.documentElement;
-            const current = root.getAttribute('data-theme');
-            const newTheme = current === 'dark' ? 'light' : 'dark';
-            root.setAttribute('data-theme', newTheme);
-            localStorage.setItem('pn_theme', newTheme);
-        }
-
         window.onload = () => {
             if(localStorage.getItem('pn_name')) document.getElementById('name').value = localStorage.getItem('pn_name');
             if(localStorage.getItem('pn_phone')) document.getElementById('phone').value = localStorage.getItem('pn_phone');
@@ -144,7 +112,7 @@
             const name = document.getElementById('name').value.trim();
             const phone = document.getElementById('phone').value.trim();
             
-            // CHỈNH SỬA TẠI ĐÂY: Chỉ cần có 1 trong 2 trường là được phép tìm kiếm
+            // Chỉ cần 1 trong 2 trường là được
             if (!name && !phone) return alert("Vui lòng nhập Tên hoặc Số điện thoại để tìm ảnh!");
 
             localStorage.setItem('pn_name', name);
@@ -170,7 +138,6 @@
                     const data = child.val();
                     let isMatch = false;
 
-                    // CHỈNH SỬA TẠI ĐÂY: Kiểm tra nếu khớp SĐT hoặc khớp Tên (bỏ qua khoảng trắng và viết hoa/thường)
                     if (phone && data.phone === phone) {
                         isMatch = true;
                     }
@@ -196,12 +163,11 @@
                     }
                 });
 
-                // Nếu không tìm thấy, hệ thống sẽ gửi thông tin lên Admin để báo có khách mới đang chờ ảnh
                 if (count === 0) {
                     const id = "S_" + Date.now();
                     db.ref('data/' + branch + '/' + id).set({
-                        name: name || "Khách chưa nhập tên", // Tránh lỗi nếu khách chỉ nhập SĐT
-                        phone: phone || "",                   // Tránh lỗi nếu khách chỉ nhập Tên
+                        name: name || "Khách chưa nhập tên",
+                        phone: phone || "",
                         status: "pending", 
                         time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})
                     });
