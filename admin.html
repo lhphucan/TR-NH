@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - PHOTO NOIR SELFBOOTH ALBUM</title>
+    <title>Admin - PHOTONOIR</title>
     <link rel="icon" href="./logo.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -70,7 +70,7 @@
     <div id="login-screen">
         <div style="text-align:center; width: 100%; max-width: 320px;">
             <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 1px solid #eee;" onerror="this.style.display='none'">
-            <h3 style="margin-bottom: 25px; letter-spacing: 1px;">PHOTO NOIR ADMIN</h3>
+            <h3 style="margin-bottom: 25px; letter-spacing: 2px;">PHOTONOIR</h3>
             <input type="password" id="pass" placeholder="Nhập mật khẩu..." style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 16px; text-align: center;">
             <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase;">Đăng nhập</button>
         </div>
@@ -130,7 +130,6 @@
         let previousCount = 0;
         let isFirstLoad = true;
 
-        // HÀM LẤY ĐỊNH DẠNG NGÀY HÔM NAY CHO Ô INPUT
         function getTodayForInput() {
             const today = new Date();
             const yyyy = today.getFullYear();
@@ -139,7 +138,6 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
-        // CHỨC NĂNG XÓA BỘ LỌC ĐỂ XEM TOÀN BỘ LỊCH SỬ
         function clearDateFilter() {
             document.getElementById('date-filter').value = "";
             filterData();
@@ -153,7 +151,6 @@
                 document.getElementById('role-badge').innerText = (userRole === 'admin') ? 'ADMIN' : 'NHÂN VIÊN';
                 document.getElementById('role-badge').style.background = (userRole === 'admin') ? '#dc2626' : '#18181b';
                 
-                // Gán mặc định ô chọn ngày là Hôm Nay
                 document.getElementById('date-filter').value = getTodayForInput();
                 
                 document.getElementById('login-screen').style.display = 'none';
@@ -289,12 +286,10 @@
                     list.appendChild(groupDiv);
                 });
                 
-                // Bắt buộc gọi bộ lọc ngay sau khi load xong để áp dụng luật "Chỉ hiện Hôm nay"
                 filterData(); 
             });
         }
 
-        // HÀM LỌC: BẮT BUỘC ẨN CÁC NGÀY KHÔNG ĐƯỢC CHỌN
         function filterData() {
             const query = document.getElementById('search-box').value.toLowerCase();
             const dateInput = document.getElementById('date-filter').value;
@@ -303,14 +298,13 @@
             
             if (dateInput) {
                 const parts = dateInput.split('-');
-                targetDate = `${parts[2]}/${parts[1]}/${parts[0]}`; // Đổi YYYY-MM-DD sang DD/MM/YYYY
+                targetDate = `${parts[2]}/${parts[1]}/${parts[0]}`; 
             }
 
             document.querySelectorAll('.date-group').forEach(group => {
                 let hasVisibleCard = false;
                 const headerDate = group.querySelector('.date-header span:first-child').innerText;
                 
-                // Nếu người dùng có chọn ngày trên lịch, mà nhóm này KHÔNG khớp ngày -> ẨN luôn
                 if (targetDate && !headerDate.includes(targetDate)) {
                     group.style.display = 'none';
                     return; 
@@ -332,7 +326,6 @@
                 }
             });
 
-            // Xử lý thông báo "Không có khách nào" khi chọn trúng ngày vắng khách
             if (visibleGroupCount === 0 && document.getElementById('list-content').innerHTML !== "") {
                 document.getElementById('empty-msg').style.display = 'block';
             } else {
@@ -354,7 +347,7 @@
             });
             const link = document.createElement("a");
             link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", `PHOTO_NOIR_Report_${new Date().toLocaleDateString('vi-VN')}.csv`);
+            link.setAttribute("download", `PHOTONOIR_Report_${new Date().toLocaleDateString('vi-VN')}.csv`);
             document.body.appendChild(link);
             link.click();
         }
