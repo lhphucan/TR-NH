@@ -8,7 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
@@ -26,11 +25,10 @@
         button.primary-btn:active:not(:disabled) { transform: translateY(0); }
         button.primary-btn:disabled { opacity: 0.7; cursor: not-allowed; }
         
-        /* Loading Spinner */
         .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s ease-in-out infinite; display: none; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .album-item { background: var(--item-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 18px; margin-bottom: 15px; text-align: left; animation: fadeIn 0.5s ease; }
+        .album-item { background: var(--item-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 18px; margin-bottom: 15px; text-align: left; animation: fadeIn 0.5s ease; position: relative;}
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .album-info b { font-size: 14px; display: block; color: var(--text-main); margin-bottom: 4px; }
         .album-info span { font-size: 12px; color: var(--text-muted); }
@@ -43,8 +41,10 @@
         
         .marketing-box { margin-top: 25px; padding-top: 20px; border-top: 1px dashed var(--border-color); animation: fadeIn 0.6s ease; }
         .social-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .social-btn { display: flex; justify-content: center; align-items: center; padding: 12px 10px; border-radius: 10px; text-decoration: none; font-size: 13px; font-weight: 600; border: 1px solid var(--social-border); transition: 0.2s; background: var(--input-bg); color: var(--text-main); }
+        .social-btn { display: flex; justify-content: center; align-items: center; padding: 12px 10px; border-radius: 10px; text-decoration: none; font-size: 13px; font-weight: 600; border: 1px solid var(--social-border); transition: 0.2s; background: var(--input-bg); color: var(--text-main); gap: 5px;}
         .social-btn:hover { border-color: var(--text-main); background: #f4f4f5; }
+        
+        .icon-svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
         
         #result-ui { display: none; margin-top: 10px; text-align: left; }
     </style>
@@ -68,24 +68,47 @@
         </div>
 
         <div id="result-ui">
-            <h3 style="font-size: 16px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;">Lịch sử chụp của bạn <span>📸</span></h3>
+            <h3 style="font-size: 16px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;">
+                Lịch sử chụp của bạn 
+                <svg class="icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            </h3>
             <div id="album-list"></div>
             
+            <div style="background: #fff; padding: 15px; border-radius: 12px; margin-top: 25px; border: 1px dashed #d4d4d8;">
+                <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 600; color: #111; display:flex; align-items:center; gap:5px;">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                    Gửi ảnh gốc cho tiệm in:
+                </p>
+                <input type="file" id="customerFile" multiple accept="image/*" style="margin-bottom: 10px; font-size: 12px; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box; background: #fafafa; border: 1px solid #e5e5e5; font-family: 'Inter';">
+                <button id="btn-send-shop" onclick="sendToShop()" style="width: 100%; padding: 12px; background: #111; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 13px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    Tải Lên & Báo Tiệm
+                </button>
+            </div>
+
             <div class="marketing-box" id="marketing-box" style="display:none;">
                 <p style="text-align:center; font-size:13px; margin:0; font-weight: 500; color: var(--text-main);">Ghé thăm cơ sở <span id="ten-coso" style="font-weight:700;"></span> tại:</p>
                 <div class="social-grid">
                     <a href="#" id="link-fb" target="_blank" class="social-btn fb">Fanpage</a>
                     <a href="#" id="link-ig" target="_blank" class="social-btn ig">Instagram</a>
                     <a href="#" id="link-tk" target="_blank" class="social-btn tk">TikTok</a>
-                    <a href="#" id="link-map" target="_blank" class="social-btn gg">Đánh giá 5⭐</a>
+                    <a href="#" id="link-map" target="_blank" class="social-btn gg">
+                        <svg class="icon-svg" style="width:14px;height:14px;fill:currentColor;" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        Đánh giá
+                    </a>
                 </div>
             </div>
 
-            <button onclick="location.reload()" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; margin-top:25px; width:100%; text-decoration: underline; font-weight: 500;">← Tìm tài khoản khác</button>
+            <button onclick="location.reload()" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; margin-top:25px; width:100%; font-weight: 500; display:flex; align-items:center; justify-content:center; gap:5px;">
+                <svg class="icon-svg" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                Tìm tài khoản khác
+            </button>
         </div>
     </div>
 
     <script>
+        const IMGBB_API_KEY = 'd47a0ff216df7f718f898c65afa1cc17'; // ĐÃ GẮN API KEY CỦA BẠN
+
         const firebaseConfig = { apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw", databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "tra-anh-khach" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -111,7 +134,6 @@
                 return;
             }
 
-            // Hiệu ứng Loading tương tác
             const btn = document.getElementById('btn-submit');
             document.getElementById('spinner').style.display = 'block';
             document.getElementById('btn-text').innerText = 'Đang tìm kiếm...';
@@ -121,7 +143,6 @@
             localStorage.setItem('pn_phone', phone);
             localStorage.setItem('pn_branch', branch);
 
-            // Tạo độ trễ ảo nhẹ (800ms) để giao diện trông mượt mà hơn
             setTimeout(() => {
                 document.getElementById('form-ui').style.display = 'none';
                 document.getElementById('result-ui').style.display = 'block';
@@ -151,10 +172,10 @@
                             if (data.links) {
                                 Object.keys(data.links).forEach((linkId, index) => {
                                     const l = data.links[linkId];
-                                    linksHtml += `<div class="link-row"><span class="time">${l.addedAt}</span><a href="${l.url}" target="_blank" class="view-btn">Xem ảnh ${index + 1}</a></div>`;
+                                    linksHtml += `<div class="link-row"><span class="time">${l.addedAt}</span><a href="${l.url}" target="_blank" class="view-btn" onclick="askRating('${branch}')">Tải ảnh gốc ${index + 1}</a></div>`;
                                 });
                             } else {
-                                linksHtml = `<div style="background: #fff8eb; border-radius: 8px; padding: 12px; margin-top: 10px; border: 1px solid #fed7aa; display: flex; align-items: center; gap: 8px;"><div style="width: 8px; height: 8px; background: #f59e0b; border-radius: 50%; animation: pulse 1.5s infinite;"></div><span style="font-size: 13px; color: #b45309; font-weight: 500;">Hệ thống đang tải ảnh lên Cloud...</span></div>`;
+                                linksHtml = `<div style="background: #fafafa; border-radius: 8px; padding: 12px; margin-top: 10px; border: 1px dashed #d4d4d8; display: flex; align-items: center; gap: 8px;"><div style="width: 8px; height: 8px; background: #111; border-radius: 50%; animation: pulse 1.5s infinite;"></div><span style="font-size: 12px; color: #666; font-weight: 500;">Tiệm đang tải ảnh HD, bạn chờ chút nhé...</span></div>`;
                             }
                             const item = document.createElement('div');
                             item.className = 'album-item';
@@ -167,19 +188,65 @@
                         const id = "S_" + Date.now();
                         db.ref('data/' + branch + '/' + id).set({ name: name || "Khách chưa nhập tên", phone: phone || "", status: "pending", time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) });
                         albumList.innerHTML = `
-                            <div style='text-align:center; padding: 30px 10px; background: #f4f4f5; border-radius: 16px;'>
-                                <div style="font-size: 35px; margin-bottom: 10px;">⏳</div>
-                                <b style='font-size:15px; color:#111;'>Đã nhận yêu cầu!</b>
-                                <p style='font-size:13px; color:#666; margin-top:8px; line-height: 1.5;'>Tiệm đang chuẩn bị ảnh sắc nét cho bạn. Vui lòng quay lại đây sau ít phút nhé.</p>
+                            <div style='text-align:center; padding: 30px 10px; background: #f4f4f5; border-radius: 16px; border: 1px solid #e5e5e5;'>
+                                <svg class="icon-svg" style="width:40px;height:40px; stroke:#a1a1aa; margin-bottom:10px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                <br><b style='font-size:15px; color:#111;'>Đã nhận yêu cầu!</b>
+                                <p style='font-size:13px; color:#666; margin-top:8px; line-height: 1.5;'>Tiệm đang chuẩn bị ảnh cho bạn. Vui lòng quay lại đây sau ít phút nhé.</p>
                             </div>`;
                     }
                     
-                    // Reset Button
                     document.getElementById('spinner').style.display = 'none';
                     document.getElementById('btn-text').innerText = 'Tìm Ảnh Của Tôi';
                     btn.disabled = false;
                 });
             }, 800);
+        }
+
+        // TÍNH NĂNG TỰ ĐỘNG GỬI ẢNH GỐC LÊN IMGBB
+        async function sendToShop() {
+            const fileInput = document.getElementById('customerFile');
+            const files = fileInput.files;
+            const btn = document.getElementById('btn-send-shop');
+            const branch = document.getElementById('branch').value;
+            const phone = document.getElementById('phone').value || "Khach_Khong_SDT";
+
+            if (files.length === 0) return Swal.fire({title: 'Chưa chọn ảnh', text: 'Vui lòng chọn ảnh từ thiết bị.', icon: 'warning', confirmButtonColor: '#111'});
+
+            btn.innerHTML = `<div class="spinner" style="display:block; border-top-color:#111; border-color: rgba(0,0,0,0.1);"></div> ĐANG XỬ LÝ...`;
+            btn.style.background = "#fff"; btn.style.color = "#111"; btn.style.border = "1px solid #111";
+            btn.disabled = true;
+
+            try {
+                let uploadedUrls = [];
+                for (let i = 0; i < files.length; i++) {
+                    const formData = new FormData(); formData.append("image", files[i]);
+                    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
+                    const data = await response.json();
+                    if (data.success) uploadedUrls.push(data.data.url);
+                }
+                
+                await db.ref('in_an/' + branch + '/P_' + Date.now()).set({ phone: phone, time: new Date().toLocaleString('vi-VN'), links: uploadedUrls, status: 'new' });
+                
+                Swal.fire({title: 'Hoàn tất', text: 'Ảnh HD đã được gửi bảo mật tới hệ thống PHOTONOIR.', icon: 'success', confirmButtonColor: '#111'});
+                fileInput.value = "";
+            } catch (error) {
+                Swal.fire({title: 'Lỗi mạng', text: 'Không thể tải ảnh lên lúc này.', icon: 'error', confirmButtonColor: '#111'});
+            } finally {
+                btn.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN & BÁO TIỆM`;
+                btn.style.background = "#111"; btn.style.color = "#fff"; btn.style.border = "none";
+                btn.disabled = false;
+            }
+        }
+
+        // TÍNH NĂNG POP-UP MARKETING GOOGLE MAPS
+        function askRating(br) {
+            if (localStorage.getItem('pn_rated')) return;
+            setTimeout(() => {
+                Swal.fire({
+                    title: 'Đánh giá dịch vụ', text: 'Tặng tiệm 5 sao trên Google Maps để ủng hộ PHOTONOIR bạn nhé!', icon: 'info',
+                    showCancelButton: true, confirmButtonText: 'Đánh giá ngay', cancelButtonText: '<span style="color:#111">Để sau</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff'
+                }).then(r => { if(r.isConfirmed) { localStorage.setItem('pn_rated', '1'); window.open(LINKS[br].map, '_blank'); }});
+            }, 2000);
         }
     </script>
 </body>
