@@ -2,13 +2,12 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Admin - PHOTONOIR</title>
     <link rel="icon" href="./logo.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
@@ -34,22 +33,19 @@
 
         .date-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid #18181b; margin: 30px 0 15px 0; font-weight: 700; font-size: 16px; }
         
-        .client-card { background: #fff; border-radius: 12px; border: 1px solid #e4e4e7; padding: 15px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 15px; transition: 0.2s; animation: fadeIn 0.4s ease; }
+        .client-card { background: #fff; border-radius: 16px; border: 1px solid #e4e4e7; padding: 20px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 15px; transition: 0.2s; animation: fadeIn 0.4s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @media (min-width: 768px) { .client-card { flex-direction: row; padding: 20px; gap: 20px; align-items: flex-start; } body { padding: 20px; } }
+        @media (min-width: 768px) { .client-card { flex-direction: row; gap: 20px; align-items: flex-start; } body { padding: 20px; } }
         .client-card:hover { border-color: #a1a1aa; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
 
         .client-info { width: 100%; position: relative; border-bottom: 1px solid #f4f4f5; padding-bottom: 15px; }
         @media (min-width: 768px) { .client-info { width: 220px; flex-shrink: 0; border-right: 1px solid #f4f4f5; border-bottom: none; padding-bottom: 0; padding-right: 15px; } }
 
-        .client-info h3 { margin: 0 0 5px 0; font-size: 16px; color: #111; }
-        .client-info p { margin: 0 0 5px 0; color: #71717a; font-size: 13px; }
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
         .badge.pending { background: #f4f4f5; color: #52525b; border: 1px solid #e4e4e7;}
         .badge.done { background: #111; color: #fff; }
-        .makh-display { font-size: 11px; color: #71717a; position: absolute; top: 0; right: 0; font-family: monospace; font-weight: 600;}
 
-        .link-manager { flex-grow: 1; width: 100%; }
+        .link-manager { flex-grow: 1; width: 100%; min-width: 0;}
         .link-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fafafa; padding: 8px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f4f4f5; transition: 0.2s; }
         .link-row:focus-within { border-color: #d4d4d8; background: #fff; }
         .link-row input { flex-grow: 1; min-width: 150px; padding: 8px; border: 1px solid #d4d4d8; border-radius: 6px; font-size: 13px; outline: none; transition: 0.2s;}
@@ -58,7 +54,7 @@
         @media (min-width: 480px) { .link-row .time-label { width: 100px; } }
 
         button.btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; transition: 0.2s; }
-        .btn-add { background: #18181b; color: #fff; width: 90px; align-self: flex-start;}
+        .btn-add { background: #18181b; color: #fff; width: fit-content; align-self: flex-start;}
         .btn-add:hover { background: #3f3f46; transform: translateY(-1px); }
         .btn-save { background: #e4e4e7; color: #18181b; }
         .btn-save:hover { background: #d4d4d8; }
@@ -69,9 +65,10 @@
         .btn-restore { background: #111; color: #fff; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; text-transform: uppercase; width: 100%; margin-top: 15px; transition: 0.2s;}
         .btn-restore:hover { opacity: 0.9; }
 
+        /* HUD Upload Custom */
         .add-box { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; border-top: 1px dashed #e4e4e7; padding-top: 15px; }
-        .add-box textarea { flex-grow: 1; padding: 12px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; font-family: 'Inter', sans-serif; outline: none; min-height: 50px; resize: vertical; transition: 0.2s; }
-        .add-box textarea:focus { border-color: #111; }
+        textarea { flex-grow: 1; padding: 12px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; font-family: 'Inter', sans-serif; outline: none; resize: none; box-sizing: border-box; min-height: 45px; transition: 0.2s; }
+        textarea:focus { border-color: #111; }
         
         .trash-notice { background: #111; color: #fff; padding: 15px; border-radius: 12px; font-size: 13px; border: 1px solid #111; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
         @media (min-width: 768px) { .trash-notice { flex-direction: row; justify-content: space-between; align-items: center; } }
@@ -82,8 +79,7 @@
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; }
         .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
 
-        /* SVG Icon Style */
-        .icon-svg { width: 14px; height: 14px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; margin-right: 4px; margin-bottom: 2px;}
+        .icon-svg { width: 14px; height: 14px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
     </style>
 </head>
 <body>
@@ -91,28 +87,28 @@
         <div style="text-align:center; width: 100%; max-width: 320px;">
             <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 1px solid #eee;" onerror="this.style.display='none'">
             <h3 style="margin-bottom: 25px; letter-spacing: 2px;">PHOTONOIR</h3>
-            <input type="password" id="pass" placeholder="Nhập mật khẩu..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 16px; text-align: center; outline: none; transition: 0.2s;">
+            <input type="password" id="pass" placeholder="Nhập mã bảo mật..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 15px; text-align: center; outline: none; transition: 0.2s;">
             <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase; transition: 0.2s;">Đăng nhập</button>
         </div>
     </div>
 
     <div class="admin-box" id="admin-box">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap: wrap; gap: 15px;">
-            <h2 style="margin: 0; font-size: 20px; display: flex; align-items: center;">
-                QUẢN LÝ TRẢ ẢNH 
+            <h2 style="margin: 0; font-size: 18px; display: flex; align-items: center; letter-spacing: 1px;">
+                QUẢN LÝ
                 <span id="role-badge" style="font-size:11px; background:#18181b; color:#fff; padding:4px 10px; border-radius:20px; margin-left:12px; font-weight: 600; letter-spacing: 0.5px;"></span>
             </h2>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <div class="admin-only" style="display: flex; gap: 15px;">
                     <button id="btn-trash" onclick="toggleTrash()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center;">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> THÙNG RÁC
+                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Thùng rác
                     </button>
                     <button onclick="openClearModal()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center;">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> DỌN DỮ LIỆU
+                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Dọn dữ liệu
                     </button>
                 </div>
                 <button onclick="logout()" style="color:#111; background:#fff; border:1px solid #d4d4d8; padding: 8px 14px; border-radius: 8px; cursor:pointer; font-weight:700; font-size: 11px; transition: 0.2s; display:flex; align-items:center;">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> ĐĂNG XUẤT
+                    <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Đăng xuất
                 </button>
             </div>
         </div>
@@ -126,11 +122,11 @@
             <div class="toolbar">
                 <div style="display: flex; align-items: center; width: 100%; md:width: auto; gap: 10px; border-right: 1px solid #e4e4e7; padding-right: 15px;">
                     <span class="toolbar-label">Ngày xem:</span>
-                    <input type="date" id="date-filter" class="search-box" style="cursor: pointer; flex-grow: 0;" onchange="filterData()">
+                    <input type="date" id="date-filter" class="search-box" style="cursor: pointer; flex-grow: 0; margin-bottom: 0;" onchange="filterData()">
                     <button onclick="clearDateFilter()" style="background: none; border: none; font-size: 12px; color: #111; text-decoration: underline; cursor: pointer; font-weight: 600; white-space: nowrap; padding: 5px;">Tất cả</button>
                 </div>
-                <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5;" placeholder="Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
-                <button class="btn-excel admin-only" onclick="exportExcel()">XUẤT EXCEL</button>
+                <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5; margin-bottom: 0;" placeholder="Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
+                <button class="btn-excel admin-only" style="margin-bottom: 0;" onclick="exportExcel()">XUẤT EXCEL</button>
             </div>
         </div>
 
@@ -146,8 +142,8 @@
 
     <div id="clear-modal" class="modal-overlay">
         <div class="modal-content">
-            <h3 style="margin-top:0; color:#111; font-size: 18px; margin-bottom: 10px; display:flex; align-items:center;">
-                <svg class="icon-svg" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> DỌN DẸP DỮ LIỆU
+            <h3 style="margin-top:0; color:#111; font-size: 16px; margin-bottom: 10px; display:flex; align-items:center;">
+                <svg class="icon-svg" style="width:18px;height:18px; margin-right: 6px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> DỌN DẸP DỮ LIỆU
             </h3>
             <p style="font-size:13px; color:#666; margin-bottom: 20px; line-height: 1.5;">Hành động này sẽ xóa cả dữ liệu trong Thùng Rác và <b>không thể hoàn tác</b>:</p>
             <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Chọn khu vực dọn:</label>
@@ -157,17 +153,16 @@
                 <option value="all" style="color: #111; font-weight: bold;">DỌN SẠCH TẤT CẢ CƠ SỞ</option>
             </select>
             <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Mật khẩu xác nhận:</label>
-            <input type="password" id="clear-pass" class="search-box" placeholder="Nhập Pass Admin..." style="width:100%; margin-bottom:25px; border: 1px solid #d4d4d8;">
+            <input type="password" id="clear-pass" class="search-box" placeholder="Nhập Pass Admin..." style="width:100%; margin-bottom:25px; border: 1px solid #d4d4d8; box-sizing: border-box;">
             <div style="display:flex; gap:10px;">
-                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600;">Hủy Bỏ</button>
+                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600;">Hủy</button>
                 <button onclick="executeClearData()" style="flex:1; padding:12px; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight: 700;">Tiến Hành Xóa</button>
             </div>
         </div>
     </div>
 
     <script>
-        const IMGBB_API_KEY = 'd47a0ff216df7f718f898c65afa1cc17'; // ĐÃ GẮN API KEY CỦA BẠN
-        
+        const IMGBB_API_KEY = 'd47a0ff216df7f718f898c65afa1cc17';
         const firebaseConfig = { apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw", databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "tra-anh-khach" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -228,11 +223,11 @@
         function toggleTrash() {
             if (dbPath === 'data/') { 
                 dbPath = 'trash/'; 
-                document.getElementById('btn-trash').innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> QUAY LẠI CHÍNH`; 
+                document.getElementById('btn-trash').innerHTML = `<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> QUAY LẠI CHÍNH`; 
                 document.getElementById('btn-trash').style.color = '#18181b'; 
             } else { 
                 dbPath = 'data/'; 
-                document.getElementById('btn-trash').innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> THÙNG RÁC`; 
+                document.getElementById('btn-trash').innerHTML = `<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> THÙNG RÁC`; 
                 document.getElementById('btn-trash').style.color = '#52525b'; 
             }
             isFirstLoad = true; previousCount = 0; load();
@@ -257,7 +252,7 @@
                     trashHeader.innerHTML = `
                         <div class="trash-notice">
                             <div>
-                                <b style="display:block; margin-bottom:5px; display:flex; align-items:center;"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> ĐANG MỞ THÙNG RÁC</b>
+                                <b style="display:block; margin-bottom:5px; display:flex; align-items:center;"><svg class="icon-svg" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> ĐANG MỞ THÙNG RÁC</b>
                                 <span style="color:#a1a1aa; font-size:12px;">Dữ liệu tại đây bị ẩn khỏi web khách hàng.</span>
                                 <label style="display:flex; align-items:center; gap:8px; margin-top:12px; cursor:pointer; color:#fff; font-weight:600;">
                                     <input type="checkbox" onclick="toggleSelectAllTrash(this)" style="width:16px; height:16px; cursor:pointer;"> CHỌN TẤT CẢ BÊN DƯỚI
@@ -286,22 +281,45 @@
                 sortedDates.forEach(date => {
                     const groupDiv = document.createElement('div'); groupDiv.className = 'date-group';
                     const dateLabel = (date === todayStr) ? "Hôm nay, " + date : date;
-                    let html = `<div class="date-header"><span style="display:flex; align-items:center;"><svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ${dateLabel}</span><span style="font-size:12px; color:#71717a;">${groupedData[date].clients.length} khách</span></div>`;
+                    let html = `<div class="date-header"><span style="display:flex; align-items:center;"><svg class="icon-svg" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ${dateLabel}</span><span style="font-size:12px; color:#71717a;">${groupedData[date].clients.length} khách</span></div>`;
                     
                     groupedData[date].clients.sort((a, b) => b.ts - a.ts).forEach(client => {
                         const isDone = client.status === 'completed'; const maKh = client.id.split('_')[1].slice(-4); const safeName = client.name ? client.name.replace(/'/g, "\\'") : "Khách hàng"; 
 
+                        // Render Tiệm trả ảnh
                         let linksHtml = '';
                         if (client.links) {
                             Object.keys(client.links).forEach(linkId => {
-                                const l = client.links[linkId];
-                                linksHtml += `<div class="link-row"><span class="time-label">${l.addedAt}</span><input type="text" value="${l.url}"><div style="display:flex; gap:5px;"><button class="btn btn-save" onclick="updateLink('${client.id}', '${linkId}')">Sửa</button><button class="btn btn-del admin-only" onclick="deleteLink('${client.id}', '${linkId}')">Xóa</button></div></div>`;
+                                linksHtml += `<div class="link-row"><span class="time-label">${client.links[linkId].addedAt.split(' ')[0]}</span><input type="text" value="${client.links[linkId].url}" readonly><div style="display:flex; gap:5px;"><button class="btn btn-del admin-only" onclick="deleteLink('${client.id}', '${linkId}')">Xóa</button></div></div>`;
+                            });
+                        }
+
+                        // Render Khách yêu cầu in (HUD tích hợp trong thẻ)
+                        let clientUploadsHtml = '';
+                        if (client.client_uploads && dbPath === 'data/') {
+                            Object.keys(client.client_uploads).forEach(uId => {
+                                const up = client.client_uploads[uId];
+                                let imgLinks = "";
+                                up.links.forEach((l, i) => {
+                                    imgLinks += `<a href="${l}" target="_blank" style="color:#111; font-size:12px; font-weight:600; text-decoration:underline; margin-right:12px; display:inline-block; margin-top:5px;">Ảnh ${i+1}</a>`;
+                                });
+                                clientUploadsHtml += `
+                                    <div style="background:#fafafa; border:1px dashed #111; padding:12px 15px; border-radius:10px; margin-bottom:12px;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:10px;">
+                                            <span style="font-size:12px; font-weight:700; color:#111; display:flex; align-items:center; gap:6px;">
+                                                <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                                                KHÁCH GỬI IN (${up.time.split(' ')[1] || ''})
+                                            </span>
+                                            <button onclick="delClientUp('${client.id}', '${uId}')" style="background:none; border:none; color:#ef4444; font-size:11px; cursor:pointer; font-weight:600; text-decoration:underline; padding:0;">Hoàn tất & Xóa</button>
+                                        </div>
+                                        <div style="display:flex; flex-wrap:wrap;">${imgLinks}</div>
+                                    </div>`;
                             });
                         }
 
                         let actionButtons = (dbPath === 'trash/') ? 
                             `<button class="btn-restore admin-only" onclick="restoreCustomer('${client.id}', '${safeName}')">Khôi phục</button><button class="btn-del-client admin-only" onclick="hardDeleteCustomer('${client.id}', '${safeName}')">Xóa Vĩnh Viễn</button>` : 
-                            `<button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')">Xóa Khách Này</button>`;
+                            `<button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')">Xóa Khách</button>`;
 
                         let checkboxHtml = (dbPath === 'trash/') ? `<div style="display:flex; align-items:flex-start; margin-right:15px; padding-top:2px;"><input type="checkbox" class="trash-cb" value="${client.id}" style="width:20px; height:20px; cursor:pointer;"></div>` : '';
 
@@ -309,21 +327,36 @@
                             <div class="client-card" data-search="${(client.name + " " + client.phone + " " + maKh).toLowerCase()}">
                                 ${checkboxHtml}
                                 <div class="client-info">
-                                    <span class="makh-display">#${maKh}</span><h3 style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${client.name}">${client.name}</h3><p>SĐT: ${client.phone}</p><p>Giờ: ${client.time}</p><span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'HOÀN TẤT' : 'CHỜ ẢNH'}</span>
-                                    ${actionButtons}
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                                        <h3 style="margin:0; font-size: 16px; display:flex; align-items:center; gap:8px;">
+                                            ${client.name} 
+                                            <span style="font-size:12px; color:#888; font-family:monospace; font-weight:normal; border: 1px solid #e5e5e5; padding: 2px 6px; border-radius: 4px; background: #fafafa;">#${maKh}</span>
+                                        </h3>
+                                        <span class="badge ${isDone?'done':'pending'}">${isDone?'HOÀN TẤT':'CHỜ ẢNH'}</span>
+                                    </div>
+                                    <p>SĐT: ${client.phone}</p><p>Giờ: ${client.time}</p>
+                                    <div class="admin-only" style="margin-bottom: 15px;">${actionButtons}</div>
                                 </div>
                                 <div class="link-manager">
+                                    ${clientUploadsHtml}
+                                    
+                                    <div style="font-size: 11px; font-weight: 600; color: #a1a1aa; margin-bottom: 8px; text-transform: uppercase;">Tiệm trả ảnh:</div>
                                     ${linksHtml}
                                     <div class="add-box">
-                                        <div style="display:flex; gap:8px; align-items:center; width:100%;">
-                                            <input type="file" id="file_${client.id}" multiple accept="image/*" style="flex-grow:1; padding:10px; border:1px solid #d4d4d8; border-radius:8px; font-size:13px; background:#fff; outline:none; font-family:'Inter';">
-                                            <button class="btn btn-add" id="btn_up_${client.id}" onclick="uploadPhotosToImgBB('${client.id}')" style="margin-top:0; white-space:nowrap; display:flex; align-items:center; gap:5px;">
-                                                <svg class="icon-svg" style="margin:0" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN
+                                        <div style="display:flex; gap:10px; align-items:center; width:100%; flex-wrap: wrap;">
+                                            <div style="display: flex; align-items: center; gap: 10px; flex-grow: 1; border: 1px dashed #d4d4d8; border-radius: 10px; padding: 8px 12px; background: #fafafa; box-sizing: border-box;">
+                                                <label for="file_${client.id}" style="cursor: pointer; background: #fff; border: 1px solid #d4d4d8; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #111; white-space: nowrap; transition: 0.2s;">Chọn ảnh</label>
+                                                <input type="file" id="file_${client.id}" multiple accept="image/*" style="display:none;" onchange="document.getElementById('fname_${client.id}').innerText = this.files.length > 0 ? this.files.length + ' tệp đã chọn' : 'Chưa có tệp'">
+                                                <span id="fname_${client.id}" style="font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; font-family: 'Inter';">Chưa có tệp</span>
+                                            </div>
+                                            <button class="btn btn-add" id="btn_up_${client.id}" onclick="uploadPhotosToImgBB('${client.id}')" style="margin-top:0; white-space:nowrap; display:flex; align-items:center; justify-content:center; padding: 12px 18px;">
+                                                <svg class="icon-svg" style="margin-right:4px; margin-bottom:0;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN
                                             </button>
                                         </div>
-                                        <div style="text-align:center; font-size:11px; color:#a1a1aa; margin:5px 0;">HOẶC DÁN LINK TỪ THIẾT BỊ KHÁC</div>
-                                        <textarea id="new_${client.id}" placeholder="Dán 1 hoặc nhiều link ảnh (mỗi link 1 dòng)..."></textarea>
-                                        <button class="btn btn-add" onclick="addLink('${client.id}')">Lưu Link</button>
+                                        <div style="display: flex; gap: 10px; align-items: flex-start; margin-top: 5px;">
+                                            <textarea id="new_${client.id}" placeholder="Hoặc dán 1 hay nhiều link ảnh (mỗi link 1 dòng)..."></textarea>
+                                            <button class="btn btn-add" onclick="addLink('${client.id}')" style="background: #fff; color: #111; border: 1px solid #d4d4d8; padding: 12px 18px;">LƯU</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>`;
@@ -343,7 +376,7 @@
             
             Swal.fire({
                 title: 'Xác nhận xóa hàng loạt', text: `Sẽ xóa VĨNH VIỄN ${checkboxes.length} mục đã chọn.`, icon: 'warning',
-                input: 'password', inputPlaceholder: 'Nhập mật khẩu Admin', showCancelButton: true, confirmButtonColor: '#111', confirmButtonText: 'Xóa Vĩnh Viễn'
+                input: 'password', inputPlaceholder: 'Nhập mã bảo mật Admin', showCancelButton: true, confirmButtonColor: '#111', confirmButtonText: 'Xóa Vĩnh Viễn'
             }).then((result) => {
                 if (result.isConfirmed) {
                     if(result.value === PASS_ADMIN) {
@@ -390,7 +423,6 @@
             document.body.appendChild(link); link.click(); Toast.fire({ icon: 'success', title: 'Đã xuất Excel' });
         }
 
-        // TÍNH NĂNG TỰ ĐỘNG TẢI ẢNH IMGBB
         async function uploadPhotosToImgBB(clientId) {
             const fileInput = document.getElementById('file_' + clientId);
             const files = fileInput.files;
@@ -398,7 +430,7 @@
 
             if (files.length === 0) return Swal.fire({title: 'Lỗi', text: 'Chưa chọn ảnh nào!', icon: 'warning', confirmButtonColor: '#111'});
 
-            btn.innerHTML = `<svg class="icon-svg" style="margin:0; animation: spin 1s infinite linear;" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> ĐANG TẢI...`;
+            btn.innerHTML = `<svg class="icon-svg" style="margin-right:4px; animation: spin 1s infinite linear;" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> ĐANG TẢI...`;
             btn.disabled = true;
 
             try {
@@ -418,10 +450,11 @@
                 await db.ref(dbPath + br + '/' + clientId).update({ status: "completed" });
                 Toast.fire({ icon: 'success', title: 'Tải lên hoàn tất!' });
                 fileInput.value = ""; 
+                document.getElementById('fname_'+clientId).innerText = 'Chưa có tệp';
             } catch (error) {
                 Swal.fire({title: 'Lỗi', text: 'Không thể kết nối tải ảnh.', icon: 'error', confirmButtonColor: '#111'});
             } finally {
-                btn.innerHTML = `<svg class="icon-svg" style="margin:0" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN`;
+                btn.innerHTML = `<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN`;
                 btn.disabled = false;
             }
         }
@@ -443,16 +476,19 @@
             Toast.fire({ icon: 'success', title: 'Đã lưu link' });
         }
 
-        function updateLink(clientId, linkId) {
-            const newUrl = document.getElementById(`edit_${clientId}_${linkId}`).value.trim();
-            if(!newUrl) return Toast.fire({ icon: 'error', title: 'Link trống!' });
-            db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).update({ url: newUrl });
-            Toast.fire({ icon: 'success', title: 'Đã cập nhật!' });
-        }
-
         function deleteLink(clientId, linkId) { 
             if(userRole !== 'admin') return; 
-            Swal.fire({ title: 'Xóa link này?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => { if(r.isConfirmed) { db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove(); Toast.fire({ icon: 'success', title: 'Đã xóa link' }); }}); 
+            Swal.fire({ title: 'Xóa ảnh này?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => { if(r.isConfirmed) { db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove(); Toast.fire({ icon: 'success', title: 'Đã xóa' }); }}); 
+        }
+        
+        function delClientUp(cId, uId) {
+            if(userRole !== 'admin') return;
+            Swal.fire({ title: 'Xóa yêu cầu in?', showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>', confirmButtonColor: '#111' }).then(r => {
+                if(r.isConfirmed) {
+                    db.ref(dbPath + br + '/' + cId + '/client_uploads/' + uId).remove();
+                    Toast.fire({ icon: 'success', title: 'Đã xóa yêu cầu in' });
+                }
+            });
         }
 
         function softDeleteCustomer(clientId, clientName) { 
@@ -471,7 +507,7 @@
 
         function hardDeleteCustomer(clientId, clientName) { 
             if(userRole !== 'admin') return; 
-            Swal.fire({ title: 'Xóa Vĩnh Viễn?', text: `Khách '${clientName}'`, icon: 'warning', input: 'password', inputPlaceholder: 'Nhập Pass Admin', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
+            Swal.fire({ title: 'Xóa Vĩnh Viễn?', text: `Khách '${clientName}'`, icon: 'warning', input: 'password', inputPlaceholder: 'Nhập mã Admin', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
                 if (r.isConfirmed) {
                     if(r.value === PASS_ADMIN) { db.ref('trash/' + br + '/' + clientId).remove().then(() => Toast.fire({ icon: 'success', title: 'Đã xóa vĩnh viễn' })); } 
                     else { Swal.fire({title: 'Thất bại', text: 'Sai mã bảo mật!', icon: 'error', confirmButtonColor: '#111'}); }
