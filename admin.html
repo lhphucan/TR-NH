@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hệ Thống Quản Trị - PHOTONOIR</title>
+    <title>Admin - PHOTONOIR</title>
     <link rel="icon" href="./logo.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -24,12 +24,15 @@
         .toolbar-wrapper { position: sticky; top: 10px; z-index: 100; margin-bottom: 20px; }
         .toolbar { display: flex; gap: 10px; flex-wrap: wrap; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 15px; border-radius: 12px; border: 1px solid #e4e4e7; box-shadow: 0 4px 20px rgba(0,0,0,0.06); align-items: center; transition: 0.3s;}
         
-        .toolbar-label { font-size: 13px; font-weight: 600; color: #52525b; margin-right: 5px;}
-        .search-box { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-size: 14px; background: #fff; font-family: 'Inter', sans-serif; transition: 0.2s;}
+        .toolbar-label { font-size: 13px; font-weight: 600; color: #52525b;}
+        .search-box { flex-grow: 1; padding: 0 12px; height: 36px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-size: 13px; background: #fff; font-family: 'Inter', sans-serif; transition: 0.2s; box-sizing: border-box;}
         .search-box:focus { border-color: #111; }
-        .btn-excel { padding: 12px 20px; background: #111; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; text-transform: uppercase; font-size: 13px; width: 100%; transition: 0.2s;}
-        .btn-excel:hover { background: #333; transform: translateY(-2px); }
-        @media (min-width: 768px) { .btn-excel { width: auto; } }
+        
+        .date-input-sm { padding: 0 8px; border: 1px solid #d4d4d8; border-radius: 6px; font-size: 13px; font-family: 'Inter'; height: 34px; outline: none; background: #fff; color: #111; cursor: pointer; transition: 0.2s; box-sizing: border-box;}
+        .date-input-sm:focus { border-color: #111; }
+
+        .btn-excel { padding: 0 16px; height: 36px; background: #111; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; text-transform: uppercase; font-size: 12px; transition: 0.2s; white-space: nowrap; display: flex; align-items: center; justify-content: center;}
+        .btn-excel:hover { background: #333; transform: translateY(-1px); }
 
         .date-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid #18181b; margin: 30px 0 15px 0; font-weight: 700; font-size: 16px; }
         
@@ -78,10 +81,10 @@
         #empty-msg { text-align: center; padding: 60px 20px; display: none; background: #fff; border-radius: 16px; border: 1px dashed #d4d4d8; margin-top: 20px; }
         .empty-text { font-size: 14px; color: #71717a; font-weight: 500; margin-top:15px; }
 
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; }
-        .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 420px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; overflow-y: auto;}
+        .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 420px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); box-sizing: border-box; position: relative; margin: auto;}
 
-        /* ÉP CỨNG ICON ĐỂ KHÔNG BỊ TRÌNH DUYỆT PHÓNG TO */
+        /* ÉP CỨNG ICON ĐỂ KHÔNG BỊ TRÌNH DUYỆT ZALO/SAFARI LÀM ĐEN HOẶC PHÓNG TO */
         .icon-svg { width: 16px !important; height: 16px !important; min-width: 16px; min-height: 16px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
         .icon-sm { width: 14px !important; height: 14px !important; min-width: 14px; min-height: 14px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
     </style>
@@ -105,17 +108,17 @@
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <div class="admin-only" style="display: flex; gap: 15px;">
                     <button onclick="openRevenueModal()" style="color:#111; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center;">
-                        <svg width="16" height="16" class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Doanh thu
+                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Doanh thu
                     </button>
                     <button id="btn-trash" onclick="toggleTrash()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center;">
-                        <svg width="16" height="16" class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Thùng rác
+                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Thùng rác
                     </button>
                     <button onclick="openClearModal()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center;">
-                        <svg width="16" height="16" class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Dọn dữ liệu
+                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Dọn dữ liệu
                     </button>
                 </div>
                 <button onclick="logout()" style="color:#111; background:#fff; border:1px solid #d4d4d8; padding: 8px 14px; border-radius: 8px; cursor:pointer; font-weight:700; font-size: 11px; transition: 0.2s; display:flex; align-items:center;">
-                    <svg width="16" height="16" class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Đăng xuất
+                    <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Đăng xuất
                 </button>
             </div>
         </div>
@@ -127,13 +130,15 @@
 
         <div class="toolbar-wrapper">
             <div class="toolbar">
-                <div style="display: flex; align-items: center; width: 100%; md:width: auto; gap: 10px; border-right: 1px solid #e4e4e7; padding-right: 15px;">
+                <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-right: 1px solid #e4e4e7; padding-right: 12px;">
                     <span class="toolbar-label">Ngày xem:</span>
-                    <input type="date" id="date-filter" class="search-box" style="cursor: pointer; flex-grow: 0; margin-bottom: 0; height:40px;" onchange="filterData()">
-                    <button onclick="clearDateFilter()" style="background: none; border: none; font-size: 12px; color: #111; text-decoration: underline; cursor: pointer; font-weight: 600; white-space: nowrap; padding: 5px;">Tất cả</button>
+                    <input type="date" id="date-from" class="date-input-sm" onchange="filterData()">
+                    <span style="font-size:12px; color:#a1a1aa;">-</span>
+                    <input type="date" id="date-to" class="date-input-sm" onchange="filterData()">
+                    <button onclick="clearDateFilter()" style="background: none; border: none; font-size: 11px; color: #111; text-decoration: underline; cursor: pointer; font-weight: 600; padding: 4px;">Tất cả</button>
                 </div>
-                <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5; margin-bottom: 0; height:40px;" placeholder="Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
-                <button class="btn-excel admin-only" style="margin-bottom: 0; height:40px;" onclick="exportExcel()">XUẤT EXCEL</button>
+                <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5; margin-bottom: 0;" placeholder="Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
+                <button class="btn-excel admin-only" onclick="exportExcel()">XUẤT EXCEL</button>
             </div>
         </div>
 
@@ -146,7 +151,7 @@
         <div id="list-content"></div>
         
         <div id="empty-msg">
-            <svg width="48" height="48" style="stroke:#a1a1aa;fill:none;stroke-width:1.5" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+            <svg class="icon-svg" style="width:48px !important; height:48px !important; stroke:#a1a1aa;" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
             <div class="empty-text">Hôm nay chưa có dữ liệu nào.</div>
         </div>
     </div>
@@ -154,7 +159,7 @@
     <div id="clear-modal" class="modal-overlay">
         <div class="modal-content">
             <h3 style="margin-top:0; color:#111; font-size: 16px; margin-bottom: 10px; display:flex; align-items:center;">
-                <svg width="18" height="18" class="icon-svg" style="margin-right: 6px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> DỌN DẸP DỮ LIỆU
+                <svg class="icon-svg" style="margin-right: 6px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> DỌN DẸP DỮ LIỆU
             </h3>
             <p style="font-size:13px; color:#666; margin-bottom: 20px; line-height: 1.5;">Hành động này sẽ xóa cả dữ liệu trong Thùng Rác và <b>không thể hoàn tác</b>:</p>
             <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Chọn khu vực dọn:</label>
@@ -166,7 +171,7 @@
             <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Mật khẩu xác nhận:</label>
             <input type="password" id="clear-pass" class="search-box" placeholder="Nhập Pass Admin..." style="width:100%; margin-bottom:25px; border: 1px solid #d4d4d8; box-sizing: border-box; height:40px;">
             <div style="display:flex; gap:10px;">
-                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600;">Hủy Bỏ</button>
+                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600;">Hủy</button>
                 <button onclick="executeClearData()" style="flex:1; padding:12px; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight: 700;">Tiến Hành Xóa</button>
             </div>
         </div>
@@ -176,20 +181,21 @@
         <div class="modal-content" style="max-width: 500px; padding: 24px;">
             <h3 style="margin-top:0; color:#111; font-size: 18px; margin-bottom: 20px; display:flex; align-items:center; justify-content:space-between;">
                 <span style="display:flex; align-items:center; gap:8px;">
-                    <svg width="18" height="18" class="icon-svg" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> 
+                    <svg class="icon-svg" style="width:18px !important; height:18px !important;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> 
                     BÁO CÁO DOANH THU
                 </span>
-                <button onclick="document.getElementById('revenue-modal').style.display='none'" style="background:none; border:none; cursor:pointer; font-size:24px; color:#888; padding:0;">&times;</button>
+                <button onclick="document.getElementById('revenue-modal').style.display='none'" style="background:none; border:none; cursor:pointer; font-size:24px; color:#888; padding:0; line-height: 1;">&times;</button>
             </h3>
             
-            <div style="margin-bottom: 20px;">
-                <label style="font-size: 12px; font-weight: 600; color: #666; display: block; margin-bottom: 6px;">Chọn ngày xem:</label>
-                <input type="date" id="rev-date-picker" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #e5e5e5; outline: none; font-family: 'Inter'; box-sizing:border-box;" onchange="calcRevenue()">
-            </div>
-
             <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">1. Thống kê theo ngày:</label>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
+                    <input type="date" id="rev-date-from" class="date-input-sm" style="flex:1;" onchange="calcRevenue()">
+                    <span style="font-size:12px; color:#888;">đến</span>
+                    <input type="date" id="rev-date-to" class="date-input-sm" style="flex:1;" onchange="calcRevenue()">
+                </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <div style="font-size:13px; font-weight:700; color:#111; text-transform:uppercase;" id="rev-day-title">Ngày ...</div>
+                    <div style="font-size:12px; font-weight:700; color:#111;" id="rev-day-title">KHOẢNG THỜI GIAN</div>
                     <div style="font-size:12px; color:#666; font-weight:600;"><span id="rev-day-count">0 lượt</span> (<span id="rev-day-free" style="color:#ef4444;">0 miễn phí</span>)</div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
@@ -209,8 +215,12 @@
             </div>
 
             <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px;">
+                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">2. Thống kê theo tháng:</label>
+                <div style="margin-bottom:12px;">
+                    <input type="month" id="rev-month-picker" class="date-input-sm" style="width:100%;" onchange="calcRevenueByMonth()">
+                </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <div style="font-size:13px; font-weight:700; color:#111; text-transform:uppercase;" id="rev-month-title">Tháng ...</div>
+                    <div style="font-size:12px; font-weight:700; color:#111;" id="rev-month-title">THÁNG NÀY</div>
                     <div style="font-size:12px; color:#666; font-weight:600;"><span id="rev-month-count">0 lượt</span> (<span id="rev-month-free" style="color:#ef4444;">0 miễn phí</span>)</div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
@@ -262,10 +272,13 @@
         };
 
         function getDStr(dObj) { return String(dObj.getDate()).padStart(2, '0') + '/' + String(dObj.getMonth() + 1).padStart(2, '0') + '/' + dObj.getFullYear(); }
-        function getMStr(dObj) { return String(dObj.getMonth() + 1).padStart(2, '0') + '/' + dObj.getFullYear(); }
         function getTodayForInput() { const today = new Date(); return today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0'); }
 
-        function clearDateFilter() { document.getElementById('date-filter').value = ""; filterData(); }
+        function clearDateFilter() { 
+            document.getElementById('date-from').value = ""; 
+            document.getElementById('date-to').value = ""; 
+            filterData(); 
+        }
 
         function login() {
             try {
@@ -297,7 +310,11 @@
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('admin-box').style.display = 'block';
             document.getElementById('role-badge').innerText = userRole === 'admin' ? "ADMIN" : "NHÂN VIÊN";
-            document.getElementById('date-filter').value = getTodayForInput();
+            
+            // Set default date filter to today for both from and to
+            document.getElementById('date-from').value = getTodayForInput();
+            document.getElementById('date-to').value = getTodayForInput();
+            
             if (db) load();
         }
 
@@ -306,11 +323,11 @@
         function toggleTrash() {
             if (dbPath === 'data/') { 
                 dbPath = 'trash/'; 
-                document.getElementById('btn-trash').innerHTML = '<svg width="16" height="16" class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Quay lại'; 
+                document.getElementById('btn-trash').innerHTML = '<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Quay lại'; 
                 document.getElementById('btn-trash').style.color = '#18181b'; 
             } else { 
                 dbPath = 'data/'; 
-                document.getElementById('btn-trash').innerHTML = '<svg width="16" height="16" class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Thùng rác'; 
+                document.getElementById('btn-trash').innerHTML = '<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Thùng rác'; 
                 document.getElementById('btn-trash').style.color = '#52525b'; 
             }
             isFirstLoad = true; previousCount = 0; load();
@@ -318,44 +335,39 @@
 
         function openRevenueModal() {
             if(userRole !== 'admin') return Toast.fire({icon: 'error', title: 'Chỉ Quản trị viên được xem'});
-            document.getElementById('rev-date-picker').value = getTodayForInput();
+            
+            const today = new Date();
+            const todayDateStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
+            const todayMonthStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0');
+
+            document.getElementById('rev-date-from').value = todayDateStr;
+            document.getElementById('rev-date-to').value = todayDateStr;
+            document.getElementById('rev-month-picker').value = todayMonthStr;
+
             calcRevenue();
+            calcRevenueByMonth();
             document.getElementById('revenue-modal').style.display = 'flex';
         }
 
         function calcRevenue() {
-            const selectedDateStr = document.getElementById('rev-date-picker').value; 
-            let targetDate = ""; let targetMonth = "";
-            if(selectedDateStr) {
-                const parts = selectedDateStr.split('-');
-                targetDate = `${parts[2]}/${parts[1]}/${parts[0]}`; 
-                targetMonth = `${parts[1]}/${parts[0]}`; 
-            }
+            const fStr = document.getElementById('rev-date-from').value;
+            const tStr = document.getElementById('rev-date-to').value;
+            
+            let fTs = 0, tTs = Infinity;
+            if(fStr) { const d = new Date(fStr); d.setHours(0,0,0,0); fTs = d.getTime(); }
+            if(tStr) { const d = new Date(tStr); d.setHours(23,59,59,999); tTs = d.getTime(); }
 
             let dTotal = 0, dCash = 0, dTrans = 0, dCount = 0, dFree = 0;
-            let mTotal = 0, mCash = 0, mTrans = 0, mCount = 0, mFree = 0;
 
             if(currentData && dbPath === 'data/') {
                 Object.keys(currentData).forEach(id => {
                     const c = currentData[id];
                     const ts = parseInt(id.split('_')[1]) || Date.now();
-                    const dObj = new Date(ts);
-                    const dStr = getDStr(dObj);
-                    const mStr = getMStr(dObj);
-
-                    const isFree = (c.price === 'Miễn phí');
-                    const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
-
-                    // Cộng Tháng
-                    if (mStr === targetMonth) {
-                        mCount++;
-                        if (isFree) mFree++;
-                        mTotal += priceVal;
-                        if (c.payment === 'Tiền mặt') mCash += priceVal;
-                        if (c.payment === 'Chuyển khoản') mTrans += priceVal;
-                    }
-                    // Cộng Ngày
-                    if (dStr === targetDate) {
+                    
+                    if (ts >= fTs && ts <= tTs) {
+                        const isFree = (c.price === 'Miễn phí');
+                        const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
+                        
                         dCount++;
                         if (isFree) dFree++;
                         dTotal += priceVal;
@@ -365,14 +377,50 @@
                 });
             }
 
-            document.getElementById('rev-day-title').innerText = `Ngày ${targetDate}`;
+            let titleStr = "KHOẢNG THỜI GIAN ĐÃ CHỌN";
+            if (fStr && tStr && fStr === tStr) titleStr = `NGÀY ${fStr.split('-').reverse().join('/')}`;
+            else if (fStr && tStr) titleStr = `TỪ ${fStr.split('-').reverse().join('/')} - ${tStr.split('-').reverse().join('/')}`;
+
+            document.getElementById('rev-day-title').innerText = titleStr;
             document.getElementById('rev-day-count').innerText = dCount + ' lượt';
             document.getElementById('rev-day-free').innerText = dFree + ' miễn phí';
             document.getElementById('rev-day-cash').innerText = dCash.toLocaleString('vi-VN') + ' ₫';
             document.getElementById('rev-day-trans').innerText = dTrans.toLocaleString('vi-VN') + ' ₫';
             document.getElementById('rev-day-total').innerText = dTotal.toLocaleString('vi-VN') + ' ₫';
+        }
 
-            document.getElementById('rev-month-title').innerText = `Tháng ${targetMonth}`;
+        function calcRevenueByMonth() {
+            const mStrInput = document.getElementById('rev-month-picker').value; 
+            let targetMonth = "", targetYear = "";
+            if(mStrInput) {
+                const parts = mStrInput.split('-');
+                targetYear = parts[0]; targetMonth = parts[1];
+            }
+
+            let mTotal = 0, mCash = 0, mTrans = 0, mCount = 0, mFree = 0;
+
+            if(currentData && dbPath === 'data/' && targetMonth) {
+                Object.keys(currentData).forEach(id => {
+                    const c = currentData[id];
+                    const ts = parseInt(id.split('_')[1]) || Date.now();
+                    const dObj = new Date(ts);
+                    const mm = String(dObj.getMonth() + 1).padStart(2, '0');
+                    const yyyy = String(dObj.getFullYear());
+
+                    if (mm === targetMonth && yyyy === targetYear) {
+                        const isFree = (c.price === 'Miễn phí');
+                        const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
+                        
+                        mCount++;
+                        if (isFree) mFree++;
+                        mTotal += priceVal;
+                        if (c.payment === 'Tiền mặt') mCash += priceVal;
+                        if (c.payment === 'Chuyển khoản') mTrans += priceVal;
+                    }
+                });
+            }
+            
+            document.getElementById('rev-month-title').innerText = targetMonth ? `THÁNG ${targetMonth}/${targetYear}` : "THÁNG ĐÃ CHỌN";
             document.getElementById('rev-month-count').innerText = mCount + ' lượt';
             document.getElementById('rev-month-free').innerText = mFree + ' miễn phí';
             document.getElementById('rev-month-cash').innerText = mCash.toLocaleString('vi-VN') + ' ₫';
@@ -389,14 +437,14 @@
                 currentData = snap.val();
                 
                 if(!currentData) { 
-                    document.querySelector('.empty-text').innerText = (dbPath === 'trash/') ? "Thùng rác đang trống." : "Hôm nay chưa có dữ liệu nào.";
+                    document.querySelector('.empty-text').innerText = (dbPath === 'trash/') ? "Thùng rác đang trống." : "Chưa có dữ liệu nào.";
                     document.getElementById('empty-msg').style.display = 'block';
                     trashHeader.style.display = 'none'; previousCount = 0; return; 
                 }
 
                 if (dbPath === 'trash/') {
                     trashHeader.style.display = 'flex';
-                    trashHeader.innerHTML = `<div class="trash-notice" style="width:100%;"><div style="display:flex; align-items:center; gap:12px;"><svg width="18" height="18" class="icon-svg" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><div><b style="font-size:14px; font-family:'Inter';">THÙNG RÁC</b></div></div><div><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:12px;"><input type="checkbox" onclick="toggleSelectAllTrash(this)" style="width:16px; height:16px; cursor:pointer;"> CHỌN TẤT CẢ</label><button onclick="deleteSelectedTrash()" style="background:#fff; color:#ef4444; border:none; padding: 6px 12px; border-radius:6px; cursor:pointer; font-weight:700; font-size:11px; margin-top:8px; width:100%;">XÓA MỤC ĐÃ CHỌN</button></div></div>`;
+                    trashHeader.innerHTML = `<div class="trash-notice" style="width:100%;"><div style="display:flex; align-items:center; gap:12px;"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><div><b style="font-size:14px; font-family:'Inter';">THÙNG RÁC</b></div></div><div><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:12px;"><input type="checkbox" onclick="toggleSelectAllTrash(this)" style="width:16px; height:16px; cursor:pointer;"> CHỌN TẤT CẢ</label><button onclick="deleteSelectedTrash()" style="background:#fff; color:#ef4444; border:none; padding: 6px 12px; border-radius:6px; cursor:pointer; font-weight:700; font-size:11px; margin-top:8px; width:100%;">XÓA MỤC ĐÃ CHỌN</button></div></div>`;
                 } else { trashHeader.style.display = 'none'; }
 
                 const currentCount = Object.keys(currentData).length;
@@ -418,7 +466,7 @@
                 sortedDates.forEach(date => {
                     const groupDiv = document.createElement('div'); groupDiv.className = 'date-group';
                     const dateLabel = (date === todayStr) ? "Hôm nay, " + date : date;
-                    let html = `<div class="date-header"><span style="display:flex; align-items:center;"><svg width="18" height="18" class="icon-svg" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ${dateLabel}</span><span style="font-size:12px; color:#71717a;">${groupedData[date].clients.length} khách</span></div>`;
+                    let html = `<div class="date-header"><span style="display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ${dateLabel}</span><span style="font-size:12px; color:#71717a;">${groupedData[date].clients.length} khách</span></div>`;
                     
                     groupedData[date].clients.sort((a, b) => b.ts - a.ts).forEach(client => {
                         const isDone = client.status === 'completed'; const maKh = client.id.split('_')[1].slice(-4); const safeName = client.name ? client.name.replace(/'/g, "\\'") : "Khách hàng"; 
@@ -446,7 +494,7 @@
                                     <div style="background:#fafafa; border:1px dashed #d4d4d8; padding:12px 15px; border-radius:10px; margin-bottom:12px;">
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:10px;">
                                             <span style="font-size:12px; font-weight:700; color:#111; display:flex; align-items:center; gap:6px; text-transform:uppercase;">
-                                                <svg width="14" height="14" class="icon-sm" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                                                <svg class="icon-sm" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
                                                 Yêu cầu in (${up.time.split(' ')[1] || ''})
                                             </span>
                                             <button onclick="delClientUp('${client.id}', '${uId}')" class="btn-del-link" style="padding: 0 10px; height:28px;">Hoàn tất (Xóa)</button>
@@ -458,7 +506,7 @@
 
                         let actionButtons = (dbPath === 'trash/') ? 
                             `<button class="btn-restore admin-only" onclick="restoreCustomer('${client.id}', '${safeName}')">Khôi phục</button><button class="btn-del-client admin-only" onclick="hardDeleteCustomer('${client.id}', '${safeName}')">Xóa Vĩnh Viễn</button>` : 
-                            `<button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')"><svg width="14" height="14" class="icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Xóa Khách</button>`;
+                            `<button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')"><svg class="icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> XÓA KHÁCH</button>`;
 
                         let checkboxHtml = (dbPath === 'trash/') ? `<div style="display:flex; align-items:flex-start; margin-right:15px; padding-top:2px;"><input type="checkbox" class="trash-cb" value="${client.id}" style="width:20px; height:20px; cursor:pointer;"></div>` : '';
 
@@ -488,8 +536,8 @@
                                         <span class="badge ${isDone?'done':'pending'}">${isDone?'HOÀN TẤT':'CHỜ ẢNH'}</span>
                                     </div>
                                     <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px;">
-                                        <span style="display:flex; align-items:center; gap:6px; font-size:13px; color:#52525b;"><svg width="14" height="14" class="icon-sm" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> ${client.phone}</span>
-                                        <span style="display:flex; align-items:center; gap:6px; font-size:13px; color:#52525b;"><svg width="14" height="14" class="icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${client.time}</span>
+                                        <span style="display:flex; align-items:center; gap:6px; font-size:13px; color:#52525b;"><svg class="icon-sm" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> ${client.phone}</span>
+                                        <span style="display:flex; align-items:center; gap:6px; font-size:13px; color:#52525b;"><svg class="icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${client.time}</span>
                                     </div>
                                     ${priceInputHtml}
                                     <div class="admin-only" style="margin-top:auto;">${actionButtons}</div>
@@ -507,7 +555,7 @@
                                                 <span id="fname_${client.id}" style="font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; font-family: 'Inter';">Chưa có tệp</span>
                                             </div>
                                             <button class="btn btn-add" id="btn_up_${client.id}" onclick="uploadPhotosToImgBB('${client.id}')" style="margin-top:0; height:36px;">
-                                                <svg width="16" height="16" class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN
+                                                <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN
                                             </button>
                                         </div>
                                         <div style="display: flex; gap: 10px; align-items: flex-start; margin-top: 5px;">
@@ -557,7 +605,7 @@
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     title: 'Xác nhận xóa hàng loạt', text: `Sẽ xóa VĨNH VIỄN ${checkboxes.length} mục đã chọn.`, icon: 'warning',
-                    input: 'password', inputPlaceholder: 'Nhập mật khẩu Admin', showCancelButton: true, confirmButtonColor: '#111', confirmButtonText: 'Xóa Vĩnh Viễn'
+                    input: 'password', inputPlaceholder: 'Nhập mật khẩu Admin', showCancelButton: true, confirmButtonColor: '#111', confirmButtonText: 'Xóa Vĩnh Viễn', cancelButtonText: '<span style="color:#111">Hủy</span>'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         if(result.value === PASS_ADMIN) {
@@ -572,41 +620,102 @@
 
         function filterData() {
             const query = document.getElementById('search-box').value.toLowerCase();
-            const dateInput = document.getElementById('date-filter').value;
-            let targetDate = ""; let visibleGroupCount = 0;
+            const fromDateStr = document.getElementById('date-from').value; 
+            const toDateStr = document.getElementById('date-to').value; 
             
-            if (dateInput) { const parts = dateInput.split('-'); targetDate = parts[2] + "/" + parts[1] + "/" + parts[0]; }
+            let fTs = 0, tTs = Infinity;
+            if(fromDateStr) { const d = new Date(fromDateStr); d.setHours(0,0,0,0); fTs = d.getTime(); }
+            if(toDateStr) { const d = new Date(toDateStr); d.setHours(23,59,59,999); tTs = d.getTime(); }
+
+            let visibleGroupCount = 0;
 
             document.querySelectorAll('.date-group').forEach(group => {
                 let hasVisibleCard = false;
-                const headerDate = group.querySelector('.date-header span:first-child').innerText;
-                if (targetDate && !headerDate.includes(targetDate)) { group.style.display = 'none'; return; }
-                group.querySelectorAll('.client-card').forEach(card => {
-                    const text = card.getAttribute('data-search');
-                    if(text.includes(query)) { card.style.display = 'flex'; hasVisibleCard = true; } else card.style.display = 'none';
-                });
-                if (hasVisibleCard) { group.style.display = 'block'; visibleGroupCount++; } else group.style.display = 'none';
+                const headerText = group.querySelector('.date-header span:first-child').innerText;
+                const dateParts = headerText.split(', ').pop().split('/'); // DD/MM/YYYY
+                const groupTs = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T12:00:00`).getTime();
+
+                if (groupTs >= fTs && groupTs <= tTs) {
+                    group.querySelectorAll('.client-card').forEach(card => {
+                        const text = card.getAttribute('data-search');
+                        if(text.includes(query)) { card.style.display = 'flex'; hasVisibleCard = true; } 
+                        else card.style.display = 'none';
+                    });
+                } else {
+                    group.querySelectorAll('.client-card').forEach(c => c.style.display = 'none');
+                }
+
+                if (hasVisibleCard) { group.style.display = 'block'; visibleGroupCount++; } 
+                else { group.style.display = 'none'; }
             });
             
-            document.querySelector('.empty-text').innerText = "Không tìm thấy dữ liệu khớp với tìm kiếm/ngày chọn.";
+            document.querySelector('.empty-text').innerText = "Không tìm thấy dữ liệu khớp với bộ lọc.";
             document.getElementById('empty-msg').style.display = (visibleGroupCount === 0 && document.getElementById('list-content').innerHTML !== "") ? 'block' : 'none';
         }
 
         function exportExcel() {
             if(userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Không có quyền' });
             if(!currentData) return Toast.fire({ icon: 'warning', title: 'Không có dữ liệu!' });
-            
-            let csvContent = "data:text/csv;charset=utf-8," + String.fromCharCode(0xFEFF) + "Ngày,Giờ,Mã KH,Họ Tên,SĐT,Giá Tiền,Nguồn Tiền,Cơ Sở\n";
-            Object.keys(currentData).forEach(id => {
-                const c = currentData[id]; const ts = parseInt(id.split('_')[1]) || Date.now();
-                const d = getDStr(new Date(ts)); const mk = id.split('_')[1].slice(-4);
-                const price = c.price || '0';
-                const payment = c.payment || '';
-                const cosoStr = br === 'phucyen' ? 'Phúc Yên' : 'Vĩnh Yên';
-                csvContent += `"${d}","${c.time}","#${mk}","${c.name}","${c.phone}","${price}","${payment}","${cosoStr}"\n`;
+
+            Swal.fire({
+                title: 'Tùy chọn Xuất Excel',
+                html: `
+                    <div style="text-align:left; font-family:'Inter'; margin-top:10px;">
+                        <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">Từ ngày:</label>
+                        <input type="date" id="swal-date-from" class="search-box" style="width:100%; margin-bottom:15px; height:40px; padding:0 12px; border:1px solid #d4d4d8; border-radius:8px; font-family:'Inter'; box-sizing:border-box;">
+                        
+                        <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">Đến ngày:</label>
+                        <input type="date" id="swal-date-to" class="search-box" style="width:100%; margin-bottom:10px; height:40px; padding:0 12px; border:1px solid #d4d4d8; border-radius:8px; font-family:'Inter'; box-sizing:border-box;">
+                        
+                        <div style="font-size:11px; color:#888; text-align:center;">* Để trống nếu muốn xuất toàn bộ</div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Xuất Dữ Liệu',
+                cancelButtonText: '<span style="color:#111">Hủy</span>',
+                confirmButtonColor: '#111',
+                didOpen: () => {
+                    document.getElementById('swal-date-from').value = document.getElementById('date-from').value;
+                    document.getElementById('swal-date-to').value = document.getElementById('date-to').value;
+                }
+            }).then((result) => {
+                if(result.isConfirmed) {
+                    const fStr = document.getElementById('swal-date-from').value;
+                    const tStr = document.getElementById('swal-date-to').value;
+                    
+                    let fTs = 0, tTs = Infinity;
+                    if(fStr) { const d = new Date(fStr); d.setHours(0,0,0,0); fTs = d.getTime(); }
+                    if(tStr) { const d = new Date(tStr); d.setHours(23,59,59,999); tTs = d.getTime(); }
+
+                    let csvContent = "data:text/csv;charset=utf-8," + String.fromCharCode(0xFEFF) + "Ngày,Giờ,Mã KH,Họ Tên,SĐT,Giá Tiền,Nguồn Tiền,Cơ Sở\n";
+                    let count = 0;
+                    
+                    Object.keys(currentData).forEach(id => {
+                        const ts = parseInt(id.split('_')[1]) || Date.now();
+                        if (ts >= fTs && ts <= tTs) {
+                            const c = currentData[id]; 
+                            const d = getDStr(new Date(ts)); 
+                            const mk = id.split('_')[1].slice(-4);
+                            const price = c.price || '0';
+                            const payment = c.payment || '';
+                            const cosoStr = br === 'phucyen' ? 'Phúc Yên' : 'Vĩnh Yên';
+                            csvContent += `"${d}","${c.time}","#${mk}","${c.name}","${c.phone}","${price}","${payment}","${cosoStr}"\n`;
+                            count++;
+                        }
+                    });
+
+                    if(count === 0) return Toast.fire({ icon: 'warning', title: 'Không có dữ liệu trong khoảng này!' });
+
+                    const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); 
+                    let fileName = "PHOTONOIR_Report";
+                    if(fStr && tStr && fStr === tStr) fileName += "_" + fStr;
+                    else if (fStr && tStr) fileName += "_" + fStr + "_den_" + tStr;
+                    else fileName += "_All";
+                    link.setAttribute("download", fileName + ".csv");
+                    document.body.appendChild(link); link.click(); 
+                    Toast.fire({ icon: 'success', title: `Đã xuất ${count} khách hàng` });
+                }
             });
-            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "PHOTONOIR_Report_" + getDStr(new Date()).replace(/\//g,'-') + ".csv");
-            document.body.appendChild(link); link.click(); Toast.fire({ icon: 'success', title: 'Đã xuất Excel' });
         }
 
         async function uploadPhotosToImgBB(clientId) {
@@ -616,7 +725,7 @@
 
             if (files.length === 0) return Swal.fire({title: 'Lỗi', text: 'Chưa chọn ảnh nào!', icon: 'warning', confirmButtonColor: '#111'});
 
-            btn.innerHTML = `<svg width="16" height="16" class="icon-svg" style="margin-right:4px; animation: spin 1s infinite linear;" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> ĐANG TẢI...`;
+            btn.innerHTML = `<svg class="icon-svg" style="margin-right:4px; animation: spin 1s infinite linear;" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> ĐANG TẢI...`;
             btn.disabled = true;
 
             try {
@@ -641,7 +750,7 @@
                 if(typeof Swal !== 'undefined') Swal.fire({title: 'Lỗi', text: 'Không thể kết nối tải ảnh.', icon: 'error', confirmButtonColor: '#111'});
                 else alert('Lỗi tải ảnh');
             } finally {
-                btn.innerHTML = `<svg width="16" height="16" class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN`;
+                btn.innerHTML = `<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN`;
                 btn.disabled = false;
             }
         }
@@ -670,7 +779,7 @@
 
         function delClientUp(cId, uId) {
             if(userRole !== 'admin') return;
-            Swal.fire({ title: 'Xóa yêu cầu in?', showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>', confirmButtonColor: '#111' }).then(r => {
+            Swal.fire({ title: 'Đã xử lý in?', showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>', confirmButtonColor: '#111' }).then(r => {
                 if(r.isConfirmed) {
                     db.ref(dbPath + br + '/' + cId + '/client_uploads/' + uId).remove();
                     Toast.fire({ icon: 'success', title: 'Đã xóa yêu cầu in' });
