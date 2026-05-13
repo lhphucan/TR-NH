@@ -70,10 +70,10 @@
         textarea { flex-grow: 1; padding: 12px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; font-family: 'Inter', sans-serif; outline: none; resize: none; box-sizing: border-box; min-height: 45px; transition: 0.2s; }
         textarea:focus { border-color: #111; }
         
-        /* CSS Nhập giá tiền */
-        .price-input { padding: 4px 8px; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: 'Inter'; outline: none; background: #fafafa; width: 90px; transition: 0.2s; color: #111; }
-        .price-input:focus { border-color: #111; background: #fff; box-shadow: 0 0 0 2px rgba(17,17,17,0.05); }
-        
+        /* CSS Giá Tiền và Thanh Toán */
+        .price-input { padding: 6px 10px; border: 1px solid #e5e5e5; border-radius: 8px; font-size: 12px; font-weight: 600; font-family: 'Inter'; outline: none; background: #fff; width: 110px; transition: 0.2s; color: #111; box-sizing: border-box;}
+        .price-input:focus { border-color: #111; box-shadow: 0 0 0 2px rgba(17,17,17,0.05); }
+
         .trash-notice { background: #111; color: #fff; padding: 15px; border-radius: 12px; font-size: 13px; border: 1px solid #111; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
         @media (min-width: 768px) { .trash-notice { flex-direction: row; justify-content: space-between; align-items: center; } }
         
@@ -104,6 +104,9 @@
             </h2>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <div class="admin-only" style="display: flex; gap: 15px;">
+                    <button onclick="openRevenueModal()" style="color:#111; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center;">
+                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Doanh thu
+                    </button>
                     <button id="btn-trash" onclick="toggleTrash()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center;">
                         <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Thùng rác
                     </button>
@@ -137,9 +140,6 @@
         <div id="trash-header" style="display: none;"></div>
 
         <datalist id="price-list">
-            <option value="50.000đ"></option>
-            <option value="70.000đ"></option>
-            <option value="100.000đ"></option>
             <option value="Miễn phí"></option>
         </datalist>
 
@@ -166,26 +166,87 @@
             <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Mật khẩu xác nhận:</label>
             <input type="password" id="clear-pass" class="search-box" placeholder="Nhập Pass Admin..." style="width:100%; margin-bottom:25px; border: 1px solid #d4d4d8; box-sizing: border-box;">
             <div style="display:flex; gap:10px;">
-                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600;">Hủy</button>
+                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600;">Hủy Bỏ</button>
                 <button onclick="executeClearData()" style="flex:1; padding:12px; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight: 700;">Tiến Hành Xóa</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="revenue-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px; padding: 24px;">
+            <h3 style="margin-top:0; color:#111; font-size: 18px; margin-bottom: 20px; display:flex; align-items:center; justify-content:space-between;">
+                <span style="display:flex; align-items:center; gap:8px;">
+                    <svg class="icon-svg" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> 
+                    BÁO CÁO DOANH THU
+                </span>
+                <button onclick="document.getElementById('revenue-modal').style.display='none'" style="background:none; border:none; cursor:pointer; font-size:24px; color:#888; padding:0;">&times;</button>
+            </h3>
+            
+            <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <div style="font-size:13px; font-weight:700; color:#111; margin-bottom:12px; text-transform:uppercase;">Doanh thu Hôm nay</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Tiền mặt</div>
+                        <div id="rev-today-cash" style="font-size:16px; font-weight:700; color:#f59e0b;">0 đ</div>
+                    </div>
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Chuyển khoản</div>
+                        <div id="rev-today-trans" style="font-size:16px; font-weight:700; color:#10b981;">0 đ</div>
+                    </div>
+                    <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
+                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng cộng</div>
+                        <div id="rev-today-total" style="font-size:20px; font-weight:700;">0 đ</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px;">
+                <div style="font-size:13px; font-weight:700; color:#111; margin-bottom:12px; text-transform:uppercase;">Doanh thu Tháng này</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Tiền mặt</div>
+                        <div id="rev-month-cash" style="font-size:16px; font-weight:700; color:#f59e0b;">0 đ</div>
+                    </div>
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Chuyển khoản</div>
+                        <div id="rev-month-trans" style="font-size:16px; font-weight:700; color:#10b981;">0 đ</div>
+                    </div>
+                    <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
+                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng cộng</div>
+                        <div id="rev-month-total" style="font-size:20px; font-weight:700;">0 đ</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         const IMGBB_API_KEY = 'd47a0ff216df7f718f898c65afa1cc17';
-        const firebaseConfig = { apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw", databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "tra-anh-khach" };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
         const PASS_STAFF = "123456"; const PASS_ADMIN = "Anle123456";
         let userRole = ''; let dbPath = 'data/'; let br = 'phucyen';
         let currentData = {}; let previousCount = 0; let isFirstLoad = true;
+        let db;
 
-        const Toast = Swal.mixin({
-            toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
-            timerProgressBar: true, background: '#111', color: '#fff', iconColor: '#fff',
-            didOpen: (toast) => { toast.addEventListener('mouseenter', Swal.stopTimer); toast.addEventListener('mouseleave', Swal.resumeTimer); }
-        });
+        // Failsafe 1: Chống lỗi khi mạng chặn Firebase
+        try {
+            const firebaseConfig = { apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw", databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "tra-anh-khach" };
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+        } catch (error) {
+            console.error("Firebase Error:", error);
+        }
+
+        // Failsafe 2: Chống lỗi kẹt màn hình đăng nhập
+        let Toast;
+        try {
+            Toast = Swal.mixin({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
+                timerProgressBar: true, background: '#111', color: '#fff', iconColor: '#fff',
+                didOpen: (toast) => { toast.addEventListener('mouseenter', Swal.stopTimer); toast.addEventListener('mouseleave', Swal.resumeTimer); }
+            });
+        } catch (e) {
+            Toast = { fire: (args) => alert(args.title) };
+        }
 
         window.onload = () => {
             const savedRole = localStorage.getItem('pn_admin_role');
@@ -194,30 +255,42 @@
 
         function getTodayForInput() {
             const today = new Date();
-            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            return today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
         }
 
         function clearDateFilter() { document.getElementById('date-filter').value = ""; filterData(); }
 
         function login() {
-            const p = document.getElementById('pass').value;
-            if(p === PASS_ADMIN || p === PASS_STAFF) {
-                userRole = (p === PASS_ADMIN) ? 'admin' : 'staff';
-                localStorage.setItem('pn_admin_role', userRole);
-                setupUI();
-                Toast.fire({ icon: 'success', title: 'Đăng nhập thành công' });
-            } else {
-                Swal.fire({ icon: 'error', title: 'Sai mã bảo mật!', text: 'Vui lòng kiểm tra lại.', confirmButtonColor: '#111' });
+            try {
+                const p = document.getElementById('pass').value;
+                if(p === PASS_ADMIN || p === PASS_STAFF) {
+                    userRole = (p === PASS_ADMIN) ? 'admin' : 'staff';
+                    localStorage.setItem('pn_admin_role', userRole);
+                    setupUI();
+                    Toast.fire({ icon: 'success', title: 'Đăng nhập thành công' });
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'error', title: 'Sai mã bảo mật!', text: 'Vui lòng kiểm tra lại mật khẩu.', confirmButtonColor: '#111' });
+                    } else {
+                        alert("Sai mã bảo mật! Vui lòng kiểm tra lại.");
+                    }
+                }
+            } catch (e) {
+                alert("Hệ thống đang tải hoặc bị lỗi kết nối: " + e.message);
             }
         }
 
         function logout() {
-            Swal.fire({
-                title: 'Đăng xuất?', text: "Bạn sẽ cần nhập lại mật khẩu để vào hệ thống.", icon: 'question',
-                showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', cancelButtonText: '<span style="color:#111">Hủy</span>', confirmButtonText: 'Đăng xuất'
-            }).then((result) => {
-                if (result.isConfirmed) { localStorage.removeItem('pn_admin_role'); location.reload(); }
-            });
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Đăng xuất?', text: "Bạn sẽ cần nhập lại mật khẩu để vào hệ thống.", icon: 'question',
+                    showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', cancelButtonText: '<span style="color:#111">Hủy</span>', confirmButtonText: 'Đăng xuất'
+                }).then((result) => {
+                    if (result.isConfirmed) { localStorage.removeItem('pn_admin_role'); location.reload(); }
+                });
+            } else {
+                if(confirm("Bạn có chắc chắn muốn đăng xuất?")) { localStorage.removeItem('pn_admin_role'); location.reload(); }
+            }
         }
 
         function setupUI() {
@@ -226,7 +299,7 @@
             document.getElementById('date-filter').value = getTodayForInput();
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('admin-box').style.display = 'block';
-            load();
+            if (db) load();
         }
 
         function switchB(name) { br = name; isFirstLoad = true; previousCount = 0; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById('btn-'+name).classList.add('active'); load(); }
@@ -234,14 +307,58 @@
         function toggleTrash() {
             if (dbPath === 'data/') { 
                 dbPath = 'trash/'; 
-                document.getElementById('btn-trash').innerHTML = `<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> QUAY LẠI CHÍNH`; 
+                document.getElementById('btn-trash').innerHTML = '<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> QUAY LẠI CHÍNH'; 
                 document.getElementById('btn-trash').style.color = '#18181b'; 
             } else { 
                 dbPath = 'data/'; 
-                document.getElementById('btn-trash').innerHTML = `<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> THÙNG RÁC`; 
+                document.getElementById('btn-trash').innerHTML = '<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> THÙNG RÁC'; 
                 document.getElementById('btn-trash').style.color = '#52525b'; 
             }
             isFirstLoad = true; previousCount = 0; load();
+        }
+
+        function openRevenueModal() {
+            if(userRole !== 'admin') return Toast.fire({icon: 'error', title: 'Chỉ Quản trị viên được xem'});
+            
+            let todayTotal = 0, todayCash = 0, todayTransfer = 0;
+            let monthTotal = 0, monthCash = 0, monthTransfer = 0;
+
+            const todayStr = new Date().toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric'});
+            const currentMonthStr = new Date().toLocaleDateString('vi-VN', {month:'2-digit', year:'numeric'});
+
+            if(currentData) {
+                Object.keys(currentData).forEach(id => {
+                    const c = currentData[id];
+                    if (!c.price || c.price === 'Miễn phí') return;
+
+                    const priceVal = parseInt(c.price.replace(/\D/g, ''), 10) || 0;
+                    const ts = parseInt(id.split('_')[1]) || Date.now();
+                    const dObj = new Date(ts);
+                    const dStr = dObj.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric'});
+                    const mStr = dObj.toLocaleDateString('vi-VN', {month:'2-digit', year:'numeric'});
+                    
+                    if (mStr === currentMonthStr) {
+                        monthTotal += priceVal;
+                        if (c.payment === 'Tiền mặt') monthCash += priceVal;
+                        if (c.payment === 'Chuyển khoản') monthTransfer += priceVal;
+                    }
+                    if (dStr === todayStr) {
+                        todayTotal += priceVal;
+                        if (c.payment === 'Tiền mặt') todayCash += priceVal;
+                        if (c.payment === 'Chuyển khoản') todayTransfer += priceVal;
+                    }
+                });
+            }
+
+            document.getElementById('rev-today-total').innerText = todayTotal.toLocaleString('vi-VN') + ' đ';
+            document.getElementById('rev-today-cash').innerText = todayCash.toLocaleString('vi-VN') + ' đ';
+            document.getElementById('rev-today-trans').innerText = todayTransfer.toLocaleString('vi-VN') + ' đ';
+
+            document.getElementById('rev-month-total').innerText = monthTotal.toLocaleString('vi-VN') + ' đ';
+            document.getElementById('rev-month-cash').innerText = monthCash.toLocaleString('vi-VN') + ' đ';
+            document.getElementById('rev-month-trans').innerText = monthTransfer.toLocaleString('vi-VN') + ' đ';
+
+            document.getElementById('revenue-modal').style.display = 'flex';
         }
 
         function load() {
@@ -259,18 +376,8 @@
                 }
 
                 if (dbPath === 'trash/') {
-                    trashHeader.style.display = 'block';
-                    trashHeader.innerHTML = `
-                        <div class="trash-notice">
-                            <div>
-                                <b style="display:block; margin-bottom:5px; display:flex; align-items:center;"><svg class="icon-svg" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> ĐANG MỞ THÙNG RÁC</b>
-                                <span style="color:#a1a1aa; font-size:12px;">Dữ liệu tại đây bị ẩn khỏi web khách hàng.</span>
-                                <label style="display:flex; align-items:center; gap:8px; margin-top:12px; cursor:pointer; color:#fff; font-weight:600;">
-                                    <input type="checkbox" onclick="toggleSelectAllTrash(this)" style="width:16px; height:16px; cursor:pointer;"> CHỌN TẤT CẢ BÊN DƯỚI
-                                </label>
-                            </div>
-                            <button onclick="deleteSelectedTrash()" style="background:#fff; color:#111; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s; white-space:nowrap;">XÓA MỤC ĐÃ CHỌN</button>
-                        </div>`;
+                    trashHeader.style.display = 'flex';
+                    trashHeader.innerHTML = '<div class="trash-notice" style="width:100%;"><div style="display:flex; align-items:center; gap:12px;"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><div><b style="font-size:14px; font-family:\'Inter\';">THÙNG RÁC</b></div></div><button onclick="emptyTrash()" class="btn-outline" style="border:none; color:#111; background:#fff; padding: 8px 16px;">DỌN SẠCH</button></div>';
                 } else { trashHeader.style.display = 'none'; }
 
                 const currentCount = Object.keys(currentData).length;
@@ -292,7 +399,7 @@
                 sortedDates.forEach(date => {
                     const groupDiv = document.createElement('div'); groupDiv.className = 'date-group';
                     const dateLabel = (date === todayStr) ? "Hôm nay, " + date : date;
-                    let html = `<div class="date-header"><span style="display:flex; align-items:center;"><svg class="icon-svg" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ${dateLabel}</span><span style="font-size:12px; color:#71717a;">${groupedData[date].clients.length} khách</span></div>`;
+                    let html = '<div class="date-header"><span style="display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ' + dateLabel + '</span><span style="font-size:12px; color:#71717a;">' + groupedData[date].clients.length + ' khách</span></div>';
                     
                     groupedData[date].clients.sort((a, b) => b.ts - a.ts).forEach(client => {
                         const isDone = client.status === 'completed'; const maKh = client.id.split('_')[1].slice(-4); const safeName = client.name ? client.name.replace(/'/g, "\\'") : "Khách hàng"; 
@@ -300,11 +407,7 @@
                         let linksHtml = '';
                         if (client.links) {
                             Object.keys(client.links).forEach(linkId => {
-                                linksHtml += `<div class="link-row">
-                                    <span class="time-label">${client.links[linkId].addedAt.split(' ')[0]}</span>
-                                    <input type="text" value="${client.links[linkId].url}" readonly>
-                                    <div style="display:flex; gap:5px;"><button class="btn btn-del admin-only" onclick="deleteLink('${client.id}', '${linkId}')">Xóa</button></div>
-                                </div>`;
+                                linksHtml += '<div class="link-row"><span style="font-size:12px; color:#888; font-family:monospace; font-weight:600; margin-right:8px;">' + client.links[linkId].addedAt + '</span><input type="text" value="' + client.links[linkId].url + '" readonly><button onclick="deleteLink(\'' + client.id + '\', \'' + linkId + '\')" class="btn-outline" style="padding:8px 12px; border-color:#e5e5e5; color:#ef4444; background:#fff;">XÓA</button></div>';
                             });
                         }
 
@@ -314,72 +417,26 @@
                                 const up = client.client_uploads[uId];
                                 let imgLinks = "";
                                 up.links.forEach((l, i) => {
-                                    imgLinks += `<a href="${l}" target="_blank" style="color:#111; font-size:12px; font-weight:600; text-decoration:underline; margin-right:12px; display:inline-block; margin-top:5px;">Ảnh ${i+1}</a>`;
+                                    imgLinks += '<a href="' + l + '" target="_blank" style="color:#111; font-size:12px; font-weight:600; text-decoration:underline; margin-right:12px; display:inline-block; margin-top:5px;">Ảnh gốc ' + (i+1) + '</a>';
                                 });
-                                clientUploadsHtml += `
-                                    <div style="background:#fafafa; border:1px dashed #111; padding:12px 15px; border-radius:10px; margin-bottom:12px;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:10px;">
-                                            <span style="font-size:12px; font-weight:700; color:#111; display:flex; align-items:center; gap:6px; text-transform:uppercase;">
-                                                <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
-                                                Yêu cầu in (${up.time.split(' ')[1] || ''})
-                                            </span>
-                                            <button onclick="delClientUp('${client.id}', '${uId}')" style="background:none; border:none; color:#ef4444; font-size:11px; cursor:pointer; font-weight:600; text-decoration:underline; padding:0;">Xóa</button>
-                                        </div>
-                                        <div style="display:flex; flex-wrap:wrap;">${imgLinks}</div>
-                                    </div>`;
+                                clientUploadsHtml += '<div style="background:#fafafa; border:1px dashed #d4d4d8; padding:12px 15px; border-radius:10px; margin-bottom:12px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:10px;"><span style="font-size:12px; font-weight:700; color:#111; display:flex; align-items:center; gap:6px; text-transform:uppercase;"><svg class="icon-sm" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>Yêu cầu in (' + (up.time.split(' ')[1] || '') + ')</span><button onclick="delClientUp(\'' + client.id + '\', \'' + uId + '\')" style="background:none; border:none; color:#ef4444; font-size:11px; cursor:pointer; font-weight:600; text-decoration:underline; padding:0;">Hoàn tất (Xóa)</button></div><div style="display:flex; flex-wrap:wrap;">' + imgLinks + '</div></div>';
                             });
                         }
 
                         let actionButtons = (dbPath === 'trash/') ? 
-                            `<button class="btn-restore admin-only" onclick="restoreCustomer('${client.id}', '${safeName}')">Khôi phục</button><button class="btn-del-client admin-only" onclick="hardDeleteCustomer('${client.id}', '${safeName}')">Xóa Vĩnh Viễn</button>` : 
-                            `<button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')">Xóa Khách</button>`;
+                            '<button class="btn-restore admin-only" onclick="restoreCustomer(\'' + client.id + '\', \'' + safeName + '\')">Khôi phục</button><button class="btn-del-client admin-only" onclick="hardDeleteCustomer(\'' + client.id + '\', \'' + safeName + '\')">Xóa Vĩnh Viễn</button>' : 
+                            '<button class="btn-del-client admin-only" onclick="softDeleteCustomer(\'' + client.id + '\', \'' + safeName + '\')">Xóa Khách</button>';
 
-                        let checkboxHtml = (dbPath === 'trash/') ? `<div style="display:flex; align-items:flex-start; margin-right:15px; padding-top:2px;"><input type="checkbox" class="trash-cb" value="${client.id}" style="width:20px; height:20px; cursor:pointer;"></div>` : '';
+                        let checkboxHtml = (dbPath === 'trash/') ? '<div style="display:flex; align-items:flex-start; margin-right:15px; padding-top:2px;"><input type="checkbox" class="trash-cb" value="' + client.id + '" style="width:20px; height:20px; cursor:pointer;"></div>' : '';
 
-                        html += `
-                            <div class="client-card" data-search="${(client.name + " " + client.phone + " " + maKh).toLowerCase()}">
-                                ${checkboxHtml}
-                                <div class="client-info">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                                        <h3 style="margin:0; font-size: 16px; display:flex; align-items:center; gap:8px;">
-                                            ${client.name} 
-                                            <span style="font-size:12px; color:#888; font-family:monospace; font-weight:normal; border: 1px solid #e5e5e5; padding: 2px 6px; border-radius: 4px; background: #fafafa;">#${maKh}</span>
-                                        </h3>
-                                        <span class="badge ${isDone?'done':'pending'}">${isDone?'HOÀN TẤT':'CHỜ ẢNH'}</span>
-                                    </div>
-                                    <p style="margin:0 0 12px 0; font-size:13px; color:#666; display:flex; gap:16px; flex-wrap: wrap; align-items:center;">
-                                        <span style="display:flex; align-items:center; gap:4px;"><svg class="icon-sm" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> ${client.phone}</span>
-                                        <span style="display:flex; align-items:center; gap:4px;"><svg class="icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${client.time}</span>
-                                        <span style="display:flex; align-items:center; gap:4px;" class="admin-only">
-                                            <svg class="icon-sm" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-                                            <input type="text" list="price-list" class="price-input" placeholder="Giá tiền..." value="${client.price || ''}" onchange="updatePrice('${client.id}', this.value)" title="Nhập hoặc chọn giá tiền">
-                                        </span>
-                                    </p>
-                                    <div class="admin-only" style="margin-bottom: 15px;">${actionButtons}</div>
-                                </div>
-                                <div class="link-manager">
-                                    ${clientUploadsHtml}
-                                    
-                                    <div style="font-size: 11px; font-weight: 600; color: #a1a1aa; margin-bottom: 8px; text-transform: uppercase;">Tiệm trả ảnh:</div>
-                                    ${linksHtml}
-                                    <div class="add-box">
-                                        <div style="display:flex; gap:10px; align-items:center; width:100%; flex-wrap: wrap;">
-                                            <div style="display: flex; align-items: center; gap: 10px; flex-grow: 1; border: 1px dashed #d4d4d8; border-radius: 10px; padding: 8px 12px; background: #fafafa; box-sizing: border-box;">
-                                                <label for="file_${client.id}" style="cursor: pointer; background: #fff; border: 1px solid #d4d4d8; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #111; white-space: nowrap; transition: 0.2s;">Chọn ảnh</label>
-                                                <input type="file" id="file_${client.id}" multiple accept="image/*" style="display:none;" onchange="document.getElementById('fname_${client.id}').innerText = this.files.length > 0 ? this.files.length + ' tệp đã chọn' : 'Chưa có tệp'">
-                                                <span id="fname_${client.id}" style="font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; font-family: 'Inter';">Chưa có tệp</span>
-                                            </div>
-                                            <button class="btn btn-add" id="btn_up_${client.id}" onclick="uploadPhotosToImgBB('${client.id}')" style="margin-top:0; white-space:nowrap; display:flex; align-items:center; justify-content:center; padding: 12px 18px;">
-                                                <svg class="icon-svg" style="margin-right:4px; margin-bottom:0;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN
-                                            </button>
-                                        </div>
-                                        <div style="display: flex; gap: 10px; align-items: flex-start; margin-top: 5px;">
-                                            <textarea id="new_${client.id}" placeholder="Hoặc dán 1 hay nhiều link ảnh (mỗi link 1 dòng)..."></textarea>
-                                            <button class="btn btn-add" onclick="addLink('${client.id}')" style="background: #fff; color: #111; border: 1px solid #d4d4d8; padding: 12px 18px;">LƯU</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>`;
+                        // Format price variable & selections
+                        let priceVal = client.price || '';
+                        let isCashSelected = client.payment === 'Tiền mặt' ? 'selected' : '';
+                        let isTransSelected = client.payment === 'Chuyển khoản' ? 'selected' : '';
+
+                        let priceInputHtml = '<span style="display:flex; align-items:center; gap:6px; margin-top:8px;" class="admin-only"><svg class="icon-sm" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg><input type="text" list="price-list" class="price-input" placeholder="Nhập giá..." value="' + priceVal + '" onchange="formatAndSavePrice(this, \'' + client.id + '\')" title="Nhập số tự động ra tiền"><select class="price-input" style="width:auto; cursor:pointer;" onchange="updatePaymentMethod(\'' + client.id + '\', this.value)"><option value="">Nguồn tiền...</option><option value="Tiền mặt" ' + isCashSelected + '>Tiền mặt</option><option value="Chuyển khoản" ' + isTransSelected + '>Chuyển khoản</option></select></span>';
+
+                        html += '<div class="client-card" data-search="' + (client.name + " " + client.phone + " " + maKh).toLowerCase() + '">' + checkboxHtml + '<div class="client-info"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;"><h3 style="margin:0; font-size: 16px; display:flex; align-items:center; gap:8px;">' + client.name + ' <span style="font-size:12px; color:#888; font-family:monospace; font-weight:normal; border: 1px solid #e5e5e5; padding: 2px 6px; border-radius: 4px; background: #fafafa;">#' + maKh + '</span></h3><span class="badge ' + (isDone?'done':'pending') + '">' + (isDone?'HOÀN TẤT':'CHỜ ẢNH') + '</span></div><p style="margin:0 0 12px 0; font-size:13px; color:#666; display:flex; gap:16px; flex-wrap: wrap; align-items:center;"><span style="display:flex; align-items:center; gap:4px;"><svg class="icon-sm" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> ' + client.phone + '</span><span style="display:flex; align-items:center; gap:4px;"><svg class="icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ' + client.time + '</span>' + priceInputHtml + '</p><div class="admin-only" style="margin-bottom: 15px;">' + actionButtons + '</div></div><div class="link-manager">' + clientUploadsHtml + '<div style="font-size: 11px; font-weight: 600; color: #a1a1aa; margin-bottom: 8px; text-transform: uppercase;">Tiệm trả ảnh:</div>' + linksHtml + '<div class="add-box"><div style="display:flex; gap:10px; align-items:center; width:100%; flex-wrap: wrap;"><div style="display: flex; align-items: center; gap: 10px; flex-grow: 1; border: 1px dashed #d4d4d8; border-radius: 10px; padding: 8px 12px; background: #fafafa; box-sizing: border-box;"><label for="file_' + client.id + '" style="cursor: pointer; background: #fff; border: 1px solid #d4d4d8; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #111; white-space: nowrap; transition: 0.2s;">Chọn ảnh</label><input type="file" id="file_' + client.id + '" multiple accept="image/*" style="display:none;" onchange="document.getElementById(\'fname_' + client.id + '\').innerText = this.files.length > 0 ? this.files.length + \' tệp đã chọn\' : \'Chưa có tệp\'"><span id="fname_' + client.id + '" style="font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; font-family: \'Inter\';">Chưa có tệp</span></div><button class="btn btn-add" id="btn_up_' + client.id + '" onclick="uploadPhotosToImgBB(\'' + client.id + '\')" style="margin-top:0; white-space:nowrap; display:flex; align-items:center; justify-content:center; padding: 12px 18px;"><svg class="icon-svg" style="margin-right:4px; margin-bottom:0;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN</button></div><div style="display: flex; gap: 10px; align-items: flex-start; margin-top: 5px;"><textarea id="new_' + client.id + '" placeholder="Hoặc dán thủ công link ảnh (mỗi dòng 1 link)..."></textarea><button class="btn btn-add" onclick="addLink(\'' + client.id + '\')" style="background: #fff; color: #111; border: 1px solid #d4d4d8; padding: 12px 18px;">LƯU</button></div></div></div></div>';
                     });
                     groupDiv.innerHTML += html; list.appendChild(groupDiv);
                 });
@@ -387,9 +444,27 @@
             });
         }
 
-        function updatePrice(id, val) {
+        // Tự động định dạng giá tiền
+        function formatAndSavePrice(input, id) {
+            let val = input.value.trim();
+            if (val.toLowerCase() === 'miễn phí' || val.toLowerCase() === 'mien phi') {
+                val = 'Miễn phí';
+            } else {
+                let numStr = val.replace(/\D/g, '');
+                if (numStr) {
+                    val = parseInt(numStr, 10).toLocaleString('vi-VN') + ' đ';
+                } else {
+                    val = '';
+                }
+            }
+            input.value = val;
             db.ref(dbPath + br + '/' + id).update({ price: val });
-            Toast.fire({ icon: 'success', title: 'Đã cập nhật giá' });
+            Toast.fire({ icon: 'success', title: 'Đã lưu giá tiền' });
+        }
+
+        function updatePaymentMethod(id, val) {
+            db.ref(dbPath + br + '/' + id).update({ payment: val });
+            Toast.fire({ icon: 'success', title: 'Đã cập nhật nguồn tiền' });
         }
 
         function toggleSelectAllTrash(source) { document.querySelectorAll('.trash-cb').forEach(cb => { if(cb.closest('.client-card').style.display !== 'none') cb.checked = source.checked; }); }
@@ -399,18 +474,20 @@
             const checkboxes = document.querySelectorAll('.trash-cb:checked');
             if(checkboxes.length === 0) { Toast.fire({ icon: 'warning', title: 'Chưa chọn khách nào!' }); return; }
             
-            Swal.fire({
-                title: 'Xác nhận xóa hàng loạt', text: `Sẽ xóa VĨNH VIỄN ${checkboxes.length} mục đã chọn.`, icon: 'warning',
-                input: 'password', inputPlaceholder: 'Nhập mật khẩu Admin', showCancelButton: true, confirmButtonColor: '#111', confirmButtonText: 'Xóa Vĩnh Viễn'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    if(result.value === PASS_ADMIN) {
-                        const promises = [];
-                        checkboxes.forEach(cb => promises.push(db.ref('trash/' + br + '/' + cb.value).remove()));
-                        Promise.all(promises).then(() => Toast.fire({ icon: 'success', title: `Đã xóa ${checkboxes.length} mục!` })).catch(err => Swal.fire('Lỗi', err.message, 'error'));
-                    } else { Swal.fire({title: 'Thất bại', text: 'Sai mã bảo mật!', icon: 'error', confirmButtonColor: '#111'}); }
-                }
-            });
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Xác nhận xóa hàng loạt', text: "Sẽ xóa VĨNH VIỄN " + checkboxes.length + " mục đã chọn.", icon: 'warning',
+                    input: 'password', inputPlaceholder: 'Nhập mật khẩu Admin', showCancelButton: true, confirmButtonColor: '#111', confirmButtonText: 'Xóa Vĩnh Viễn'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        if(result.value === PASS_ADMIN) {
+                            const promises = [];
+                            checkboxes.forEach(cb => promises.push(db.ref('trash/' + br + '/' + cb.value).remove()));
+                            Promise.all(promises).then(() => Toast.fire({ icon: 'success', title: 'Đã xóa ' + checkboxes.length + ' mục!' })).catch(err => Swal.fire('Lỗi', err.message, 'error'));
+                        } else { Swal.fire({title: 'Thất bại', text: 'Sai mã bảo mật!', icon: 'error', confirmButtonColor: '#111'}); }
+                    }
+                });
+            }
         }
 
         function filterData() {
@@ -418,7 +495,7 @@
             const dateInput = document.getElementById('date-filter').value;
             let targetDate = ""; let visibleGroupCount = 0;
             
-            if (dateInput) { const parts = dateInput.split('-'); targetDate = `${parts[2]}/${parts[1]}/${parts[0]}`; }
+            if (dateInput) { const parts = dateInput.split('-'); targetDate = parts[2] + "/" + parts[1] + "/" + parts[0]; }
 
             document.querySelectorAll('.date-group').forEach(group => {
                 let hasVisibleCard = false;
@@ -438,14 +515,17 @@
         function exportExcel() {
             if(userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Không có quyền' });
             if(!currentData) return Toast.fire({ icon: 'warning', title: 'Không có dữ liệu!' });
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFFNgày,Giờ,Mã KH,Họ Tên,SĐT,Giá Tiền,Cơ Sở\n";
+            
+            let csvContent = "data:text/csv;charset=utf-8," + String.fromCharCode(0xFEFF) + "Ngày,Giờ,Mã KH,Họ Tên,SĐT,Giá Tiền,Nguồn Tiền,Cơ Sở\n";
             Object.keys(currentData).forEach(id => {
                 const c = currentData[id]; const ts = parseInt(id.split('_')[1]) || Date.now();
                 const d = new Date(ts).toLocaleDateString('vi-VN'); const mk = id.split('_')[1].slice(-4);
                 const price = c.price || '0';
-                csvContent += `"${d}","${c.time}","#${mk}","${c.name}","${c.phone}","${price}","${br === 'phucyen' ? 'Phúc Yên' : 'Vĩnh Yên'}"\n`;
+                const payment = c.payment || '';
+                const cosoStr = br === 'phucyen' ? 'Phúc Yên' : 'Vĩnh Yên';
+                csvContent += '"' + d + '","' + c.time + '","#' + mk + '","' + c.name + '","' + c.phone + '","' + price + '","' + payment + '","' + cosoStr + '"\n';
             });
-            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", `PHOTONOIR_Report_${new Date().toLocaleDateString('vi-VN')}.csv`);
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "PHOTONOIR_Report_" + new Date().toLocaleDateString('vi-VN') + ".csv");
             document.body.appendChild(link); link.click(); Toast.fire({ icon: 'success', title: 'Đã xuất Excel' });
         }
 
@@ -456,7 +536,7 @@
 
             if (files.length === 0) return Swal.fire({title: 'Lỗi', text: 'Chưa chọn ảnh nào!', icon: 'warning', confirmButtonColor: '#111'});
 
-            btn.innerHTML = `<svg class="icon-svg" style="margin-right:4px; animation: spin 1s infinite linear;" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> ĐANG TẢI...`;
+            btn.innerHTML = '<svg class="icon-svg" style="margin-right:4px; animation: spin 1s infinite linear;" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> ĐANG TẢI...';
             btn.disabled = true;
 
             try {
@@ -464,7 +544,7 @@
                 for (let i = 0; i < files.length; i++) {
                     const formData = new FormData();
                     formData.append("image", files[i]);
-                    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
+                    const response = await fetch("https://api.imgbb.com/1/upload?key=" + IMGBB_API_KEY, { method: 'POST', body: formData });
                     const data = await response.json();
 
                     if (data.success) {
@@ -478,9 +558,10 @@
                 fileInput.value = ""; 
                 document.getElementById('fname_'+clientId).innerText = 'Chưa có tệp';
             } catch (error) {
-                Swal.fire({title: 'Lỗi', text: 'Không thể kết nối tải ảnh.', icon: 'error', confirmButtonColor: '#111'});
+                if(typeof Swal !== 'undefined') Swal.fire({title: 'Lỗi', text: 'Không thể kết nối tải ảnh.', icon: 'error', confirmButtonColor: '#111'});
+                else alert('Lỗi tải ảnh');
             } finally {
-                btn.innerHTML = `<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN`;
+                btn.innerHTML = '<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN';
                 btn.disabled = false;
             }
         }
@@ -488,7 +569,7 @@
         function addLink(clientId) {
             const text = document.getElementById('new_' + clientId).value.trim();
             if(!text) return Toast.fire({ icon: 'warning', title: 'Chưa dán link!' });
-            const urls = text.split(/\r?\n/).map(u => u.trim()).filter(u => u !== ""); 
+            const urls = text.split(/\n/).map(u => u.trim()).filter(u => u !== ""); 
             if(urls.length === 0) return;
             const now = new Date();
             const timeStr = now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + now.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
@@ -502,16 +583,9 @@
             Toast.fire({ icon: 'success', title: 'Đã lưu link' });
         }
 
-        function updateLink(clientId, linkId) {
-            const newUrl = document.getElementById(`edit_${clientId}_${linkId}`).value.trim();
-            if(!newUrl) return Toast.fire({ icon: 'error', title: 'Link trống!' });
-            db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).update({ url: newUrl });
-            Toast.fire({ icon: 'success', title: 'Đã cập nhật!' });
-        }
-
         function deleteLink(clientId, linkId) { 
             if(userRole !== 'admin') return; 
-            Swal.fire({ title: 'Xóa link này?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => { if(r.isConfirmed) { db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove(); Toast.fire({ icon: 'success', title: 'Đã xóa link' }); }}); 
+            Swal.fire({ title: 'Xóa ảnh này?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => { if(r.isConfirmed) { db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove(); Toast.fire({ icon: 'success', title: 'Đã xóa' }); }}); 
         }
 
         function delClientUp(cId, uId) {
@@ -526,7 +600,7 @@
 
         function softDeleteCustomer(clientId, clientName) { 
             if(userRole !== 'admin') return; 
-            Swal.fire({ title: 'Chuyển vào Thùng Rác?', text: `Khách hàng '${clientName}'`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Chuyển', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
+            Swal.fire({ title: 'Chuyển vào Thùng Rác?', text: "Khách hàng " + clientName, icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Chuyển', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
                 if (r.isConfirmed) {
                     db.ref('data/' + br + '/' + clientId).once('value').then(snap => db.ref('trash/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('data/' + br + '/' + clientId).remove())).then(() => Toast.fire({ icon: 'success', title: 'Đã chuyển thùng rác' })).catch(err => Swal.fire('Lỗi', err.message, 'error'));
                 }
@@ -535,12 +609,12 @@
 
         function restoreCustomer(clientId, clientName) { 
             if(userRole !== 'admin') return; 
-            db.ref('trash/' + br + '/' + clientId).once('value').then(snap => db.ref('data/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('trash/' + br + '/' + clientId).remove())).then(() => Toast.fire({ icon: 'success', title: `Đã khôi phục '${clientName}'` })).catch(err => Swal.fire('Lỗi', err.message, 'error')); 
+            db.ref('trash/' + br + '/' + clientId).once('value').then(snap => db.ref('data/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('trash/' + br + '/' + clientId).remove())).then(() => Toast.fire({ icon: 'success', title: "Đã khôi phục " + clientName })).catch(err => Swal.fire('Lỗi', err.message, 'error')); 
         }
 
         function hardDeleteCustomer(clientId, clientName) { 
             if(userRole !== 'admin') return; 
-            Swal.fire({ title: 'Xóa Vĩnh Viễn?', text: `Khách '${clientName}'`, icon: 'warning', input: 'password', inputPlaceholder: 'Nhập Pass Admin', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
+            Swal.fire({ title: 'Xóa Vĩnh Viễn?', text: "Khách " + clientName, icon: 'warning', input: 'password', inputPlaceholder: 'Nhập Pass Admin', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
                 if (r.isConfirmed) {
                     if(r.value === PASS_ADMIN) { db.ref('trash/' + br + '/' + clientId).remove().then(() => Toast.fire({ icon: 'success', title: 'Đã xóa vĩnh viễn' })); } 
                     else { Swal.fire({title: 'Thất bại', text: 'Sai mã bảo mật!', icon: 'error', confirmButtonColor: '#111'}); }
@@ -561,12 +635,12 @@
 
             let confirmMsg = target === 'all' ? "TẤT CẢ CƠ SỞ" : (target === 'phucyen' ? "PHÚC YÊN" : "VĨNH YÊN");
             
-            Swal.fire({ title: 'DỌN SẠCH HỆ THỐNG', text: `Hành động này sẽ XÓA SẠCH VÀ VĨNH VIỄN toàn bộ dữ liệu của ${confirmMsg}.\nBạn chắc chắn chứ?`, icon: 'error', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'TÔI CHẮC CHẮN XÓA', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
+            Swal.fire({ title: 'DỌN SẠCH HỆ THỐNG', text: "Hành động này sẽ XÓA SẠCH VÀ VĨNH VIỄN toàn bộ dữ liệu của " + confirmMsg + ".\nBạn chắc chắn chứ?", icon: 'error', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'TÔI CHẮC CHẮN XÓA', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
                 if (r.isConfirmed) {
                     if (target === 'all') { db.ref('data/phucyen').remove(); db.ref('data/vinhyen').remove(); db.ref('trash/phucyen').remove(); db.ref('trash/vinhyen').remove(); } 
                     else { db.ref('data/' + target).remove(); db.ref('trash/' + target).remove(); }
                     document.getElementById('clear-modal').style.display = 'none';
-                    Swal.fire({title: 'Hoàn tất!', text: `Đã dọn sạch hệ thống cho ${confirmMsg}!`, icon: 'success', confirmButtonColor: '#111'});
+                    Swal.fire({title: 'Hoàn tất!', text: "Đã dọn sạch hệ thống cho " + confirmMsg, icon: 'success', confirmButtonColor: '#111'});
                 }
             });
         }
