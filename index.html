@@ -44,7 +44,7 @@
         .social-btn { display: flex; justify-content: center; align-items: center; padding: 12px 10px; border-radius: 10px; text-decoration: none; font-size: 13px; font-weight: 600; border: 1px solid var(--social-border); transition: 0.2s; background: var(--input-bg); color: var(--text-main); gap: 5px;}
         .social-btn:hover { border-color: var(--text-main); background: #f4f4f5; }
         
-        .icon-svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .icon-svg { width: 16px; height: 16px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
         
         #result-ui { display: none; margin-top: 10px; text-align: left; }
     </style>
@@ -70,13 +70,13 @@
         <div id="result-ui">
             <h3 style="font-size: 16px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;">
                 ALBUM CỦA BẠN 
-                <svg class="icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                <svg class="icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
             </h3>
             <div id="album-list"></div>
             
             <div style="background: #fff; padding: 15px; border-radius: 12px; margin-top: 25px; border: 1px dashed #d4d4d8;">
                 <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 600; color: #111; display:flex; align-items:center; gap:5px; text-transform: uppercase;">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
                     YÊU CẦU IN ẢNH
                 </p>
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; background: #fff; border: 1px dashed #d4d4d8; padding: 8px 12px; border-radius: 10px;">
@@ -85,7 +85,7 @@
                     <span id="c-fname" style="font-size: 12px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; font-family: 'Inter';">Chưa có tệp</span>
                 </div>
                 <button id="btn-send-shop" onclick="sendToShop()" style="width: 100%; padding: 12px; background: #111; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 13px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                     GỬI ẢNH CHO TIỆM
                 </button>
             </div>
@@ -104,7 +104,7 @@
             </div>
 
             <button onclick="location.reload()" style="background:none; border:none; color:var(--text-muted); font-size:13px; cursor:pointer; margin-top:25px; width:100%; font-weight: 500; display:flex; align-items:center; justify-content:center; gap:5px;">
-                <svg class="icon-svg" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 Tra cứu tài khoản khác
             </button>
         </div>
@@ -112,10 +112,15 @@
 
     <script>
         const IMGBB_API_KEY = 'd47a0ff216df7f718f898c65afa1cc17'; 
+        let db;
 
-        const firebaseConfig = { apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw", databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "tra-anh-khach" };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        try {
+            const firebaseConfig = { apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw", databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "tra-anh-khach" };
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+        } catch (error) {
+            console.error("Firebase init error");
+        }
 
         let currentClientId = null;
 
@@ -130,15 +135,19 @@
             if(localStorage.getItem('pn_branch')) document.getElementById('branch').value = localStorage.getItem('pn_branch');
         };
 
+        function showError(msg) {
+            if (typeof Swal !== 'undefined') Swal.fire({ icon: 'warning', title: 'Thông báo', text: msg, confirmButtonColor: '#111' });
+            else alert(msg);
+        }
+
         function checkData() {
+            if (!db) return showError("Không thể kết nối đến hệ thống. Vui lòng kiểm tra lại mạng!");
+
             const branch = document.getElementById('branch').value;
             const name = document.getElementById('name').value.trim();
             const phone = document.getElementById('phone').value.trim();
             
-            if (!name && !phone) {
-                Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng nhập Tên hoặc Số điện thoại.', confirmButtonColor: '#111' });
-                return;
-            }
+            if (!name && !phone) return showError("Vui lòng nhập Họ tên hoặc Số điện thoại.");
 
             const btn = document.getElementById('btn-submit');
             document.getElementById('spinner').style.display = 'block';
@@ -149,10 +158,63 @@
             localStorage.setItem('pn_phone', phone);
             localStorage.setItem('pn_branch', branch);
 
-            setTimeout(() => {
+            db.ref('data/' + branch).once('value', (snap) => {
+                const albumList = document.getElementById('album-list');
+                albumList.innerHTML = "";
+                let count = 0;
+
+                snap.forEach(child => {
+                    const data = child.val();
+                    let isMatch = false;
+
+                    if (phone && data.phone === phone) isMatch = true;
+                    if (name && data.name && data.name.toLowerCase() === name.toLowerCase()) isMatch = true;
+
+                    if (isMatch) {
+                        count++;
+                        currentClientId = child.key;
+
+                        let linksHtml = '';
+                        if (data.links) {
+                            Object.keys(data.links).forEach((linkId, index) => {
+                                const l = data.links[linkId];
+                                linksHtml += `<div class="link-row"><span class="time">${l.addedAt}</span><a href="${l.url}" target="_blank" class="view-btn" onclick="askRating('${branch}')">Tải ảnh gốc ${index + 1}</a></div>`;
+                            });
+                        } else {
+                            linksHtml = `<div style="background: #fafafa; border-radius: 8px; padding: 12px; margin-top: 10px; border: 1px dashed #d4d4d8; display: flex; align-items: center; gap: 8px;"><div style="width: 8px; height: 8px; background: #111; border-radius: 50%; animation: pulse 1.5s infinite;"></div><span style="font-size: 12px; color: #666; font-weight: 500;">Đang đồng bộ ảnh...</span></div>`;
+                        }
+                        
+                        let clientUploadsHtml = '';
+                        if (data.client_uploads) {
+                            clientUploadsHtml += `<div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e5e5e5;"><b style="font-size: 12px; color: #111; text-transform: uppercase;">Ảnh bạn đã yêu cầu in:</b>`;
+                            Object.keys(data.client_uploads).forEach((uploadId) => {
+                                const upload = data.client_uploads[uploadId];
+                                clientUploadsHtml += `<div class="link-row" style="background: #f4f4f5;"><span class="time">Gửi lúc: ${upload.time}</span><span style="font-size: 12px; color: #111; font-weight: 600;">${upload.links.length} ảnh</span></div>`;
+                            });
+                            clientUploadsHtml += `</div>`;
+                        }
+
+                        const item = document.createElement('div');
+                        item.className = 'album-item';
+                        item.innerHTML = `<div style="position: absolute; top: 15px; right: 15px; border: 1px solid #e5e5e5; padding: 2px 6px; border-radius: 4px; background: #fafafa; font-size: 11px; font-family: monospace; color: #888;">#${child.key.split('_')[1].slice(-4)}</div><div class="album-info"><b>Giờ chụp: ${data.time}</b></div><div style="margin-top: 10px;">${linksHtml}</div>${clientUploadsHtml}`;
+                        albumList.appendChild(item);
+                    }
+                });
+
+                if (count === 0) {
+                    const id = "S_" + Date.now();
+                    currentClientId = id;
+                    db.ref('data/' + branch + '/' + id).set({ name: name || "Khách hàng", phone: phone || "", status: "pending", time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) });
+                    albumList.innerHTML = `
+                        <div style='text-align:center; padding: 30px 10px; background: #f4f4f5; border-radius: 16px; border: 1px solid #e5e5e5;'>
+                            <svg class="icon-svg" style="width:40px;height:40px; stroke:#a1a1aa; margin-bottom:10px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            <br><b style='font-size:15px; color:#111;'>Đã tạo phiên chụp!</b>
+                            <p style='font-size:13px; color:#666; margin-top:8px; line-height: 1.5;'>Vui lòng đợi tới lượt bạn nhé.</p>
+                        </div>`;
+                }
+                
                 document.getElementById('form-ui').style.display = 'none';
                 document.getElementById('result-ui').style.display = 'block';
-
                 document.getElementById('ten-coso').innerText = LINKS[branch].name;
                 document.getElementById('link-fb').href = LINKS[branch].fb;
                 document.getElementById('link-ig').href = LINKS[branch].ig;
@@ -160,66 +222,15 @@
                 document.getElementById('link-map').href = LINKS[branch].map;
                 document.getElementById('marketing-box').style.display = 'block';
 
-                db.ref('data/' + branch).on('value', (snap) => {
-                    const albumList = document.getElementById('album-list');
-                    albumList.innerHTML = "";
-                    let count = 0;
-
-                    snap.forEach(child => {
-                        const data = child.val();
-                        let isMatch = false;
-
-                        if (phone && data.phone === phone) isMatch = true;
-                        if (name && data.name && data.name.toLowerCase() === name.toLowerCase()) isMatch = true;
-
-                        if (isMatch) {
-                            count++;
-                            currentClientId = child.key;
-
-                            let linksHtml = '';
-                            if (data.links) {
-                                Object.keys(data.links).forEach((linkId, index) => {
-                                    const l = data.links[linkId];
-                                    linksHtml += `<div class="link-row"><span class="time">${l.addedAt}</span><a href="${l.url}" target="_blank" class="view-btn" onclick="askRating('${branch}')">Lưu ảnh</a></div>`;
-                                });
-                            } else {
-                                linksHtml = `<div style="background: #fafafa; border-radius: 8px; padding: 12px; margin-top: 10px; border: 1px dashed #d4d4d8; display: flex; align-items: center; gap: 8px;"><div style="width: 8px; height: 8px; background: #111; border-radius: 50%; animation: pulse 1.5s infinite;"></div><span style="font-size: 12px; color: #666; font-weight: 500;">Đang đồng bộ ảnh...</span></div>`;
-                            }
-                            
-                            let clientUploadsHtml = '';
-                            if (data.client_uploads) {
-                                clientUploadsHtml += `<div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e5e5e5;"><b style="font-size: 12px; color: #111; text-transform: uppercase;">Ảnh bạn đã yêu cầu in:</b>`;
-                                Object.keys(data.client_uploads).forEach((uploadId) => {
-                                    const upload = data.client_uploads[uploadId];
-                                    clientUploadsHtml += `<div class="link-row" style="background: #f4f4f5;"><span class="time">Gửi lúc: ${upload.time}</span><span style="font-size: 12px; color: #111; font-weight: 600;">${upload.links.length} ảnh</span></div>`;
-                                });
-                                clientUploadsHtml += `</div>`;
-                            }
-
-                            const item = document.createElement('div');
-                            item.className = 'album-item';
-                            item.innerHTML = `<div style="position: absolute; top: 15px; right: 15px; border: 1px solid #e5e5e5; padding: 2px 6px; border-radius: 4px; background: #fafafa; font-size: 11px; font-family: monospace; color: #888;">#${child.key.split('_')[1].slice(-4)}</div><div class="album-info"><b>Giờ chụp: ${data.time}</b></div><div style="margin-top: 10px;">${linksHtml}</div>${clientUploadsHtml}`;
-                            albumList.appendChild(item);
-                        }
-                    });
-
-                    if (count === 0) {
-                        const id = "S_" + Date.now();
-                        currentClientId = id;
-                        db.ref('data/' + branch + '/' + id).set({ name: name || "Khách hàng", phone: phone || "", status: "pending", time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) });
-                        albumList.innerHTML = `
-                            <div style='text-align:center; padding: 30px 10px; background: #f4f4f5; border-radius: 16px; border: 1px solid #e5e5e5;'>
-                                <svg class="icon-svg" style="width:40px;height:40px; stroke:#a1a1aa; margin-bottom:10px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                <br><b style='font-size:15px; color:#111;'>Đã tạo phiên chụp!</b>
-                                <p style='font-size:13px; color:#666; margin-top:8px; line-height: 1.5;'>Vui lòng đợi tới lượt bạn nhé.</p>
-                            </div>`;
-                    }
-                    
-                    document.getElementById('spinner').style.display = 'none';
-                    document.getElementById('btn-text').innerText = 'TRA CỨU ALBUM';
-                    btn.disabled = false;
-                });
-            }, 800);
+                document.getElementById('spinner').style.display = 'none';
+                document.getElementById('btn-text').innerText = 'TRA CỨU ALBUM';
+                btn.disabled = false;
+            }).catch(error => {
+                showError("Lỗi kết nối máy chủ. Vui lòng thử lại.");
+                document.getElementById('spinner').style.display = 'none';
+                document.getElementById('btn-text').innerText = 'TRA CỨU';
+                btn.disabled = false;
+            });
         }
 
         async function sendToShop() {
@@ -228,8 +239,8 @@
             const btn = document.getElementById('btn-send-shop');
             const branch = document.getElementById('branch').value;
 
-            if (files.length === 0) return Swal.fire({title: 'Chưa có tệp', text: 'Vui lòng chọn ảnh từ thiết bị.', icon: 'warning', confirmButtonColor: '#111'});
-            if (!currentClientId) return Swal.fire({title: 'Lỗi', text: 'Không tìm thấy thẻ khách hàng.', icon: 'error', confirmButtonColor: '#111'});
+            if (files.length === 0) return showError("Vui lòng chọn ảnh từ thiết bị.");
+            if (!currentClientId) return showError("Không tìm thấy thẻ khách hàng.");
 
             btn.innerHTML = `<div class="spinner" style="display:block; border-top-color:#111; border-color: rgba(0,0,0,0.1);"></div> ĐANG XỬ LÝ...`;
             btn.style.background = "#fff"; btn.style.color = "#111"; btn.style.border = "1px solid #111";
@@ -249,13 +260,15 @@
                     links: uploadedUrls 
                 });
                 
-                Swal.fire({title: 'Hoàn tất', text: 'Yêu cầu in ảnh đã được gửi đến tiệm.', icon: 'success', confirmButtonColor: '#111'});
+                if(typeof Swal !== 'undefined') Swal.fire({title: 'Hoàn tất', text: 'Yêu cầu in ảnh đã được gửi đến tiệm.', icon: 'success', confirmButtonColor: '#111'});
+                else alert("Đã gửi yêu cầu in ảnh thành công!");
+                
                 fileInput.value = "";
                 document.getElementById('c-fname').innerText = 'Chưa có tệp';
             } catch (error) {
-                Swal.fire({title: 'Lỗi kết nối', text: 'Vui lòng thử lại sau.', icon: 'error', confirmButtonColor: '#111'});
+                showError("Vui lòng kiểm tra lại kết nối mạng của bạn.");
             } finally {
-                btn.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> GỬI ẢNH CHO TIỆM`;
+                btn.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> GỬI ẢNH CHO TIỆM`;
                 btn.style.background = "#111"; btn.style.color = "#fff"; btn.style.border = "none";
                 btn.disabled = false;
             }
@@ -264,10 +277,12 @@
         function askRating(br) {
             if (localStorage.getItem('pn_rated')) return;
             setTimeout(() => {
-                Swal.fire({
-                    title: 'Đánh giá dịch vụ', text: 'Tặng tiệm 5 sao trên Google Maps để ủng hộ PHOTONOIR bạn nhé!', icon: 'info',
-                    showCancelButton: true, confirmButtonText: 'Đánh giá ngay', cancelButtonText: '<span style="color:#111">Để sau</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff'
-                }).then(r => { if(r.isConfirmed) { localStorage.setItem('pn_rated', '1'); window.open(LINKS[br].map, '_blank'); }});
+                if(typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Đánh giá dịch vụ', text: 'Tặng tiệm 5 sao trên Google Maps để ủng hộ PHOTONOIR bạn nhé!', icon: 'info',
+                        showCancelButton: true, confirmButtonText: 'Đánh giá ngay', cancelButtonText: '<span style="color:#111">Để sau</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff'
+                    }).then(r => { if(r.isConfirmed) { localStorage.setItem('pn_rated', '1'); window.open(LINKS[br].map, '_blank'); }});
+                }
             }, 2000);
         }
     </script>
