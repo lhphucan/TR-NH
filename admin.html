@@ -6,13 +6,18 @@
     <title>Admin - PHOTONOIR</title>
     <link rel="icon" href="./logo.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; background: #f4f4f5; margin: 0; padding: 10px; color: #111; }
-        #login-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        #login-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
         .admin-box { max-width: 1000px; margin: auto; display: none; padding-bottom: 50px; }
         
         body.role-staff .admin-only { display: none !important; }
@@ -28,7 +33,8 @@
         .search-box { flex-grow: 1; padding: 0 12px; height: 36px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-size: 13px; background: #fff; font-family: 'Inter', sans-serif; transition: 0.2s; box-sizing: border-box;}
         .search-box:focus { border-color: #111; }
         
-        .date-input-sm { padding: 0 8px; border: 1px solid #d4d4d8; border-radius: 6px; font-size: 13px; font-family: 'Inter'; height: 34px; outline: none; background: #fff; color: #111; cursor: pointer; transition: 0.2s; box-sizing: border-box;}
+        /* Ô nhập lịch thu gọn */
+        .date-input-sm { padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 6px; font-size: 13px; font-family: 'Inter'; height: 36px; outline: none; background: #fff; color: #111; cursor: pointer; transition: 0.2s; box-sizing: border-box; font-weight: 500;}
         .date-input-sm:focus { border-color: #111; }
 
         .btn-excel { padding: 0 16px; height: 36px; background: #111; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; text-transform: uppercase; font-size: 12px; transition: 0.2s; white-space: nowrap; display: flex; align-items: center; justify-content: center;}
@@ -84,9 +90,9 @@
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; overflow-y: auto;}
         .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 420px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); box-sizing: border-box; position: relative; margin: auto;}
 
-        /* ÉP CỨNG ICON ĐỂ KHÔNG BỊ TRÌNH DUYỆT ZALO/SAFARI LÀM ĐEN HOẶC PHÓNG TO */
-        .icon-svg { width: 16px !important; height: 16px !important; min-width: 16px; min-height: 16px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
-        .icon-sm { width: 14px !important; height: 14px !important; min-width: 14px; min-height: 14px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
+        /* BẢO ĐẢM ICON KHÔNG BỊ ĐEN TRÊN BẤT KỲ TRÌNH DUYỆT NÀO */
+        .icon-svg { width: 16px !important; height: 16px !important; min-width: 16px; min-height: 16px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
+        .icon-sm { width: 14px !important; height: 14px !important; min-width: 14px; min-height: 14px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
     </style>
 </head>
 <body>
@@ -132,9 +138,8 @@
             <div class="toolbar">
                 <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-right: 1px solid #e4e4e7; padding-right: 12px;">
                     <span class="toolbar-label">Ngày xem:</span>
-                    <input type="date" id="date-from" class="date-input-sm" onchange="filterData()">
-                    <span style="font-size:12px; color:#a1a1aa;">-</span>
-                    <input type="date" id="date-to" class="date-input-sm" onchange="filterData()">
+                    <input type="text" id="date-filter" class="date-input-sm" style="width: 200px;" placeholder="Chọn khoảng ngày...">
+                    <button onclick="filterData()" class="btn-outline" style="height: 36px; padding: 0 12px; margin: 0; border-color: #d4d4d8;">Xác nhận</button>
                     <button onclick="clearDateFilter()" style="background: none; border: none; font-size: 11px; color: #111; text-decoration: underline; cursor: pointer; font-weight: 600; padding: 4px;">Tất cả</button>
                 </div>
                 <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5; margin-bottom: 0;" placeholder="Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
@@ -171,7 +176,7 @@
             <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Mật khẩu xác nhận:</label>
             <input type="password" id="clear-pass" class="search-box" placeholder="Nhập Pass Admin..." style="width:100%; margin-bottom:25px; border: 1px solid #d4d4d8; box-sizing: border-box; height:40px;">
             <div style="display:flex; gap:10px;">
-                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600;">Hủy</button>
+                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600;">Hủy Bỏ</button>
                 <button onclick="executeClearData()" style="flex:1; padding:12px; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight: 700;">Tiến Hành Xóa</button>
             </div>
         </div>
@@ -188,11 +193,10 @@
             </h3>
             
             <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
-                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">1. Thống kê theo ngày:</label>
+                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">1. Thống kê theo khoảng ngày:</label>
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
-                    <input type="date" id="rev-date-from" class="date-input-sm" style="flex:1;" onchange="calcRevenue()">
-                    <span style="font-size:12px; color:#888;">đến</span>
-                    <input type="date" id="rev-date-to" class="date-input-sm" style="flex:1;" onchange="calcRevenue()">
+                    <input type="text" id="rev-date-range" class="date-input-sm" style="flex:1;" placeholder="Chọn khoảng ngày...">
+                    <button onclick="calcRevenue()" class="btn-outline" style="height: 36px; margin: 0;">Xác nhận</button>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                     <div style="font-size:12px; font-weight:700; color:#111;" id="rev-day-title">KHOẢNG THỜI GIAN</div>
@@ -216,8 +220,17 @@
 
             <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px;">
                 <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">2. Thống kê theo tháng:</label>
-                <div style="margin-bottom:12px;">
-                    <input type="month" id="rev-month-picker" class="date-input-sm" style="width:100%;" onchange="calcRevenueByMonth()">
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
+                    <select id="rev-m" class="price-select" style="flex:1;">
+                        <option value="01">Tháng 1</option><option value="02">Tháng 2</option><option value="03">Tháng 3</option><option value="04">Tháng 4</option>
+                        <option value="05">Tháng 5</option><option value="06">Tháng 6</option><option value="07">Tháng 7</option><option value="08">Tháng 8</option>
+                        <option value="09">Tháng 9</option><option value="10">Tháng 10</option><option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+                    </select>
+                    <select id="rev-y" class="price-select" style="width:90px;">
+                        <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+                        <option value="2027">2027</option><option value="2028">2028</option>
+                    </select>
+                    <button onclick="calcRevenueByMonth()" class="btn-outline" style="height: 36px; margin: 0;">Xác nhận</button>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                     <div style="font-size:12px; font-weight:700; color:#111;" id="rev-month-title">THÁNG NÀY</div>
@@ -266,17 +279,16 @@
             Toast = { fire: (args) => alert(args.title) };
         }
 
+        function getDStr(dObj) { return String(dObj.getDate()).padStart(2, '0') + '/' + String(dObj.getMonth() + 1).padStart(2, '0') + '/' + dObj.getFullYear(); }
+
         window.onload = () => {
             const savedRole = localStorage.getItem('pn_admin_role');
             if (savedRole === 'admin' || savedRole === 'staff') { userRole = savedRole; setupUI(); }
         };
 
-        function getDStr(dObj) { return String(dObj.getDate()).padStart(2, '0') + '/' + String(dObj.getMonth() + 1).padStart(2, '0') + '/' + dObj.getFullYear(); }
-        function getTodayForInput() { const today = new Date(); return today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0'); }
-
         function clearDateFilter() { 
-            document.getElementById('date-from').value = ""; 
-            document.getElementById('date-to').value = ""; 
+            const fp = document.getElementById('date-filter')._flatpickr;
+            if(fp) fp.clear();
             filterData(); 
         }
 
@@ -311,9 +323,8 @@
             document.getElementById('admin-box').style.display = 'block';
             document.getElementById('role-badge').innerText = userRole === 'admin' ? "ADMIN" : "NHÂN VIÊN";
             
-            // Set default date filter to today for both from and to
-            document.getElementById('date-from').value = getTodayForInput();
-            document.getElementById('date-to').value = getTodayForInput();
+            const todayStr = getDStr(new Date());
+            flatpickr("#date-filter", { mode: "range", dateFormat: "d/m/Y", locale: "vn", defaultDate: todayStr });
             
             if (db) load();
         }
@@ -336,26 +347,39 @@
         function openRevenueModal() {
             if(userRole !== 'admin') return Toast.fire({icon: 'error', title: 'Chỉ Quản trị viên được xem'});
             
-            const today = new Date();
-            const todayDateStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
-            const todayMonthStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0');
+            setTimeout(() => {
+                const todayStr = getDStr(new Date());
+                flatpickr("#rev-date-range", { mode: "range", dateFormat: "d/m/Y", locale: "vn", defaultDate: todayStr });
+                
+                const now = new Date();
+                document.getElementById('rev-m').value = String(now.getMonth() + 1).padStart(2, '0');
+                document.getElementById('rev-y').value = now.getFullYear();
+                
+                calcRevenue();
+                calcRevenueByMonth();
+            }, 100);
 
-            document.getElementById('rev-date-from').value = todayDateStr;
-            document.getElementById('rev-date-to').value = todayDateStr;
-            document.getElementById('rev-month-picker').value = todayMonthStr;
-
-            calcRevenue();
-            calcRevenueByMonth();
             document.getElementById('revenue-modal').style.display = 'flex';
         }
 
         function calcRevenue() {
-            const fStr = document.getElementById('rev-date-from').value;
-            const tStr = document.getElementById('rev-date-to').value;
-            
+            const fp = document.getElementById('rev-date-range')._flatpickr;
             let fTs = 0, tTs = Infinity;
-            if(fStr) { const d = new Date(fStr); d.setHours(0,0,0,0); fTs = d.getTime(); }
-            if(tStr) { const d = new Date(tStr); d.setHours(23,59,59,999); tTs = d.getTime(); }
+            let titleStr = "KHOẢNG THỜI GIAN";
+
+            if (fp && fp.selectedDates.length > 0) {
+                fTs = new Date(fp.selectedDates[0]).setHours(0,0,0,0);
+                tTs = fp.selectedDates.length > 1 ? new Date(fp.selectedDates[1]).setHours(23,59,59,999) : new Date(fp.selectedDates[0]).setHours(23,59,59,999);
+                
+                const d1 = getDStr(fp.selectedDates[0]);
+                if (fp.selectedDates.length > 1) {
+                    titleStr = `TỪ ${d1} ĐẾN ${getDStr(fp.selectedDates[1])}`;
+                } else {
+                    titleStr = `NGÀY ${d1}`;
+                }
+            } else {
+                return Toast.fire({ icon: 'warning', title: 'Vui lòng chọn ngày!' });
+            }
 
             let dTotal = 0, dCash = 0, dTrans = 0, dCount = 0, dFree = 0;
 
@@ -377,10 +401,6 @@
                 });
             }
 
-            let titleStr = "KHOẢNG THỜI GIAN ĐÃ CHỌN";
-            if (fStr && tStr && fStr === tStr) titleStr = `NGÀY ${fStr.split('-').reverse().join('/')}`;
-            else if (fStr && tStr) titleStr = `TỪ ${fStr.split('-').reverse().join('/')} - ${tStr.split('-').reverse().join('/')}`;
-
             document.getElementById('rev-day-title').innerText = titleStr;
             document.getElementById('rev-day-count').innerText = dCount + ' lượt';
             document.getElementById('rev-day-free').innerText = dFree + ' miễn phí';
@@ -390,24 +410,21 @@
         }
 
         function calcRevenueByMonth() {
-            const mStrInput = document.getElementById('rev-month-picker').value; 
-            let targetMonth = "", targetYear = "";
-            if(mStrInput) {
-                const parts = mStrInput.split('-');
-                targetYear = parts[0]; targetMonth = parts[1];
-            }
+            const mm = document.getElementById('rev-m').value;
+            const yyyy = document.getElementById('rev-y').value;
+            const targetMonth = `${mm}/${yyyy}`;
 
             let mTotal = 0, mCash = 0, mTrans = 0, mCount = 0, mFree = 0;
 
-            if(currentData && dbPath === 'data/' && targetMonth) {
+            if(currentData && dbPath === 'data/' && mm && yyyy) {
                 Object.keys(currentData).forEach(id => {
                     const c = currentData[id];
                     const ts = parseInt(id.split('_')[1]) || Date.now();
                     const dObj = new Date(ts);
-                    const mm = String(dObj.getMonth() + 1).padStart(2, '0');
-                    const yyyy = String(dObj.getFullYear());
+                    const cMm = String(dObj.getMonth() + 1).padStart(2, '0');
+                    const cYyyy = String(dObj.getFullYear());
 
-                    if (mm === targetMonth && yyyy === targetYear) {
+                    if (cMm === mm && cYyyy === yyyy) {
                         const isFree = (c.price === 'Miễn phí');
                         const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
                         
@@ -420,7 +437,7 @@
                 });
             }
             
-            document.getElementById('rev-month-title').innerText = targetMonth ? `THÁNG ${targetMonth}/${targetYear}` : "THÁNG ĐÃ CHỌN";
+            document.getElementById('rev-month-title').innerText = `THÁNG ${targetMonth}`;
             document.getElementById('rev-month-count').innerText = mCount + ' lượt';
             document.getElementById('rev-month-free').innerText = mFree + ' miễn phí';
             document.getElementById('rev-month-cash').innerText = mCash.toLocaleString('vi-VN') + ' ₫';
@@ -572,7 +589,6 @@
             });
         }
 
-        // Tự động định dạng giá tiền
         function formatAndSavePrice(input, id) {
             let val = input.value.trim();
             if (val.toLowerCase() === 'miễn phí' || val.toLowerCase() === 'mien phi') {
@@ -620,19 +636,20 @@
 
         function filterData() {
             const query = document.getElementById('search-box').value.toLowerCase();
-            const fromDateStr = document.getElementById('date-from').value; 
-            const toDateStr = document.getElementById('date-to').value; 
-            
+            const fp = document.getElementById('date-filter')._flatpickr;
             let fTs = 0, tTs = Infinity;
-            if(fromDateStr) { const d = new Date(fromDateStr); d.setHours(0,0,0,0); fTs = d.getTime(); }
-            if(toDateStr) { const d = new Date(toDateStr); d.setHours(23,59,59,999); tTs = d.getTime(); }
+            
+            if (fp && fp.selectedDates.length > 0) {
+                fTs = new Date(fp.selectedDates[0]).setHours(0,0,0,0);
+                tTs = fp.selectedDates.length > 1 ? new Date(fp.selectedDates[1]).setHours(23,59,59,999) : new Date(fp.selectedDates[0]).setHours(23,59,59,999);
+            }
 
             let visibleGroupCount = 0;
 
             document.querySelectorAll('.date-group').forEach(group => {
                 let hasVisibleCard = false;
                 const headerText = group.querySelector('.date-header span:first-child').innerText;
-                const dateParts = headerText.split(', ').pop().split('/'); // DD/MM/YYYY
+                const dateParts = headerText.split(', ').pop().trim().split('/'); 
                 const groupTs = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T12:00:00`).getTime();
 
                 if (groupTs >= fTs && groupTs <= tTs) {
@@ -661,13 +678,8 @@
                 title: 'Tùy chọn Xuất Excel',
                 html: `
                     <div style="text-align:left; font-family:'Inter'; margin-top:10px;">
-                        <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">Từ ngày:</label>
-                        <input type="date" id="swal-date-from" class="search-box" style="width:100%; margin-bottom:15px; height:40px; padding:0 12px; border:1px solid #d4d4d8; border-radius:8px; font-family:'Inter'; box-sizing:border-box;">
-                        
-                        <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">Đến ngày:</label>
-                        <input type="date" id="swal-date-to" class="search-box" style="width:100%; margin-bottom:10px; height:40px; padding:0 12px; border:1px solid #d4d4d8; border-radius:8px; font-family:'Inter'; box-sizing:border-box;">
-                        
-                        <div style="font-size:11px; color:#888; text-align:center;">* Để trống nếu muốn xuất toàn bộ</div>
+                        <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">Chọn ngày / Khoảng ngày:</label>
+                        <input type="text" id="swal-excel-range" class="search-box" style="width:100%; margin-bottom:15px; height:40px; padding:0 12px; border:1px solid #d4d4d8; border-radius:8px; font-family:'Inter'; box-sizing:border-box;" placeholder="Để trống để xuất tất cả...">
                     </div>
                 `,
                 showCancelButton: true,
@@ -675,17 +687,24 @@
                 cancelButtonText: '<span style="color:#111">Hủy</span>',
                 confirmButtonColor: '#111',
                 didOpen: () => {
-                    document.getElementById('swal-date-from').value = document.getElementById('date-from').value;
-                    document.getElementById('swal-date-to').value = document.getElementById('date-to').value;
+                    flatpickr("#swal-excel-range", {
+                        mode: "range",
+                        dateFormat: "d/m/Y",
+                        locale: "vn",
+                        defaultDate: document.getElementById('date-filter').value
+                    });
                 }
             }).then((result) => {
                 if(result.isConfirmed) {
-                    const fStr = document.getElementById('swal-date-from').value;
-                    const tStr = document.getElementById('swal-date-to').value;
-                    
+                    const fp = document.getElementById('swal-excel-range')._flatpickr;
                     let fTs = 0, tTs = Infinity;
-                    if(fStr) { const d = new Date(fStr); d.setHours(0,0,0,0); fTs = d.getTime(); }
-                    if(tStr) { const d = new Date(tStr); d.setHours(23,59,59,999); tTs = d.getTime(); }
+                    let fStr = "";
+
+                    if (fp && fp.selectedDates.length > 0) {
+                        fTs = new Date(fp.selectedDates[0]).setHours(0,0,0,0);
+                        tTs = fp.selectedDates.length > 1 ? new Date(fp.selectedDates[1]).setHours(23,59,59,999) : new Date(fp.selectedDates[0]).setHours(23,59,59,999);
+                        fStr = getDStr(fp.selectedDates[0]);
+                    }
 
                     let csvContent = "data:text/csv;charset=utf-8," + String.fromCharCode(0xFEFF) + "Ngày,Giờ,Mã KH,Họ Tên,SĐT,Giá Tiền,Nguồn Tiền,Cơ Sở\n";
                     let count = 0;
@@ -708,9 +727,10 @@
 
                     const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); 
                     let fileName = "PHOTONOIR_Report";
-                    if(fStr && tStr && fStr === tStr) fileName += "_" + fStr;
-                    else if (fStr && tStr) fileName += "_" + fStr + "_den_" + tStr;
+                    if (fp && fp.selectedDates.length > 1) fileName += "_" + fStr.replace(/\//g,'') + "_den_" + getDStr(fp.selectedDates[1]).replace(/\//g,'');
+                    else if (fStr) fileName += "_" + fStr.replace(/\//g,'');
                     else fileName += "_All";
+
                     link.setAttribute("download", fileName + ".csv");
                     document.body.appendChild(link); link.click(); 
                     Toast.fire({ icon: 'success', title: `Đã xuất ${count} khách hàng` });
@@ -779,7 +799,7 @@
 
         function delClientUp(cId, uId) {
             if(userRole !== 'admin') return;
-            Swal.fire({ title: 'Đã xử lý in?', showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>', confirmButtonColor: '#111' }).then(r => {
+            Swal.fire({ title: 'Xóa yêu cầu in?', showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>', confirmButtonColor: '#111' }).then(r => {
                 if(r.isConfirmed) {
                     db.ref(dbPath + br + '/' + cId + '/client_uploads/' + uId).remove();
                     Toast.fire({ icon: 'success', title: 'Đã xóa yêu cầu in' });
