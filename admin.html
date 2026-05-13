@@ -87,7 +87,7 @@
         #empty-msg { text-align: center; padding: 60px 20px; display: none; background: #fff; border-radius: 16px; border: 1px dashed #d4d4d8; margin-top: 20px; }
         .empty-text { font-size: 14px; color: #71717a; font-weight: 500; margin-top:15px; }
 
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; overflow-y: auto;}
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; overflow-y: auto;}
         .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 420px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); box-sizing: border-box; position: relative; margin: auto;}
 
         /* BẢO ĐẢM ICON KHÔNG BỊ ĐEN TRÊN BẤT KỲ TRÌNH DUYỆT NÀO */
@@ -139,8 +139,8 @@
                 <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-right: 1px solid #e4e4e7; padding-right: 12px;">
                     <span class="toolbar-label">Ngày xem:</span>
                     <input type="text" id="date-filter" class="date-input-sm" style="width: 200px;" placeholder="Chọn khoảng ngày...">
-                    <button onclick="filterData()" class="btn-outline" style="height: 36px; padding: 0 12px; margin: 0; border-color: #d4d4d8;">Xác nhận</button>
-                    <button onclick="clearDateFilter()" style="background: none; border: none; font-size: 11px; color: #111; text-decoration: underline; cursor: pointer; font-weight: 600; padding: 4px;">Tất cả</button>
+                    <button onclick="filterData()" class="btn-excel" style="margin: 0; padding: 0 16px;">XÁC NHẬN</button>
+                    <button onclick="clearDateFilter()" class="btn-excel" style="margin: 0; padding: 0 16px; background: #fff; color: #111; border: 1px solid #d4d4d8;">TẤT CẢ</button>
                 </div>
                 <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5; margin-bottom: 0;" placeholder="Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
                 <button class="btn-excel admin-only" onclick="exportExcel()">XUẤT EXCEL</button>
@@ -196,7 +196,7 @@
                 <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">1. Thống kê theo khoảng ngày:</label>
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
                     <input type="text" id="rev-date-range" class="date-input-sm" style="flex:1;" placeholder="Chọn khoảng ngày...">
-                    <button onclick="calcRevenue()" class="btn-outline" style="height: 36px; margin: 0;">Xác nhận</button>
+                    <button onclick="calcRevenue()" class="btn-excel" style="margin: 0;">XÁC NHẬN</button>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                     <div style="font-size:12px; font-weight:700; color:#111;" id="rev-day-title">KHOẢNG THỜI GIAN</div>
@@ -218,19 +218,13 @@
                 </div>
             </div>
 
-            <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px;">
-                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">2. Thống kê theo tháng:</label>
+            <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">2. Thống kê theo khoảng tháng:</label>
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
-                    <select id="rev-m" class="price-select" style="flex:1;">
-                        <option value="01">Tháng 1</option><option value="02">Tháng 2</option><option value="03">Tháng 3</option><option value="04">Tháng 4</option>
-                        <option value="05">Tháng 5</option><option value="06">Tháng 6</option><option value="07">Tháng 7</option><option value="08">Tháng 8</option>
-                        <option value="09">Tháng 9</option><option value="10">Tháng 10</option><option value="11">Tháng 11</option><option value="12">Tháng 12</option>
-                    </select>
-                    <select id="rev-y" class="price-select" style="width:90px;">
-                        <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
-                        <option value="2027">2027</option><option value="2028">2028</option>
-                    </select>
-                    <button onclick="calcRevenueByMonth()" class="btn-outline" style="height: 36px; margin: 0;">Xác nhận</button>
+                    <input type="month" id="rev-month-from" class="date-input-sm" style="flex:1;">
+                    <span style="font-size:12px; color:#888;">đến</span>
+                    <input type="month" id="rev-month-to" class="date-input-sm" style="flex:1;">
+                    <button onclick="calcRevenueByMonth()" class="btn-excel" style="margin: 0; padding: 0 12px;">XÁC NHẬN</button>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                     <div style="font-size:12px; font-weight:700; color:#111;" id="rev-month-title">THÁNG NÀY</div>
@@ -251,6 +245,39 @@
                     </div>
                 </div>
             </div>
+
+            <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px;">
+                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">3. Thống kê theo năm:</label>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
+                    <select id="rev-year-picker" class="price-select" style="flex:1;">
+                        <option value="2024">Năm 2024</option>
+                        <option value="2025">Năm 2025</option>
+                        <option value="2026" selected>Năm 2026</option>
+                        <option value="2027">Năm 2027</option>
+                        <option value="2028">Năm 2028</option>
+                    </select>
+                    <button onclick="calcRevenueByYear()" class="btn-excel" style="margin: 0; padding: 0 16px;">XÁC NHẬN</button>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-size:12px; font-weight:700; color:#111;" id="rev-year-title">NĂM 2026</div>
+                    <div style="font-size:12px; color:#666; font-weight:600;"><span id="rev-year-count">0 lượt</span> (<span id="rev-year-free" style="color:#ef4444;">0 miễn phí</span>)</div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Tiền mặt</div>
+                        <div id="rev-year-cash" style="font-size:16px; font-weight:700; color:#f59e0b;">0 ₫</div>
+                    </div>
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Chuyển khoản</div>
+                        <div id="rev-year-trans" style="font-size:16px; font-weight:700; color:#10b981;">0 ₫</div>
+                    </div>
+                    <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
+                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng doanh thu</div>
+                        <div id="rev-year-total" style="font-size:20px; font-weight:700;">0 ₫</div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -323,7 +350,8 @@
             document.getElementById('admin-box').style.display = 'block';
             document.getElementById('role-badge').innerText = userRole === 'admin' ? "ADMIN" : "NHÂN VIÊN";
             
-            const todayStr = getDStr(new Date());
+            const todayObj = new Date();
+            const todayStr = getDStr(todayObj);
             flatpickr("#date-filter", { mode: "range", dateFormat: "d/m/Y", locale: "vn", defaultDate: todayStr });
             
             if (db) load();
@@ -352,11 +380,14 @@
                 flatpickr("#rev-date-range", { mode: "range", dateFormat: "d/m/Y", locale: "vn", defaultDate: todayStr });
                 
                 const now = new Date();
-                document.getElementById('rev-m').value = String(now.getMonth() + 1).padStart(2, '0');
-                document.getElementById('rev-y').value = now.getFullYear();
+                const mStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
+                document.getElementById('rev-month-from').value = mStr;
+                document.getElementById('rev-month-to').value = mStr;
+                document.getElementById('rev-year-picker').value = String(now.getFullYear());
                 
                 calcRevenue();
                 calcRevenueByMonth();
+                calcRevenueByYear();
             }, 100);
 
             document.getElementById('revenue-modal').style.display = 'flex';
@@ -410,21 +441,25 @@
         }
 
         function calcRevenueByMonth() {
-            const mm = document.getElementById('rev-m').value;
-            const yyyy = document.getElementById('rev-y').value;
-            const targetMonth = `${mm}/${yyyy}`;
+            const fM = document.getElementById('rev-month-from').value; 
+            const tM = document.getElementById('rev-month-to').value; 
+            
+            let fVal = 0, tVal = Infinity;
+            if(fM) { const p = fM.split('-'); fVal = parseInt(p[0])*12 + parseInt(p[1]); }
+            if(tM) { const p = tM.split('-'); tVal = parseInt(p[0])*12 + parseInt(p[1]); }
+            
+            if (fVal === 0 && tVal === Infinity) return Toast.fire({ icon: 'warning', title: 'Vui lòng chọn tháng!' });
 
             let mTotal = 0, mCash = 0, mTrans = 0, mCount = 0, mFree = 0;
 
-            if(currentData && dbPath === 'data/' && mm && yyyy) {
+            if(currentData && dbPath === 'data/') {
                 Object.keys(currentData).forEach(id => {
                     const c = currentData[id];
                     const ts = parseInt(id.split('_')[1]) || Date.now();
                     const dObj = new Date(ts);
-                    const cMm = String(dObj.getMonth() + 1).padStart(2, '0');
-                    const cYyyy = String(dObj.getFullYear());
+                    const cVal = dObj.getFullYear() * 12 + (dObj.getMonth() + 1);
 
-                    if (cMm === mm && cYyyy === yyyy) {
+                    if (cVal >= fVal && cVal <= tVal) {
                         const isFree = (c.price === 'Miễn phí');
                         const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
                         
@@ -437,12 +472,48 @@
                 });
             }
             
-            document.getElementById('rev-month-title').innerText = `THÁNG ${targetMonth}`;
+            let titleStr = "KHOẢNG THÁNG CHỌN";
+            if (fM && tM && fM === tM) titleStr = `THÁNG ${fM.split('-')[1]}/${fM.split('-')[0]}`;
+            else if (fM && tM) titleStr = `TỪ ${fM.split('-')[1]}/${fM.split('-')[0]} ĐẾN ${tM.split('-')[1]}/${tM.split('-')[0]}`;
+
+            document.getElementById('rev-month-title').innerText = titleStr;
             document.getElementById('rev-month-count').innerText = mCount + ' lượt';
             document.getElementById('rev-month-free').innerText = mFree + ' miễn phí';
             document.getElementById('rev-month-cash').innerText = mCash.toLocaleString('vi-VN') + ' ₫';
             document.getElementById('rev-month-trans').innerText = mTrans.toLocaleString('vi-VN') + ' ₫';
             document.getElementById('rev-month-total').innerText = mTotal.toLocaleString('vi-VN') + ' ₫';
+        }
+
+        function calcRevenueByYear() {
+            const yyyy = document.getElementById('rev-year-picker').value;
+
+            let yTotal = 0, yCash = 0, yTrans = 0, yCount = 0, yFree = 0;
+
+            if(currentData && dbPath === 'data/' && yyyy) {
+                Object.keys(currentData).forEach(id => {
+                    const c = currentData[id];
+                    const ts = parseInt(id.split('_')[1]) || Date.now();
+                    const dObj = new Date(ts);
+
+                    if (String(dObj.getFullYear()) === yyyy) {
+                        const isFree = (c.price === 'Miễn phí');
+                        const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
+                        
+                        yCount++;
+                        if (isFree) yFree++;
+                        yTotal += priceVal;
+                        if (c.payment === 'Tiền mặt') yCash += priceVal;
+                        if (c.payment === 'Chuyển khoản') yTrans += priceVal;
+                    }
+                });
+            }
+            
+            document.getElementById('rev-year-title').innerText = `NĂM ${yyyy}`;
+            document.getElementById('rev-year-count').innerText = yCount + ' lượt';
+            document.getElementById('rev-year-free').innerText = yFree + ' miễn phí';
+            document.getElementById('rev-year-cash').innerText = yCash.toLocaleString('vi-VN') + ' ₫';
+            document.getElementById('rev-year-trans').innerText = yTrans.toLocaleString('vi-VN') + ' ₫';
+            document.getElementById('rev-year-total').innerText = yTotal.toLocaleString('vi-VN') + ' ₫';
         }
 
         function load() {
@@ -678,8 +749,9 @@
                 title: 'Tùy chọn Xuất Excel',
                 html: `
                     <div style="text-align:left; font-family:'Inter'; margin-top:10px;">
-                        <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">Chọn ngày / Khoảng ngày:</label>
-                        <input type="text" id="swal-excel-range" class="search-box" style="width:100%; margin-bottom:15px; height:40px; padding:0 12px; border:1px solid #d4d4d8; border-radius:8px; font-family:'Inter'; box-sizing:border-box;" placeholder="Để trống để xuất tất cả...">
+                        <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">Chọn khoảng ngày xuất dữ liệu:</label>
+                        <input type="text" id="swal-excel-range" class="search-box" style="width:100%; margin-bottom:15px; height:40px; padding:0 12px; border:1px solid #d4d4d8; border-radius:8px; font-family:'Inter'; box-sizing:border-box;" placeholder="Để trống để xuất toàn bộ thời gian...">
+                        <div style="font-size:11px; color:#888; text-align:center;">* Không chọn gì hệ thống tự động xuất TẤT CẢ.</div>
                     </div>
                 `,
                 showCancelButton: true,
