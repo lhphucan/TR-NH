@@ -177,22 +177,19 @@
                             currentClientId = child.key;
 
                             let linksHtml = '';
-                            
-                            // Phân vùng Ảnh Tiệm Trả (links)
                             if (data.links) {
                                 Object.keys(data.links).forEach((linkId, index) => {
                                     const l = data.links[linkId];
-                                    linksHtml += `<div class="link-row"><span class="time">${l.addedAt}</span><a href="${l.url}" target="_blank" class="view-btn" onclick="askRating('${branch}')">Tải ảnh gốc ${index + 1}</a></div>`;
+                                    linksHtml += `<div class="link-row"><span class="time">${l.addedAt}</span><a href="${l.url}" target="_blank" class="view-btn" onclick="askRating('${branch}')">Lưu ảnh</a></div>`;
                                 });
                             } else {
                                 linksHtml = `<div style="background: #fafafa; border-radius: 8px; padding: 12px; margin-top: 10px; border: 1px dashed #d4d4d8; display: flex; align-items: center; gap: 8px;"><div style="width: 8px; height: 8px; background: #111; border-radius: 50%; animation: pulse 1.5s infinite;"></div><span style="font-size: 12px; color: #666; font-weight: 500;">Đang đồng bộ ảnh...</span></div>`;
                             }
                             
-                            // Phân vùng Ảnh Khách Gửi In (client_uploads)
                             let clientUploadsHtml = '';
                             if (data.client_uploads) {
-                                clientUploadsHtml += `<div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e5e5e5;"><b style="font-size: 13px; color: #111;">Ảnh bạn đã gửi in:</b>`;
-                                Object.keys(data.client_uploads).forEach((uploadId, index) => {
+                                clientUploadsHtml += `<div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e5e5e5;"><b style="font-size: 12px; color: #111; text-transform: uppercase;">Ảnh bạn đã yêu cầu in:</b>`;
+                                Object.keys(data.client_uploads).forEach((uploadId) => {
                                     const upload = data.client_uploads[uploadId];
                                     clientUploadsHtml += `<div class="link-row" style="background: #f4f4f5;"><span class="time">Gửi lúc: ${upload.time}</span><span style="font-size: 12px; color: #111; font-weight: 600;">${upload.links.length} ảnh</span></div>`;
                                 });
