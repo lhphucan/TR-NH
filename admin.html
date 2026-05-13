@@ -12,7 +12,9 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
 
     <style>
@@ -23,7 +25,7 @@
         body.role-staff .admin-only { display: none !important; }
 
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
-        .tab-btn { padding: 10px 20px; border: 1px solid #d4d4d8; border-radius: 8px; cursor: pointer; background: #fff; color: #111; font-weight: 500; transition: 0.2s; white-space: nowrap; flex-shrink: 0; }
+        .tab-btn { padding: 10px 20px; border: 1px solid #d4d4d8; border-radius: 8px; cursor: pointer; background: #fff; color: #111; font-weight: 600; font-size: 13px; transition: 0.2s; white-space: nowrap; flex-shrink: 0; }
         .tab-btn.active { background: #18181b; color: #fff; border-color: #18181b; }
         
         .toolbar-wrapper { position: sticky; top: 10px; z-index: 100; margin-bottom: 20px; }
@@ -31,13 +33,13 @@
         
         .toolbar-label { font-size: 13px; font-weight: 600; color: #52525b;}
         .search-box { flex-grow: 1; padding: 0 12px; height: 36px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-size: 13px; background: #fff; font-family: 'Inter', sans-serif; transition: 0.2s; box-sizing: border-box;}
-        .search-box:focus { border-color: #111; }
+        .search-box:focus { border-color: #111; box-shadow: 0 0 0 2px rgba(17,17,17,0.05);}
         
-        /* Ô nhập lịch thu gọn */
-        .date-input-sm { padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 6px; font-size: 13px; font-family: 'Inter'; height: 36px; outline: none; background: #fff; color: #111; cursor: pointer; transition: 0.2s; box-sizing: border-box; font-weight: 500;}
-        .date-input-sm:focus { border-color: #111; }
+        /* Đồng bộ ô nhập lịch và các nút bấm */
+        .date-input-sm { padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; font-family: 'Inter'; height: 36px; outline: none; background: #fff; color: #111; cursor: pointer; transition: 0.2s; box-sizing: border-box; font-weight: 500; text-align: center;}
+        .date-input-sm:focus { border-color: #111; box-shadow: 0 0 0 2px rgba(17,17,17,0.05);}
 
-        .btn-excel { padding: 0 16px; height: 36px; background: #111; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; text-transform: uppercase; font-size: 12px; transition: 0.2s; white-space: nowrap; display: flex; align-items: center; justify-content: center;}
+        .btn-excel { padding: 0 16px; height: 36px; background: #111; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; text-transform: uppercase; font-size: 12px; transition: 0.2s; white-space: nowrap; display: flex; align-items: center; justify-content: center; box-sizing: border-box; font-family: 'Inter';}
         .btn-excel:hover { background: #333; transform: translateY(-1px); }
 
         .date-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid #18181b; margin: 30px 0 15px 0; font-weight: 700; font-size: 16px; }
@@ -57,12 +59,12 @@
         .link-manager { flex-grow: 1; width: 100%; min-width: 0; display: flex; flex-direction: column;}
         .link-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fafafa; padding: 8px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f4f4f5; transition: 0.2s; }
         .link-row:focus-within { border-color: #d4d4d8; background: #fff; }
-        .link-row input { flex-grow: 1; min-width: 150px; height: 34px; padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 6px; font-size: 13px; outline: none; transition: 0.2s; box-sizing: border-box;}
+        .link-row input { flex-grow: 1; min-width: 150px; height: 34px; padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 6px; font-size: 13px; outline: none; transition: 0.2s; box-sizing: border-box; font-family: 'Inter';}
         .link-row input:focus { border-color: #111; }
         .link-row .time-label { font-size: 12px; color: #a1a1aa; width: 100%; font-weight: 600; font-family: monospace;}
         @media (min-width: 480px) { .link-row .time-label { width: 80px; } }
 
-        button.btn { padding: 0 14px; height: 36px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; text-transform: uppercase; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        button.btn { padding: 0 14px; height: 36px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; text-transform: uppercase; transition: 0.2s; display: flex; align-items: center; justify-content: center; font-family: 'Inter';}
         .btn-add { background: #18181b; color: #fff; white-space: nowrap;}
         .btn-add:hover { background: #3f3f46; }
         .btn-del-link { background: #fff; color: #ef4444; border: 1px solid #e5e5e5; height: 34px; padding: 0 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s; white-space: nowrap; box-sizing: border-box;}
@@ -87,10 +89,10 @@
         #empty-msg { text-align: center; padding: 60px 20px; display: none; background: #fff; border-radius: 16px; border: 1px dashed #d4d4d8; margin-top: 20px; }
         .empty-text { font-size: 14px; color: #71717a; font-weight: 500; margin-top:15px; }
 
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; overflow-y: auto;}
-        .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 420px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); box-sizing: border-box; position: relative; margin: auto;}
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; overflow-y: auto;}
+        .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 440px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); box-sizing: border-box; position: relative; margin: auto;}
 
-        /* BẢO ĐẢM ICON KHÔNG BỊ ĐEN TRÊN BẤT KỲ TRÌNH DUYỆT NÀO */
+        /* BẢO ĐẢM ICON KHÔNG BỊ ĐEN/PHÓNG TO TRÊN ZALO/SAFARI */
         .icon-svg { width: 16px !important; height: 16px !important; min-width: 16px; min-height: 16px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
         .icon-sm { width: 14px !important; height: 14px !important; min-width: 14px; min-height: 14px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
     </style>
@@ -100,8 +102,8 @@
         <div style="text-align:center; width: 100%; max-width: 320px;">
             <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 1px solid #eee;" onerror="this.style.display='none'">
             <h3 style="margin-bottom: 25px; letter-spacing: 2px;">PHOTONOIR</h3>
-            <input type="password" id="pass" placeholder="Nhập mã bảo mật..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 15px; text-align: center; outline: none; transition: 0.2s;">
-            <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase; transition: 0.2s;">Đăng nhập</button>
+            <input type="password" id="pass" placeholder="Nhập mã bảo mật..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 15px; text-align: center; outline: none; transition: 0.2s; font-family: 'Inter';">
+            <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase; transition: 0.2s; font-family: 'Inter';">Đăng nhập</button>
         </div>
     </div>
 
@@ -113,17 +115,17 @@
             </h2>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <div class="admin-only" style="display: flex; gap: 15px;">
-                    <button onclick="openRevenueModal()" style="color:#111; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center;">
+                    <button onclick="openRevenueModal()" style="color:#111; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
                         <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Doanh thu
                     </button>
-                    <button id="btn-trash" onclick="toggleTrash()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center;">
+                    <button id="btn-trash" onclick="toggleTrash()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
                         <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Thùng rác
                     </button>
-                    <button onclick="openClearModal()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center;">
+                    <button onclick="openClearModal()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
                         <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Dọn dữ liệu
                     </button>
                 </div>
-                <button onclick="logout()" style="color:#111; background:#fff; border:1px solid #d4d4d8; padding: 8px 14px; border-radius: 8px; cursor:pointer; font-weight:700; font-size: 11px; transition: 0.2s; display:flex; align-items:center;">
+                <button onclick="logout()" style="color:#111; background:#fff; border:1px solid #d4d4d8; padding: 8px 14px; border-radius: 8px; cursor:pointer; font-weight:700; font-size: 11px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
                     <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Đăng xuất
                 </button>
             </div>
@@ -138,9 +140,9 @@
             <div class="toolbar">
                 <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-right: 1px solid #e4e4e7; padding-right: 12px;">
                     <span class="toolbar-label">Ngày xem:</span>
-                    <input type="text" id="date-filter" class="date-input-sm" style="width: 200px;" placeholder="Chọn khoảng ngày...">
-                    <button onclick="filterData()" class="btn-excel" style="margin: 0; padding: 0 16px;">XÁC NHẬN</button>
-                    <button onclick="clearDateFilter()" class="btn-excel" style="margin: 0; padding: 0 16px; background: #fff; color: #111; border: 1px solid #d4d4d8;">TẤT CẢ</button>
+                    <input type="text" id="date-filter" class="date-input-sm" style="width: 200px;" placeholder="Từ ngày... đến ngày...">
+                    <button onclick="filterData()" class="btn-excel" style="margin: 0; padding: 0 14px; border-radius: 6px;">XÁC NHẬN</button>
+                    <button onclick="clearDateFilter()" class="btn-excel" style="margin: 0; padding: 0 14px; border-radius: 6px; background: #fff; color: #111; border: 1px solid #d4d4d8;">TẤT CẢ</button>
                 </div>
                 <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5; margin-bottom: 0;" placeholder="Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
                 <button class="btn-excel admin-only" onclick="exportExcel()">XUẤT EXCEL</button>
@@ -157,7 +159,7 @@
         
         <div id="empty-msg">
             <svg class="icon-svg" style="width:48px !important; height:48px !important; stroke:#a1a1aa;" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
-            <div class="empty-text">Hôm nay chưa có dữ liệu nào.</div>
+            <div class="empty-text">Chưa có dữ liệu nào.</div>
         </div>
     </div>
 
@@ -176,14 +178,14 @@
             <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Mật khẩu xác nhận:</label>
             <input type="password" id="clear-pass" class="search-box" placeholder="Nhập Pass Admin..." style="width:100%; margin-bottom:25px; border: 1px solid #d4d4d8; box-sizing: border-box; height:40px;">
             <div style="display:flex; gap:10px;">
-                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600;">Hủy Bỏ</button>
-                <button onclick="executeClearData()" style="flex:1; padding:12px; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight: 700;">Tiến Hành Xóa</button>
+                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600; font-family:'Inter';">Hủy Bỏ</button>
+                <button onclick="executeClearData()" style="flex:1; padding:12px; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight: 700; font-family:'Inter';">Tiến Hành Xóa</button>
             </div>
         </div>
     </div>
 
     <div id="revenue-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 500px; padding: 24px;">
+        <div class="modal-content" style="max-width: 520px; padding: 24px;">
             <h3 style="margin-top:0; color:#111; font-size: 18px; margin-bottom: 20px; display:flex; align-items:center; justify-content:space-between;">
                 <span style="display:flex; align-items:center; gap:8px;">
                     <svg class="icon-svg" style="width:18px !important; height:18px !important;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> 
@@ -195,8 +197,8 @@
             <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
                 <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">1. Thống kê theo khoảng ngày:</label>
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
-                    <input type="text" id="rev-date-range" class="date-input-sm" style="flex:1;" placeholder="Chọn khoảng ngày...">
-                    <button onclick="calcRevenue()" class="btn-excel" style="margin: 0;">XÁC NHẬN</button>
+                    <input type="text" id="rev-date-range" class="date-input-sm" style="flex:1;" placeholder="Từ ngày... đến ngày...">
+                    <button onclick="calcRevenue()" class="btn-excel" style="margin: 0; border-radius: 6px;">XÁC NHẬN</button>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                     <div style="font-size:12px; font-weight:700; color:#111;" id="rev-day-title">KHOẢNG THỜI GIAN</div>
@@ -219,12 +221,10 @@
             </div>
 
             <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
-                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">2. Thống kê theo khoảng tháng:</label>
+                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">2. Thống kê theo Tháng:</label>
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
-                    <input type="month" id="rev-month-from" class="date-input-sm" style="flex:1;">
-                    <span style="font-size:12px; color:#888;">đến</span>
-                    <input type="month" id="rev-month-to" class="date-input-sm" style="flex:1;">
-                    <button onclick="calcRevenueByMonth()" class="btn-excel" style="margin: 0; padding: 0 12px;">XÁC NHẬN</button>
+                    <input type="text" id="rev-month-val" class="date-input-sm" style="flex:1;" placeholder="Chọn tháng (Vd: 05/2026)...">
+                    <button onclick="calcRevenueByMonth()" class="btn-excel" style="margin: 0; border-radius: 6px;">XÁC NHẬN</button>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                     <div style="font-size:12px; font-weight:700; color:#111;" id="rev-month-title">THÁNG NÀY</div>
@@ -250,16 +250,13 @@
                 <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">3. Thống kê theo năm:</label>
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
                     <select id="rev-year-picker" class="price-select" style="flex:1;">
-                        <option value="2024">Năm 2024</option>
-                        <option value="2025">Năm 2025</option>
-                        <option value="2026" selected>Năm 2026</option>
-                        <option value="2027">Năm 2027</option>
-                        <option value="2028">Năm 2028</option>
+                        <option value="2024">Năm 2024</option><option value="2025">Năm 2025</option><option value="2026">Năm 2026</option>
+                        <option value="2027">Năm 2027</option><option value="2028">Năm 2028</option><option value="2029">Năm 2029</option>
                     </select>
-                    <button onclick="calcRevenueByYear()" class="btn-excel" style="margin: 0; padding: 0 16px;">XÁC NHẬN</button>
+                    <button onclick="calcRevenueByYear()" class="btn-excel" style="margin: 0; border-radius: 6px;">XÁC NHẬN</button>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <div style="font-size:12px; font-weight:700; color:#111;" id="rev-year-title">NĂM 2026</div>
+                    <div style="font-size:12px; font-weight:700; color:#111;" id="rev-year-title">NĂM ĐÃ CHỌN</div>
                     <div style="font-size:12px; color:#666; font-weight:600;"><span id="rev-year-count">0 lượt</span> (<span id="rev-year-free" style="color:#ef4444;">0 miễn phí</span>)</div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
@@ -350,9 +347,8 @@
             document.getElementById('admin-box').style.display = 'block';
             document.getElementById('role-badge').innerText = userRole === 'admin' ? "ADMIN" : "NHÂN VIÊN";
             
-            const todayObj = new Date();
-            const todayStr = getDStr(todayObj);
-            flatpickr("#date-filter", { mode: "range", dateFormat: "d/m/Y", locale: "vn", defaultDate: todayStr });
+            // Khởi tạo Lịch Khoảng Ngày (Trang chính)
+            flatpickr("#date-filter", { mode: "range", dateFormat: "d/m/Y", locale: "vn", defaultDate: new Date() });
             
             if (db) load();
         }
@@ -376,13 +372,17 @@
             if(userRole !== 'admin') return Toast.fire({icon: 'error', title: 'Chỉ Quản trị viên được xem'});
             
             setTimeout(() => {
-                const todayStr = getDStr(new Date());
-                flatpickr("#rev-date-range", { mode: "range", dateFormat: "d/m/Y", locale: "vn", defaultDate: todayStr });
-                
                 const now = new Date();
-                const mStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
-                document.getElementById('rev-month-from').value = mStr;
-                document.getElementById('rev-month-to').value = mStr;
+                // Khởi tạo Lịch Khoảng Ngày (Doanh thu)
+                flatpickr("#rev-date-range", { mode: "range", dateFormat: "d/m/Y", locale: "vn", defaultDate: now });
+                
+                // Khởi tạo Lịch Chọn Tháng (Doanh thu)
+                flatpickr("#rev-month-val", {
+                    plugins: [ new monthSelectPlugin({ shorthand: true, dateFormat: "m/Y", altFormat: "m/Y" }) ],
+                    locale: "vn",
+                    defaultDate: now
+                });
+                
                 document.getElementById('rev-year-picker').value = String(now.getFullYear());
                 
                 calcRevenue();
@@ -403,11 +403,8 @@
                 tTs = fp.selectedDates.length > 1 ? new Date(fp.selectedDates[1]).setHours(23,59,59,999) : new Date(fp.selectedDates[0]).setHours(23,59,59,999);
                 
                 const d1 = getDStr(fp.selectedDates[0]);
-                if (fp.selectedDates.length > 1) {
-                    titleStr = `TỪ ${d1} ĐẾN ${getDStr(fp.selectedDates[1])}`;
-                } else {
-                    titleStr = `NGÀY ${d1}`;
-                }
+                if (fp.selectedDates.length > 1) titleStr = `TỪ ${d1} ĐẾN ${getDStr(fp.selectedDates[1])}`;
+                else titleStr = `NGÀY ${d1}`;
             } else {
                 return Toast.fire({ icon: 'warning', title: 'Vui lòng chọn ngày!' });
             }
@@ -441,14 +438,9 @@
         }
 
         function calcRevenueByMonth() {
-            const fM = document.getElementById('rev-month-from').value; 
-            const tM = document.getElementById('rev-month-to').value; 
-            
-            let fVal = 0, tVal = Infinity;
-            if(fM) { const p = fM.split('-'); fVal = parseInt(p[0])*12 + parseInt(p[1]); }
-            if(tM) { const p = tM.split('-'); tVal = parseInt(p[0])*12 + parseInt(p[1]); }
-            
-            if (fVal === 0 && tVal === Infinity) return Toast.fire({ icon: 'warning', title: 'Vui lòng chọn tháng!' });
+            const mStrInput = document.getElementById('rev-month-val').value; 
+            if(!mStrInput) return Toast.fire({ icon: 'warning', title: 'Vui lòng chọn tháng!' });
+            const targetMonth = mStrInput; // Format: mm/yyyy
 
             let mTotal = 0, mCash = 0, mTrans = 0, mCount = 0, mFree = 0;
 
@@ -457,9 +449,11 @@
                     const c = currentData[id];
                     const ts = parseInt(id.split('_')[1]) || Date.now();
                     const dObj = new Date(ts);
-                    const cVal = dObj.getFullYear() * 12 + (dObj.getMonth() + 1);
+                    const cMm = String(dObj.getMonth() + 1).padStart(2, '0');
+                    const cYyyy = String(dObj.getFullYear());
+                    const cStr = `${cMm}/${cYyyy}`;
 
-                    if (cVal >= fVal && cVal <= tVal) {
+                    if (cStr === targetMonth) {
                         const isFree = (c.price === 'Miễn phí');
                         const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
                         
@@ -472,11 +466,7 @@
                 });
             }
             
-            let titleStr = "KHOẢNG THÁNG CHỌN";
-            if (fM && tM && fM === tM) titleStr = `THÁNG ${fM.split('-')[1]}/${fM.split('-')[0]}`;
-            else if (fM && tM) titleStr = `TỪ ${fM.split('-')[1]}/${fM.split('-')[0]} ĐẾN ${tM.split('-')[1]}/${tM.split('-')[0]}`;
-
-            document.getElementById('rev-month-title').innerText = titleStr;
+            document.getElementById('rev-month-title').innerText = `THÁNG ${targetMonth}`;
             document.getElementById('rev-month-count').innerText = mCount + ' lượt';
             document.getElementById('rev-month-free').innerText = mFree + ' miễn phí';
             document.getElementById('rev-month-cash').innerText = mCash.toLocaleString('vi-VN') + ' ₫';
@@ -486,7 +476,6 @@
 
         function calcRevenueByYear() {
             const yyyy = document.getElementById('rev-year-picker').value;
-
             let yTotal = 0, yCash = 0, yTrans = 0, yCount = 0, yFree = 0;
 
             if(currentData && dbPath === 'data/' && yyyy) {
@@ -532,7 +521,7 @@
 
                 if (dbPath === 'trash/') {
                     trashHeader.style.display = 'flex';
-                    trashHeader.innerHTML = `<div class="trash-notice" style="width:100%;"><div style="display:flex; align-items:center; gap:12px;"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><div><b style="font-size:14px; font-family:'Inter';">THÙNG RÁC</b></div></div><div><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:12px;"><input type="checkbox" onclick="toggleSelectAllTrash(this)" style="width:16px; height:16px; cursor:pointer;"> CHỌN TẤT CẢ</label><button onclick="deleteSelectedTrash()" style="background:#fff; color:#ef4444; border:none; padding: 6px 12px; border-radius:6px; cursor:pointer; font-weight:700; font-size:11px; margin-top:8px; width:100%;">XÓA MỤC ĐÃ CHỌN</button></div></div>`;
+                    trashHeader.innerHTML = `<div class="trash-notice" style="width:100%;"><div style="display:flex; align-items:center; gap:12px;"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><div><b style="font-size:14px; font-family:'Inter';">THÙNG RÁC</b></div></div><div><label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:12px;"><input type="checkbox" onclick="toggleSelectAllTrash(this)" style="width:16px; height:16px; cursor:pointer;"> CHỌN TẤT CẢ</label><button onclick="deleteSelectedTrash()" style="background:#fff; color:#ef4444; border:none; padding: 6px 12px; border-radius:6px; cursor:pointer; font-weight:700; font-size:11px; margin-top:8px; width:100%; font-family:'Inter';">XÓA MỤC ĐÃ CHỌN</button></div></div>`;
                 } else { trashHeader.style.display = 'none'; }
 
                 const currentCount = Object.keys(currentData).length;
@@ -750,7 +739,7 @@
                 html: `
                     <div style="text-align:left; font-family:'Inter'; margin-top:10px;">
                         <label style="font-size:12px; font-weight:600; color:#666; display:block; margin-bottom:5px;">Chọn khoảng ngày xuất dữ liệu:</label>
-                        <input type="text" id="swal-excel-range" class="search-box" style="width:100%; margin-bottom:15px; height:40px; padding:0 12px; border:1px solid #d4d4d8; border-radius:8px; font-family:'Inter'; box-sizing:border-box;" placeholder="Để trống để xuất toàn bộ thời gian...">
+                        <input type="text" id="swal-excel-range" class="search-box" style="width:100%; margin-bottom:15px; height:40px; padding:0 12px; border:1px solid #d4d4d8; border-radius:8px; font-family:'Inter'; box-sizing:border-box; text-align:center;" placeholder="Để trống để xuất toàn bộ thời gian...">
                         <div style="font-size:11px; color:#888; text-align:center;">* Không chọn gì hệ thống tự động xuất TẤT CẢ.</div>
                     </div>
                 `,
