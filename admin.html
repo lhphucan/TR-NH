@@ -91,7 +91,6 @@
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; overflow-y: auto;}
         .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 440px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); box-sizing: border-box; position: relative; margin: auto;}
 
-        /* BẢO ĐẢM ICON KHÔNG BỊ ĐEN TRÊN ZALO/SAFARI */
         .icon-svg { width: 16px !important; height: 16px !important; min-width: 16px; min-height: 16px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
         .icon-sm { width: 14px !important; height: 14px !important; min-width: 14px; min-height: 14px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
     </style>
@@ -649,6 +648,74 @@
             });
         }
 
+        // --- HÀM MỚI: KIỂM TRA VÀ POPUP BẮT BUỘC NHẬP DOANH THU ---
+        function checkAndPromptPayment(clientId) {
+            if (!currentData || !currentData[clientId]) return;
+            const client = currentData[clientId];
+            const hasPrice = client.price && client.price.trim() !== '';
+            const hasPayment = client.payment && client.payment.trim() !== '';
+
+            if (!hasPrice || !hasPayment) {
+                Swal.fire({
+                    title: 'BẮT BUỘC NHẬP DOANH THU',
+                    html: `
+                        <div style="text-align:left; font-family:'Inter'; margin-top:10px;">
+                            <label style="font-size:12px; font-weight:600; color:#111; display:block; margin-bottom:5px;">Nhập giá tiền:</label>
+                            <input type="text" id="swal-price" class="search-box" style="width:100%; margin-bottom:15px; height:40px; padding:0 12px; border:1px solid #d4d4d8; border-radius:8px; font-family:'Inter'; box-sizing:border-box;" placeholder="Gõ số tự format (VD: 50000) hoặc Miễn phí" value="${client.price || ''}">
+                            
+                            <label style="font-size:12px; font-weight:600; color:#111; display:block; margin-bottom:5px;">Nguồn tiền:</label>
+                            <select id="swal-method" class="search-box" style="width:100%; margin-bottom:10px; height:40px; padding:0 12px; border:1px solid #d4d4d8; border-radius:8px; font-family:'Inter'; box-sizing:border-box;">
+                                <option value="">Chọn nguồn tiền...</option>
+                                <option value="Tiền mặt" ${client.payment === 'Tiền mặt' ? 'selected' : ''}>Tiền mặt</option>
+                                <option value="Chuyển khoản" ${client.payment === 'Chuyển khoản' ? 'selected' : ''}>Chuyển khoản</option>
+                            </select>
+                        </div>
+                    `,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showCancelButton: false,
+                    confirmButtonText: 'LƯU THANH TOÁN',
+                    confirmButtonColor: '#111',
+                    preConfirm: () => {
+                        const priceInput = document.getElementById('swal-price').value.trim();
+                        const methodInput = document.getElementById('swal-method').value;
+                        
+                        if (!priceInput || !methodInput) {
+                            Swal.showValidationMessage('⚠️ Vui lòng nhập ĐẦY ĐỦ Giá tiền và Nguồn tiền!');
+                            return false;
+                        }
+
+                        let finalPrice = '';
+                        if (priceInput.toLowerCase() === 'miễn phí' || priceInput.toLowerCase() === 'mien phi') {
+                            finalPrice = 'Miễn phí';
+                        } else {
+                            let numStr = priceInput.replace(/\D/g, '');
+                            if (numStr) {
+                                finalPrice = parseInt(numStr, 10).toLocaleString('vi-VN') + ' đ';
+                            }
+                        }
+
+                        if(!finalPrice) {
+                            Swal.showValidationMessage('⚠️ Giá tiền không hợp lệ (hãy nhập số hoặc "Miễn phí")!');
+                            return false;
+                        }
+
+                        return { price: finalPrice, payment: methodInput };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        db.ref(dbPath + br + '/' + clientId).update({ 
+                            price: result.value.price,
+                            payment: result.value.payment,
+                            paymentTimestamp: Date.now()
+                        });
+                        Toast.fire({ icon: 'success', title: 'Đã lưu doanh thu thành công!' });
+                    }
+                });
+            }
+        }
+        // -----------------------------------------------------------
+
         function formatAndSavePrice(input, id) {
             let val = input.value.trim();
             if (val.toLowerCase() === 'miễn phí' || val.toLowerCase() === 'mien phi') {
@@ -835,6 +902,10 @@
                 Toast.fire({ icon: 'success', title: 'Tải lên hoàn tất!' });
                 fileInput.value = ""; 
                 document.getElementById('fname_'+clientId).innerText = 'Chưa có tệp';
+                
+                // KIỂM TRA VÀ GỌI POPUP BẮT BUỘC ĐIỀN DOANH THU
+                checkAndPromptPayment(clientId);
+                
             } catch (error) {
                 if(typeof Swal !== 'undefined') Swal.fire({title: 'Lỗi', text: 'Không thể kết nối tải ảnh.', icon: 'error', confirmButtonColor: '#111'});
                 else alert('Lỗi tải ảnh');
@@ -859,6 +930,9 @@
             db.ref(dbPath + br + '/' + clientId).update({ status: "completed" });
             document.getElementById('new_' + clientId).value = ""; 
             Toast.fire({ icon: 'success', title: 'Đã lưu link' });
+            
+            // KIỂM TRA VÀ GỌI POPUP BẮT BUỘC ĐIỀN DOANH THU
+            checkAndPromptPayment(clientId);
         }
 
         function deleteLink(clientId, linkId) { 
