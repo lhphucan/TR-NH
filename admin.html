@@ -35,7 +35,6 @@
         .search-box { flex-grow: 1; padding: 0 12px; height: 36px; border-radius: 8px; border: 1px solid #d4d4d8; outline: none; font-size: 13px; background: #fff; font-family: 'Inter', sans-serif; transition: 0.2s; box-sizing: border-box;}
         .search-box:focus { border-color: #111; box-shadow: 0 0 0 2px rgba(17,17,17,0.05);}
         
-        /* Đồng bộ ô nhập lịch và các nút bấm */
         .date-input-sm { padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; font-family: 'Inter'; height: 36px; outline: none; background: #fff; color: #111; cursor: pointer; transition: 0.2s; box-sizing: border-box; font-weight: 500; text-align: center;}
         .date-input-sm:focus { border-color: #111; box-shadow: 0 0 0 2px rgba(17,17,17,0.05);}
 
@@ -92,7 +91,7 @@
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; overflow-y: auto;}
         .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 440px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); box-sizing: border-box; position: relative; margin: auto;}
 
-        /* BẢO ĐẢM ICON KHÔNG BỊ ĐEN/PHÓNG TO TRÊN ZALO/SAFARI */
+        /* BẢO ĐẢM ICON KHÔNG BỊ ĐEN TRÊN ZALO/SAFARI */
         .icon-svg { width: 16px !important; height: 16px !important; min-width: 16px; min-height: 16px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
         .icon-sm { width: 14px !important; height: 14px !important; min-width: 14px; min-height: 14px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
     </style>
@@ -102,7 +101,7 @@
         <div style="text-align:center; width: 100%; max-width: 320px;">
             <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 1px solid #eee;" onerror="this.style.display='none'">
             <h3 style="margin-bottom: 25px; letter-spacing: 2px;">PHOTONOIR</h3>
-            <input type="password" id="pass" placeholder="Nhập mã bảo mật..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 15px; text-align: center; outline: none; transition: 0.2s; font-family: 'Inter';">
+            <input type="password" id="pass" placeholder="Nhập mã bảo mật (vd: 123456)..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 15px; text-align: center; outline: none; transition: 0.2s; font-family: 'Inter';">
             <button onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase; transition: 0.2s; font-family: 'Inter';">Đăng nhập</button>
         </div>
     </div>
@@ -414,6 +413,7 @@
             if(currentData && dbPath === 'data/') {
                 Object.keys(currentData).forEach(id => {
                     const c = currentData[id];
+                    // Logic Firebase: Doanh thu lấy theo Timestamp ID lúc tạo khách hàng
                     const ts = parseInt(id.split('_')[1]) || Date.now();
                     
                     if (ts >= fTs && ts <= tTs) {
@@ -662,12 +662,20 @@
                 }
             }
             input.value = val;
-            db.ref(dbPath + br + '/' + id).update({ price: val });
+            
+            // Lưu kèm timestamp để đánh dấu thời điểm ghi nhận dòng tiền
+            db.ref(dbPath + br + '/' + id).update({ 
+                price: val,
+                paymentTimestamp: Date.now() 
+            });
             Toast.fire({ icon: 'success', title: 'Đã lưu giá tiền' });
         }
 
         function updatePaymentMethod(id, val) {
-            db.ref(dbPath + br + '/' + id).update({ payment: val });
+            db.ref(dbPath + br + '/' + id).update({ 
+                payment: val,
+                paymentTimestamp: Date.now()
+            });
             Toast.fire({ icon: 'success', title: 'Đã cập nhật nguồn tiền' });
         }
 
