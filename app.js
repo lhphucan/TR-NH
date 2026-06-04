@@ -17,9 +17,22 @@ const LINKS = {
 };
 
 window.onload = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlBranch = urlParams.get('br');
+    const branchSelect = document.getElementById('branch');
+
+    if (urlBranch && (urlBranch === 'phucyen' || urlBranch === 'vinhyen')) {
+        branchSelect.value = urlBranch;
+        branchSelect.disabled = true; // Khóa luôn, không cho khách đổi nhầm
+        branchSelect.style.background = '#f4f4f5'; 
+        branchSelect.style.color = '#111';
+        branchSelect.style.border = '1px dashed #d4d4d8';
+    } else if(localStorage.getItem('pn_branch')) {
+        branchSelect.value = localStorage.getItem('pn_branch');
+    }
+
     if(localStorage.getItem('pn_name')) document.getElementById('name').value = localStorage.getItem('pn_name');
     if(localStorage.getItem('pn_phone')) document.getElementById('phone').value = localStorage.getItem('pn_phone');
-    if(localStorage.getItem('pn_branch')) document.getElementById('branch').value = localStorage.getItem('pn_branch');
 };
 
 function showError(msg) {

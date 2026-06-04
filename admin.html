@@ -46,6 +46,9 @@
                     <button onclick="openClearModal()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
                         <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Dọn dữ liệu
                     </button>
+                    <button onclick="showQRCode()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
+                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> Mã QR
+                    </button>
                 </div>
                 <button onclick="logout()" style="color:#111; background:#fff; border:1px solid #d4d4d8; padding: 8px 14px; border-radius: 8px; cursor:pointer; font-weight:700; font-size: 11px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
                     <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Đăng xuất
@@ -197,6 +200,20 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+    
+    <div id="qr-modal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h3 style="margin-top:0; color:#111; font-size: 16px; margin-bottom: 5px; text-transform: uppercase;" id="qr-title">MÃ QR KHÁCH HÀNG</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Đưa mã này cho khách quét để tự động chọn cơ sở</p>
+            <div style="background: #f4f4f5; padding: 20px; border-radius: 12px; display: inline-block;">
+                <img id="qr-image" src="" alt="QR Code" style="width: 250px; height: 250px; display: block; border-radius: 8px;">
+            </div>
+            <div style="margin-top: 20px;">
+                <a id="qr-download" href="#" target="_blank" style="display:inline-block; padding:12px 24px; background:#111; color:#fff; border-radius:8px; text-decoration:none; font-weight:700; font-family:'Inter'; width:100%; box-sizing:border-box;">Mở Ảnh Phóng To (Để Lưu/In)</a>
+            </div>
+            <button onclick="document.getElementById('qr-modal').style.display='none'" style="margin-top: 15px; background:none; border:none; color:#888; font-size:13px; font-weight:600; cursor:pointer;">Đóng lại</button>
         </div>
     </div>
     

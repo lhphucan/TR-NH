@@ -667,3 +667,16 @@ function executeClearData() {
         }
     });
 }
+}
+
+function showQRCode() {
+    const title = br === 'phucyen' ? "MÃ QR CƠ SỞ PHÚC YÊN" : "MÃ QR CƠ SỞ VĨNH YÊN";
+    const url = `https://lhphucan.github.io/TR-NH/?br=${br}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(url)}`;
+    
+    document.getElementById('qr-title').innerText = title;
+    document.getElementById('qr-image').src = qrUrl;
+    document.getElementById('qr-download').href = qrUrl;
+    
+    document.getElementById('qr-modal').style.display = 'flex';
+}
