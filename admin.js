@@ -6,6 +6,19 @@ let db;
 
 const BRANCH_NAMES = { 'phucyen': 'Cơ sở Phúc Yên', 'vinhyen': 'Cơ sở Vĩnh Yên' };
 
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+}
+
 try {
     const firebaseConfig = { apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw", databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "tra-anh-khach" };
     firebase.initializeApp(firebaseConfig);
@@ -264,7 +277,7 @@ function load() {
             let html = `<div class="date-header"><span style="display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ${dateLabel}</span><span style="font-size:12px; color:#71717a;">${groupedData[date].clients.length} khách</span></div>`;
             
             groupedData[date].clients.sort((a, b) => b.ts - a.ts).forEach(client => {
-                const isDone = client.status === 'completed'; const maKh = client.id.split('_')[1].slice(-4); const safeName = client.name ? client.name.replace(/'/g, "\\'") : "Khách hàng"; 
+                const isDone = client.status === 'completed'; const maKh = client.id.split('_')[1].slice(-4); const safeName = escapeHTML(client.name || "Khách hàng"); 
 
                 let linksHtml = '';
                 if (client.links) {
@@ -292,7 +305,7 @@ function load() {
                                         <svg class="icon-sm" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
                                         Yêu cầu in (${up.time.split(' ')[1] || ''})
                                     </span>
-                                    <button onclick="delClientUp('${client.id}', '${uId}')" class="btn-del-link" style="padding: 0 10px; height:28px;">Hoàn tất (Xóa)</button>
+                                    <button onclick="delClientUp('${client.id}', '${uId}')" class="btn-del-link" style="padding: 0 10px; height:28px;">Hoàn tất in</button>
                                 </div>
                                 <div style="display:flex; flex-wrap:wrap;">${imgLinks}</div>
                             </div>`;
@@ -316,14 +329,15 @@ function load() {
                                 <div style="font-size: 11px; color: #a1a1aa; font-family: monospace; font-weight: 600;">#${maKh}</div>
                                 <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'ĐÃ TRẢ ẢNH' : 'ĐANG CHỤP'}</span>
                             </div>
-                            <h4 style="margin: 0 0 5px 0; font-size: 16px;">${client.name || 'Khách hàng'}</h4>
+                            <h4 style="margin: 0 0 5px 0; font-size: 16px;">${safeName}</h4>
                             <div style="font-size: 13px; color: #52525b; margin-bottom: 5px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> ${client.phone}</div>
                             <div style="font-size: 13px; color: #52525b; margin-bottom: 15px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${client.time}</div>
                             
                             <div style="margin-top:auto;">
                                 <div style="font-size:11px; font-weight:600; color:#a1a1aa; margin-bottom:5px; text-transform:uppercase;">Doanh thu:</div>
-                                <div style="display:flex; gap:5px;">
-                                    <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="VD: 50.000" list="price-list" onchange="updateMoney('${client.id}')">
+                                <div style="display:flex; gap:5px; align-items:center;">
+                                    <div style="background:#111; color:#fff; font-size:10px; font-weight:700; padding:6px 8px; border-radius:6px; cursor:pointer; height:36px; display:flex; align-items:center; justify-content:center; white-space:nowrap;" onclick="setFree('${client.id}')">MIỄN PHÍ</div>
+                                    <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="VD: 50.000" list="price-list" onchange="updateMoney('${client.id}')" style="flex:1;">
                                     <select id="payment_${client.id}" class="price-select" onchange="updateMoney('${client.id}')" ${isFree ? 'disabled' : ''}>
                                         <option value="Tiền mặt" ${pmVal === 'Tiền mặt' ? 'selected' : ''}>Tiền mặt</option>
                                         <option value="Chuyển khoản" ${pmVal === 'Chuyển khoản' ? 'selected' : ''}>Chuyển khoản</option>
@@ -337,8 +351,14 @@ function load() {
 
                         <div class="link-manager">
                             ${clientUploadsHtml}
-                            <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> ẢNH ĐÃ TRẢ KHÁCH (${client.links ? Object.keys(client.links).length : 0})</div>
-                            <div style="flex-grow:1; display:flex; flex-direction:column; gap:5px;">${linksHtml}</div>
+                            <details class="link-details" ${!client.links || Object.keys(client.links).length <= 2 ? 'open' : ''}>
+                                <summary style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; cursor:pointer; list-style:none; outline:none; user-select:none;">
+                                    <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> 
+                                    ẢNH ĐÃ TRẢ KHÁCH (${client.links ? Object.keys(client.links).length : 0})
+                                    <svg class="icon-svg toggle-icon" style="margin-left:auto; transition: transform 0.2s;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </summary>
+                                <div style="flex-grow:1; display:flex; flex-direction:column; gap:5px; margin-bottom:10px;">${linksHtml}</div>
+                            </details>
                             
                             ${(dbPath === 'data/') ? `
                             <div class="add-box">
@@ -378,6 +398,11 @@ function updateMoney(clientId) {
     db.ref(dbPath + br + '/' + clientId).update({ price: pVal, payment: paySel.value });
 }
 
+function setFree(clientId) {
+    document.getElementById('price_' + clientId).value = 'Miễn phí';
+    updateMoney(clientId);
+}
+
 function toggleSelectAllTrash(cb) { const boxes = document.querySelectorAll('.trash-checkbox'); boxes.forEach(b => b.checked = cb.checked); }
 
 function deleteSelectedTrash() {
@@ -388,7 +413,8 @@ function deleteSelectedTrash() {
     Swal.fire({ title: 'Xóa vĩnh viễn?', text: `Đang chọn ${selected.length} mục. Nhập XOA để xác nhận.`, icon: 'warning', input: 'text', inputPlaceholder: 'Nhập XOA...', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa Tất Cả', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(async r => {
         if (r.isConfirmed) {
             if (r.value === 'XOA') {
-                for (const id of selected) { await db.ref('trash/' + br + '/' + id).remove(); }
+                const deletePromises = selected.map(id => db.ref('trash/' + br + '/' + id).remove());
+                await Promise.all(deletePromises);
                 Toast.fire({ icon: 'success', title: 'Đã xóa các mục đã chọn' });
             } else { Swal.fire({title: 'Thất bại', text: 'Sai mã xác nhận!', icon: 'error', confirmButtonColor: '#111'}); }
         }
