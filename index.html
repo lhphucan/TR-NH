@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHOTO NOIR SELFBOOTH ALBUM</title>
+    <link rel="icon" href="./logo.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div class="card">
+        <img src="./logo.png" alt="Logo" class="logo" onerror="this.style.display='none'">
+        
+        <div id="form-ui">
+            <p style="color: #666; font-size: 13px; margin-bottom: 25px; font-weight: 500;">Vui lòng nhập thông tin để tra cứu Album</p>
+            <select id="branch">
+                <option value="phucyen">PHOTO NOIR PHÚC YÊN</option>
+                <option value="vinhyen">PHOTO NOIR VĨNH YÊN</option>
+            </select>
+            <input type="text" id="name" placeholder="Họ và tên của bạn">
+            <input type="tel" id="phone" placeholder="Số điện thoại" onkeypress="if(event.key === 'Enter') checkData()">
+            <button id="btn-submit" class="primary-btn" onclick="checkData()">
+                <div class="spinner" id="spinner"></div><span id="btn-text">TRA CỨU</span>
+            </button>
+        </div>
+
+        <div id="result-ui">
+            <h3 style="font-size: 16px; border-bottom: 1px solid #e5e5e5; padding-bottom: 10px; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;">
+                ALBUM CỦA BẠN
+                <svg class="icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            </h3>
+            
+            <div id="album-list"></div>
+            
+            <div style="background: #fff; padding: 15px; border-radius: 12px; margin-top: 25px; border: 1px dashed #d4d4d8;">
+                <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; text-transform: uppercase; display:flex; align-items:center; gap:5px;">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                    YÊU CẦU IN ẢNH
+                </p>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; border: 1px dashed #d4d4d8; padding: 8px 12px; border-radius: 10px; align-items:center; background:#fafafa;">
+                    <label for="cFile" style="cursor:pointer; background:#fff; border:1px solid #d4d4d8; padding:8px 14px; border-radius:8px; font-size:12px; font-weight:600; white-space:nowrap; transition:0.2s;">Chọn ảnh</label>
+                    <input type="file" id="cFile" multiple accept="image/*" style="display: none;" onchange="document.getElementById('cName').innerText = this.files.length > 0 ? this.files.length + ' tệp đã chọn' : 'Chưa có tệp'">
+                    <span id="cName" style="font-size: 12px; color: #666; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Chưa có tệp</span>
+                </div>
+                <button id="btn-send" onclick="sendToShop()" class="primary-btn" style="padding: 14px; font-size: 13px;">GỬI ẢNH CHO TIỆM</button>
+            </div>
+            
+            <div style="margin-top: 25px; padding-top: 20px; border-top: 1px dashed #e5e5e5; text-align:center;">
+                <p style="font-size:13px; font-weight: 500; color: #111; margin-bottom:15px;">Ghé thăm PHOTONOIR tại:</p>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <a href="#" id="link-fb" target="_blank" style="padding:12px; border:1px solid #e5e5e5; border-radius:10px; text-decoration:none; color:#111; font-size:12px; font-weight:600;">Fanpage</a>
+                    <a href="#" id="link-ig" target="_blank" style="padding:12px; border:1px solid #e5e5e5; border-radius:10px; text-decoration:none; color:#111; font-size:12px; font-weight:600;">Instagram</a>
+                    <a href="#" id="link-tk" target="_blank" style="padding:12px; border:1px solid #e5e5e5; border-radius:10px; text-decoration:none; color:#111; font-size:12px; font-weight:600;">TikTok</a>
+                    <a href="#" id="link-map" target="_blank" style="padding:12px; background:#111; border:1px solid #111; border-radius:10px; text-decoration:none; color:#fff; font-size:12px; font-weight:600;">Đánh giá Maps</a>
+                </div>
+            </div>
+
+            <button onclick="location.reload()" style="background:none; border:none; color:#888; font-size:13px; font-weight:600; cursor:pointer; margin-top:25px; width:100%; display:flex; align-items:center; justify-content:center; gap:6px;">
+                <svg class="icon-svg" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                Tra cứu tài khoản khác
+            </button>
+        </div>
+    </div>
+
+    <script src="./app.js" defer></script>
+</body>
+</html>

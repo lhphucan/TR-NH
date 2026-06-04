@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PHOTONOIR | Quản trị</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
+
+    <link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+    <div id="login-screen">
+        <div style="text-align:center; width: 100%; max-width: 320px;">
+            <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 1px solid #eee;" onerror="this.style.display='none'">
+            <h3 style="margin-bottom: 25px; letter-spacing: 2px;">PHOTONOIR</h3>
+            <input type="password" id="pass" placeholder="Nhập mã bảo mật (vd: 123456)..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 15px; text-align: center; outline: none; transition: 0.2s; font-family: 'Inter';">
+            <button id="btn-login" onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase; transition: 0.2s; font-family: 'Inter';">Đăng nhập</button>
+        </div>
+    </div>
+
+    <div class="admin-box" id="admin-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap: wrap; gap: 15px;">
+            <h2 style="margin: 0; font-size: 18px; display: flex; align-items: center; letter-spacing: 1px;">
+                QUẢN LÝ
+                <span id="role-badge" style="font-size:11px; background:#18181b; color:#fff; padding:4px 10px; border-radius:20px; margin-left:12px; font-weight: 600; letter-spacing: 0.5px;"></span>
+            </h2>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div class="admin-only" style="display: flex; gap: 15px;">
+                    <button onclick="openRevenueModal()" style="color:#111; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
+                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Doanh thu
+                    </button>
+                    <button id="btn-trash" onclick="toggleTrash()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
+                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Thùng rác
+                    </button>
+                    <button onclick="openClearModal()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
+                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Dọn dữ liệu
+                    </button>
+                </div>
+                <button onclick="logout()" style="color:#111; background:#fff; border:1px solid #d4d4d8; padding: 8px 14px; border-radius: 8px; cursor:pointer; font-weight:700; font-size: 11px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
+                    <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Đăng xuất
+                </button>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" id="btn-phucyen" onclick="switchB('phucyen')">Cơ sở Phúc Yên</button>
+            <button class="tab-btn" id="btn-vinhyen" onclick="switchB('vinhyen')">Cơ sở Vĩnh Yên</button>
+        </div>
+
+        <div class="toolbar-wrapper">
+            <div class="toolbar">
+                <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-right: 1px solid #e4e4e7; padding-right: 12px;">
+                    <span class="toolbar-label">Ngày xem:</span>
+                    <input type="text" id="date-filter" class="date-input-sm" style="width: 200px;" placeholder="Từ ngày... đến ngày...">
+                    <button onclick="filterData()" class="btn-excel" style="margin: 0; padding: 0 14px; border-radius: 6px;">XÁC NHẬN</button>
+                    <button onclick="clearDateFilter()" class="btn-excel" style="margin: 0; padding: 0 14px; border-radius: 6px; background: #fff; color: #111; border: 1px solid #d4d4d8;">TẤT CẢ</button>
+                </div>
+                <input type="text" id="search-box" class="search-box" style="border: none; background: #f4f4f5; margin-bottom: 0;" placeholder="Tìm kiếm Tên, SĐT, Mã KH..." onkeyup="filterData()">
+                <button class="btn-excel admin-only" onclick="exportExcel()">XUẤT EXCEL</button>
+            </div>
+        </div>
+
+        <div id="trash-header" style="display: none;"></div>
+
+        <datalist id="price-list">
+            <option value="Miễn phí"></option>
+        </datalist>
+
+        <div id="list-content"></div>
+        
+        <div id="empty-msg">
+            <svg class="icon-svg" style="width:48px !important; height:48px !important; stroke:#a1a1aa;" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+            <div class="empty-text">Chưa có dữ liệu nào.</div>
+        </div>
+    </div>
+
+    <div id="clear-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:#111; font-size: 16px; margin-bottom: 10px; display:flex; align-items:center;">
+                <svg class="icon-svg" style="margin-right: 6px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> DỌN DẸP DỮ LIỆU
+            </h3>
+            <p style="font-size:13px; color:#666; margin-bottom: 20px; line-height: 1.5;">Hành động này sẽ xóa cả dữ liệu trong Thùng Rác và <b>không thể hoàn tác</b>:</p>
+            <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Chọn khu vực dọn:</label>
+            <select id="clear-target" class="search-box" style="width:100%; margin-bottom:20px; border: 1px solid #d4d4d8; height:40px;">
+                <option value="phucyen">Chỉ dọn Cơ sở Phúc Yên</option>
+                <option value="vinhyen">Chỉ dọn Cơ sở Vĩnh Yên</option>
+                <option value="all" style="color: #111; font-weight: bold;">DỌN SẠCH TẤT CẢ CƠ SỞ</option>
+            </select>
+            <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Mã xác nhận:</label>
+            <input type="text" id="clear-pass" class="search-box" placeholder="Nhập XOA để xác nhận..." style="width:100%; margin-bottom:25px; border: 1px solid #d4d4d8; box-sizing: border-box; height:40px;">
+            <div style="display:flex; gap:10px;">
+                <button onclick="document.getElementById('clear-modal').style.display='none'" style="flex:1; padding:12px; background:#f4f4f5; color:#111; border:none; border-radius:8px; cursor:pointer; font-weight: 600; font-family:'Inter';">Hủy Bỏ</button>
+                <button onclick="executeClearData()" style="flex:1; padding:12px; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight: 700; font-family:'Inter';">Tiến Hành Xóa</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="revenue-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px; padding: 24px;">
+            <h3 style="margin-top:0; color:#111; font-size: 18px; margin-bottom: 20px; display:flex; align-items:center; justify-content:space-between;">
+                <span style="display:flex; align-items:center; gap:8px;">
+                    <svg class="icon-svg" style="width:18px !important; height:18px !important;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> 
+                    BÁO CÁO DOANH THU
+                </span>
+                <button onclick="document.getElementById('revenue-modal').style.display='none'" style="background:none; border:none; cursor:pointer; font-size:24px; color:#888; padding:0; line-height: 1;">&times;</button>
+            </h3>
+            
+            <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">1. Thống kê theo khoảng ngày:</label>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
+                    <input type="text" id="rev-date-range" class="date-input-sm" style="flex:1;" placeholder="Từ ngày... đến ngày...">
+                    <button onclick="calcRevenue()" class="btn-excel" style="margin: 0; border-radius: 6px;">XÁC NHẬN</button>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-size:12px; font-weight:700; color:#111;" id="rev-day-title">KHOẢNG THỜI GIAN</div>
+                    <div style="font-size:12px; color:#666; font-weight:600;"><span id="rev-day-count">0 lượt</span> (<span id="rev-day-free" style="color:#ef4444;">0 miễn phí</span>)</div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Tiền mặt</div>
+                        <div id="rev-day-cash" style="font-size:16px; font-weight:700; color:#f59e0b;">0 ₫</div>
+                    </div>
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Chuyển khoản</div>
+                        <div id="rev-day-trans" style="font-size:16px; font-weight:700; color:#10b981;">0 ₫</div>
+                    </div>
+                    <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
+                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng doanh thu</div>
+                        <div id="rev-day-total" style="font-size:20px; font-weight:700;">0 ₫</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">2. Thống kê theo Tháng:</label>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
+                    <input type="text" id="rev-month-val" class="date-input-sm" style="flex:1;" placeholder="Chọn tháng (Vd: 05/2026)...">
+                    <button onclick="calcRevenueByMonth()" class="btn-excel" style="margin: 0; border-radius: 6px;">XÁC NHẬN</button>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-size:12px; font-weight:700; color:#111;" id="rev-month-title">THÁNG NÀY</div>
+                    <div style="font-size:12px; color:#666; font-weight:600;"><span id="rev-month-count">0 lượt</span> (<span id="rev-month-free" style="color:#ef4444;">0 miễn phí</span>)</div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Tiền mặt</div>
+                        <div id="rev-month-cash" style="font-size:16px; font-weight:700; color:#f59e0b;">0 ₫</div>
+                    </div>
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Chuyển khoản</div>
+                        <div id="rev-month-trans" style="font-size:16px; font-weight:700; color:#10b981;">0 ₫</div>
+                    </div>
+                    <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
+                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng doanh thu</div>
+                        <div id="rev-month-total" style="font-size:20px; font-weight:700;">0 ₫</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px;">
+                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">3. Thống kê theo năm:</label>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
+                    <select id="rev-year-picker" class="price-select" style="flex:1;">
+                        <option value="2024">Năm 2024</option><option value="2025">Năm 2025</option><option value="2026">Năm 2026</option>
+                        <option value="2027">Năm 2027</option><option value="2028">Năm 2028</option><option value="2029">Năm 2029</option>
+                    </select>
+                    <button onclick="calcRevenueByYear()" class="btn-excel" style="margin: 0; border-radius: 6px;">XÁC NHẬN</button>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-size:12px; font-weight:700; color:#111;" id="rev-year-title">NĂM ĐÃ CHỌN</div>
+                    <div style="font-size:12px; color:#666; font-weight:600;"><span id="rev-year-count">0 lượt</span> (<span id="rev-year-free" style="color:#ef4444;">0 miễn phí</span>)</div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Tiền mặt</div>
+                        <div id="rev-year-cash" style="font-size:16px; font-weight:700; color:#f59e0b;">0 ₫</div>
+                    </div>
+                    <div style="background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:12px;">
+                        <div style="font-size:11px; color:#666; margin-bottom:4px;">Chuyển khoản</div>
+                        <div id="rev-year-trans" style="font-size:16px; font-weight:700; color:#10b981;">0 ₫</div>
+                    </div>
+                    <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
+                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng doanh thu</div>
+                        <div id="rev-year-total" style="font-size:20px; font-weight:700;">0 ₫</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <script src="./admin.js" defer></script>
+</body>
+</html>
