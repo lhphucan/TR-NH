@@ -662,7 +662,6 @@ function executeClearData() {
         }
     });
 }
-}
 
 function showQRCode() {
     const title = br === 'phucyen' ? "MÃ QR CƠ SỞ PHÚC YÊN" : "MÃ QR CƠ SỞ VĨNH YÊN";
