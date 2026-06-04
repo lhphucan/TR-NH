@@ -335,9 +335,8 @@ function load() {
                             
                             <div style="margin-top:auto;">
                                 <div style="font-size:11px; font-weight:600; color:#a1a1aa; margin-bottom:5px; text-transform:uppercase;">Doanh thu:</div>
-                                <div style="display:flex; gap:5px; align-items:center;">
-                                    <div style="background:#111; color:#fff; font-size:10px; font-weight:700; padding:6px 8px; border-radius:6px; cursor:pointer; height:36px; display:flex; align-items:center; justify-content:center; white-space:nowrap;" onclick="setFree('${client.id}')">MIỄN PHÍ</div>
-                                    <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="VD: 50.000" list="price-list" onchange="updateMoney('${client.id}')" style="flex:1;">
+                                <div style="display:flex; gap:5px;">
+                                    <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="VD: 50.000" list="price-list" onchange="updateMoney('${client.id}')">
                                     <select id="payment_${client.id}" class="price-select" onchange="updateMoney('${client.id}')" ${isFree ? 'disabled' : ''}>
                                         <option value="Tiền mặt" ${pmVal === 'Tiền mặt' ? 'selected' : ''}>Tiền mặt</option>
                                         <option value="Chuyển khoản" ${pmVal === 'Chuyển khoản' ? 'selected' : ''}>Chuyển khoản</option>
@@ -398,10 +397,6 @@ function updateMoney(clientId) {
     db.ref(dbPath + br + '/' + clientId).update({ price: pVal, payment: paySel.value });
 }
 
-function setFree(clientId) {
-    document.getElementById('price_' + clientId).value = 'Miễn phí';
-    updateMoney(clientId);
-}
 
 function toggleSelectAllTrash(cb) { const boxes = document.querySelectorAll('.trash-checkbox'); boxes.forEach(b => b.checked = cb.checked); }
 
