@@ -592,6 +592,34 @@ function hardDeleteCustomer(clientId, clientName) {
     }); 
 }
 
+function moveCustomer(clientId, clientName, targetBranch) {
+    if(userRole !== 'admin') return;
+    const targetName = targetBranch === 'phucyen' ? 'Cơ sở Phúc Yên' : 'Cơ sở Vĩnh Yên';
+    Swal.fire({
+        title: 'Chuyển Cơ Sở?',
+        text: `Chuyển khách hàng ${clientName} sang ${targetName}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#111',
+        cancelButtonColor: '#fff',
+        confirmButtonText: 'Chuyển Ngay',
+        cancelButtonText: '<span style="color:#111">Hủy</span>'
+    }).then(r => {
+        if (r.isConfirmed) {
+            db.ref(dbPath + br + '/' + clientId).once('value').then(snap => {
+                const data = snap.val();
+                if(data) {
+                    db.ref(dbPath + targetBranch + '/' + clientId).set(data).then(() => {
+                        db.ref(dbPath + br + '/' + clientId).remove().then(() => {
+                            Toast.fire({ icon: 'success', title: 'Đã chuyển thành công' });
+                        });
+                    });
+                }
+            }).catch(err => Swal.fire('Lỗi', err.message, 'error'));
+        }
+    });
+}
+
 function openClearModal() {
     if(userRole !== 'admin') return Swal.fire({title: 'Từ chối', text: 'Chỉ Admin mới thao tác được!', icon: 'error', confirmButtonColor: '#111'});
     document.getElementById('clear-pass').value = '';
