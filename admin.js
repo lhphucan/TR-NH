@@ -389,6 +389,12 @@ function load() {
 
 function updateMoney(clientId) {
     let pVal = document.getElementById('price_' + clientId).value.trim();
+    
+    if (pVal.toLowerCase() === 'm') {
+        pVal = 'Miễn phí';
+        document.getElementById('price_' + clientId).value = pVal;
+    }
+    
     const paySel = document.getElementById('payment_' + clientId);
     
     if (pVal === 'Miễn phí') { paySel.disabled = true; paySel.value = 'Tiền mặt'; } 
