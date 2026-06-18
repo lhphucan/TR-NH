@@ -10,29 +10,41 @@ try {
 }
 
 let currentClientId = null;
+let BRANCHES_CACHE = {};
 
-const LINKS = {
-    'phucyen': { fb: 'https://www.facebook.com/profile.php?id=61581535177690', ig: 'https://www.instagram.com/photonoirphucyen/', tk: 'https://www.tiktok.com/@photonoir.PY', map: 'https://share.google/1qq6mElCTWSCuK12D' },
-    'vinhyen': { fb: 'https://www.facebook.com/profile.php?id=61575627444713#', ig: 'https://www.instagram.com/photonoir.vinhyen/', tk: 'https://www.tiktok.com/@photonoir.vy', map: 'https://share.google/ALz4CDaHAlF9fAlEH' }
-};
+function loadBranches() {
+    return db.ref('branches').once('value').then(snap => {
+        BRANCHES_CACHE = snap.val() || {};
+        const sel = document.getElementById('branch');
+        sel.innerHTML = '';
+        Object.keys(BRANCHES_CACHE).forEach(id => {
+            if (BRANCHES_CACHE[id].active === false) return;
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.innerText = BRANCHES_CACHE[id].name;
+            sel.appendChild(opt);
+        });
+    }).catch(() => showError("Không tải được danh sách cơ sở."));
+}
 
 window.onload = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlBranch = urlParams.get('br');
-    const branchSelect = document.getElementById('branch');
+    loadBranches().then(() => {
+        if(localStorage.getItem('pn_name')) document.getElementById('name').value = localStorage.getItem('pn_name');
+        if(localStorage.getItem('pn_phone')) document.getElementById('phone').value = localStorage.getItem('pn_phone');
 
-    if (urlBranch && (urlBranch === 'phucyen' || urlBranch === 'vinhyen')) {
-        branchSelect.value = urlBranch;
-        branchSelect.disabled = true; // Khóa luôn, không cho khách đổi nhầm
-        branchSelect.style.background = '#f4f4f5'; 
-        branchSelect.style.color = '#111';
-        branchSelect.style.border = '1px dashed #d4d4d8';
-    } else if(localStorage.getItem('pn_branch')) {
-        branchSelect.value = localStorage.getItem('pn_branch');
-    }
-
-    if(localStorage.getItem('pn_name')) document.getElementById('name').value = localStorage.getItem('pn_name');
-    if(localStorage.getItem('pn_phone')) document.getElementById('phone').value = localStorage.getItem('pn_phone');
+        const sel = document.getElementById('branch');
+        const urlBranch = new URLSearchParams(window.location.search).get('br');
+        if (urlBranch && BRANCHES_CACHE[urlBranch] && BRANCHES_CACHE[urlBranch].active !== false) {
+            // QR quét vào: khoá đúng cơ sở, không cho khách đổi nhầm
+            sel.value = urlBranch;
+            sel.disabled = true;
+            sel.style.background = '#f4f4f5';
+            sel.style.color = '#111';
+            sel.style.border = '1px dashed #d4d4d8';
+        } else if (localStorage.getItem('pn_branch')) {
+            sel.value = localStorage.getItem('pn_branch');
+        }
+    });
 };
 
 function showError(msg) {
@@ -90,6 +102,7 @@ function checkData() {
             
             db.ref('data/' + branch + '/' + newId).set(newData).then(() => {
                 newData.id = newId;
+                localStorage.setItem('pn_client_id', newId);
                 renderData(newData, branch);
             });
         }
@@ -106,10 +119,11 @@ function renderData(data, branch) {
     document.getElementById('form-ui').style.display = 'none';
     document.getElementById('result-ui').style.display = 'block';
 
-    document.getElementById('link-fb').href = LINKS[branch].fb;
-    document.getElementById('link-ig').href = LINKS[branch].ig;
-    document.getElementById('link-tk').href = LINKS[branch].tk;
-    document.getElementById('link-map').href = LINKS[branch].map;
+    const social = (BRANCHES_CACHE[branch] && BRANCHES_CACHE[branch].social) || {};
+    document.getElementById('link-fb').href = social.fb || '#';
+    document.getElementById('link-ig').href = social.ig || '#';
+    document.getElementById('link-tk').href = social.tk || '#';
+    document.getElementById('link-map').href = social.map || '#';
 
     const ts = parseInt(data.id.split('_')[1]) || Date.now();
     const dateStr = getDStr(new Date(ts));
@@ -197,7 +211,7 @@ function askRating(br) {
             Swal.fire({
                 title: 'Đánh giá dịch vụ', text: 'Tặng tiệm 5 sao trên Google Maps để ủng hộ PHOTONOIR bạn nhé!', icon: 'info',
                 showCancelButton: true, confirmButtonText: 'Đánh giá ngay', cancelButtonText: '<span style="color:#111">Để sau</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff'
-            }).then(r => { if(r.isConfirmed) { localStorage.setItem('pn_rated', '1'); window.open(LINKS[br].map, '_blank'); }});
+            }).then(r => { if(r.isConfirmed) { localStorage.setItem('pn_rated', '1'); const m = (BRANCHES_CACHE[br] && BRANCHES_CACHE[br].social && BRANCHES_CACHE[br].social.map) || '#'; window.open(m, '_blank'); }});
         }
     }, 2000);
 }

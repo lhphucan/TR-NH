@@ -4,6 +4,31 @@ body { font-family: 'Inter', sans-serif; background: #f4f4f5; margin: 0; padding
 
 body.role-staff .admin-only { display: none !important; }
 
+/* Nút Doanh thu: admin + viewer thấy (staff không) */
+body.role-admin .revenue-btn, body.role-viewer .revenue-btn { display: flex !important; }
+
+/* Role chỉ-xem-doanh-thu: ẩn mọi thứ trừ doanh thu */
+body.role-viewer .admin-only,
+body.role-viewer .hide-viewer,
+body.role-viewer .toolbar-wrapper,
+body.role-viewer #branch-tabs,
+body.role-viewer #list-content,
+body.role-viewer #empty-msg,
+body.role-viewer #trash-header { display: none !important; }
+
+/* Viewer: bảng thu nhập nằm thẳng trong trang, scale full theo màn hình */
+body.role-viewer #revenue-modal { display: block !important; position: static; inset: auto; background: none; backdrop-filter: none; padding: 0; z-index: auto; overflow: visible; }
+body.role-viewer #revenue-modal .modal-content { max-width: 100% !important; width: 100% !important; box-shadow: none !important; padding: 0 !important; background: none !important; border-radius: 0 !important; margin: 0 !important; }
+body.role-viewer #revenue-modal .modal-close-x { display: none !important; }
+body.role-viewer #revenue-modal h3 { font-size: 22px !important; }
+/* PC: 3 khối Ngày/Tháng/Năm dàn ngang, to ra */
+@media (min-width: 768px) {
+    body.role-viewer #revenue-panels { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: start; }
+    body.role-viewer #revenue-panels > div { margin-bottom: 0 !important; }
+}
+/* Phóng to số tiền + nhãn cho dễ nhìn */
+body.role-viewer #revenue-modal .rev-total-num { font-size: 26px !important; }
+
 .tabs { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
 .tab-btn { padding: 10px 20px; border: 1px solid #d4d4d8; border-radius: 8px; cursor: pointer; background: #fff; color: #111; font-weight: 600; font-size: 13px; transition: 0.2s; white-space: nowrap; flex-shrink: 0; }
 .tab-btn.active { background: #18181b; color: #fff; border-color: #18181b; }
@@ -73,11 +98,9 @@ textarea:focus { border-color: #111; }
 .empty-text { font-size: 14px; color: #71717a; font-weight: 500; margin-top:15px; }
 
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; overflow-y: auto;}
+.swal2-container { z-index: 3000 !important; }
 .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 440px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); box-sizing: border-box; position: relative; margin: auto;}
 
 /* BẢO ĐẢM ICON KHÔNG BỊ ĐEN TRÊN BẤT KỲ TRÌNH DUYỆT NÀO */
 .icon-svg { width: 16px !important; height: 16px !important; min-width: 16px; min-height: 16px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
 .icon-sm { width: 14px !important; height: 14px !important; min-width: 14px; min-height: 14px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
-/* DETAILS TOGGLE FOR LINKS */
-.link-details summary::-webkit-details-marker { display: none; }
-.link-details[open] .toggle-icon { transform: rotate(180deg); }

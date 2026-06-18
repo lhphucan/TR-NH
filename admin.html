@@ -9,6 +9,7 @@
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -24,7 +25,11 @@
         <div style="text-align:center; width: 100%; max-width: 320px;">
             <img src="./logo.png" style="width: 80px; border-radius: 50%; margin-bottom: 15px; border: 1px solid #eee;" onerror="this.style.display='none'">
             <h3 style="margin-bottom: 25px; letter-spacing: 2px;">PHOTONOIR</h3>
-            <input type="password" id="pass" placeholder="Nhập mã bảo mật (vd: 123456)..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:15px; box-sizing: border-box; font-size: 15px; text-align: center; outline: none; transition: 0.2s; font-family: 'Inter';">
+            <input type="text" id="login-email" name="pn-username" autocomplete="off" placeholder="Tên đăng nhập..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:12px; box-sizing: border-box; font-size: 15px; text-align: center; outline: none; transition: 0.2s; font-family: 'Inter';">
+            <input type="password" id="login-pass" name="pn-password" autocomplete="new-password" placeholder="Mật khẩu..." onkeypress="if(event.key === 'Enter') login()" style="width:100%; padding:14px; border-radius:12px; border:1px solid #d4d4d8; margin-bottom:12px; box-sizing: border-box; font-size: 15px; text-align: center; outline: none; transition: 0.2s; font-family: 'Inter';">
+            <label style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px; color:#52525b; margin-bottom:15px; cursor:pointer; font-weight:500;">
+                <input type="checkbox" id="login-remember" style="width:16px; height:16px; cursor:pointer; accent-color:#111;"> Nhớ tài khoản
+            </label>
             <button id="btn-login" onclick="login()" style="width:100%; padding:14px; background:#18181b; color:#fff; border:none; border-radius:12px; cursor:pointer; font-weight:700; text-transform: uppercase; transition: 0.2s; font-family: 'Inter';">Đăng nhập</button>
         </div>
     </div>
@@ -36,31 +41,30 @@
                 <span id="role-badge" style="font-size:11px; background:#18181b; color:#fff; padding:4px 10px; border-radius:20px; margin-left:12px; font-weight: 600; letter-spacing: 0.5px;"></span>
             </h2>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button class="hide-viewer" onclick="showQRCode()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
+                    <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> Mã QR
+                </button>
+                <button class="revenue-btn" onclick="openRevenueModal()" style="color:#111; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:none; align-items:center; font-family: 'Inter';">
+                    <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Thu nhập
+                </button>
                 <div class="admin-only" style="display: flex; gap: 15px;">
-                    <button onclick="openRevenueModal()" style="color:#111; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
-                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> Doanh thu
-                    </button>
                     <button id="btn-trash" onclick="toggleTrash()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
                         <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Thùng rác
                     </button>
                     <button onclick="openClearModal()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
                         <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Dọn dữ liệu
                     </button>
+                    <button onclick="openManageModal()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
+                        <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"></circle><path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path></svg> Cơ sở & Tài khoản
+                    </button>
                 </div>
-                
-                <button onclick="showQRCode()" style="color:#52525b; background:none; border:none; cursor:pointer; font-weight:600; font-size: 13px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
-                    <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> Mã QR
-                </button>
                 <button onclick="logout()" style="color:#111; background:#fff; border:1px solid #d4d4d8; padding: 8px 14px; border-radius: 8px; cursor:pointer; font-weight:700; font-size: 11px; transition: 0.2s; display:flex; align-items:center; font-family: 'Inter';">
                     <svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Đăng xuất
                 </button>
             </div>
         </div>
         
-        <div class="tabs">
-            <button class="tab-btn active" id="btn-phucyen" onclick="switchB('phucyen')">Cơ sở Phúc Yên</button>
-            <button class="tab-btn" id="btn-vinhyen" onclick="switchB('vinhyen')">Cơ sở Vĩnh Yên</button>
-        </div>
+        <div class="tabs" id="branch-tabs"></div>
 
         <div class="toolbar-wrapper">
             <div class="toolbar">
@@ -96,11 +100,7 @@
             </h3>
             <p style="font-size:13px; color:#666; margin-bottom: 20px; line-height: 1.5;">Hành động này sẽ xóa cả dữ liệu trong Thùng Rác và <b>không thể hoàn tác</b>:</p>
             <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Chọn khu vực dọn:</label>
-            <select id="clear-target" class="search-box" style="width:100%; margin-bottom:20px; border: 1px solid #d4d4d8; height:40px;">
-                <option value="phucyen">Chỉ dọn Cơ sở Phúc Yên</option>
-                <option value="vinhyen">Chỉ dọn Cơ sở Vĩnh Yên</option>
-                <option value="all" style="color: #111; font-weight: bold;">Khôi phục cài đặt gốc toàn hệ thống</option>
-            </select>
+            <select id="clear-target" class="search-box" style="width:100%; margin-bottom:20px; border: 1px solid #d4d4d8; height:40px;"></select>
             <label style="font-size: 12px; font-weight: 600; margin-bottom: 5px; display: block;">Mã xác nhận:</label>
             <input type="text" id="clear-pass" class="search-box" placeholder="Nhập XOA để xác nhận..." style="width:100%; margin-bottom:25px; border: 1px solid #d4d4d8; box-sizing: border-box; height:40px;">
             <div style="display:flex; gap:10px;">
@@ -115,11 +115,12 @@
             <h3 style="margin-top:0; color:#111; font-size: 18px; margin-bottom: 20px; display:flex; align-items:center; justify-content:space-between;">
                 <span style="display:flex; align-items:center; gap:8px;">
                     <svg class="icon-svg" style="width:18px !important; height:18px !important;" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> 
-                    BÁO CÁO DOANH THU
+                    BÁO CÁO THU NHẬP
                 </span>
-                <button onclick="document.getElementById('revenue-modal').style.display='none'" style="background:none; border:none; cursor:pointer; font-size:24px; color:#888; padding:0; line-height: 1;">&times;</button>
+                <button class="modal-close-x" onclick="document.getElementById('revenue-modal').style.display='none'" style="background:none; border:none; cursor:pointer; font-size:24px; color:#888; padding:0; line-height: 1;">&times;</button>
             </h3>
-            
+
+            <div id="revenue-panels">
             <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
                 <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">1. Thống kê theo khoảng ngày:</label>
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px;">
@@ -140,8 +141,8 @@
                         <div id="rev-day-trans" style="font-size:16px; font-weight:700; color:#10b981;">0 ₫</div>
                     </div>
                     <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
-                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng doanh thu</div>
-                        <div id="rev-day-total" style="font-size:20px; font-weight:700;">0 ₫</div>
+                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng thu nhập</div>
+                        <div id="rev-day-total" class="rev-total-num" style="font-size:20px; font-weight:700;">0 ₫</div>
                     </div>
                 </div>
             </div>
@@ -166,8 +167,8 @@
                         <div id="rev-month-trans" style="font-size:16px; font-weight:700; color:#10b981;">0 ₫</div>
                     </div>
                     <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
-                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng doanh thu</div>
-                        <div id="rev-month-total" style="font-size:20px; font-weight:700;">0 ₫</div>
+                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng thu nhập</div>
+                        <div id="rev-month-total" class="rev-total-num" style="font-size:20px; font-weight:700;">0 ₫</div>
                     </div>
                 </div>
             </div>
@@ -195,29 +196,75 @@
                         <div id="rev-year-trans" style="font-size:16px; font-weight:700; color:#10b981;">0 ₫</div>
                     </div>
                     <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
-                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng doanh thu</div>
-                        <div id="rev-year-total" style="font-size:20px; font-weight:700;">0 ₫</div>
+                        <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng thu nhập</div>
+                        <div id="rev-year-total" class="rev-total-num" style="font-size:20px; font-weight:700;">0 ₫</div>
                     </div>
                 </div>
+            </div>
             </div>
 
         </div>
     </div>
-    
+
+    <div id="manage-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 520px; padding: 24px;">
+            <h3 style="margin-top:0; color:#111; font-size: 18px; margin-bottom: 20px; display:flex; align-items:center; justify-content:space-between;">
+                <span>Cơ sở &amp; Tài khoản</span>
+                <button onclick="document.getElementById('manage-modal').style.display='none'" style="background:none; border:none; cursor:pointer; font-size:24px; color:#888; padding:0; line-height: 1;">&times;</button>
+            </h3>
+
+            <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <label id="branch-form-label" style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">Thêm cơ sở mới</label>
+                <input type="text" id="new-branch-id" class="search-box" placeholder="Mã cơ sở (vd: hanoi, không dấu)" style="width:100%; margin-bottom:8px; border:1px solid #d4d4d8; box-sizing:border-box; height:38px;">
+                <input type="text" id="new-branch-name" class="search-box" placeholder="Tên hiển thị (vd: Cơ sở Hà Nội)" style="width:100%; margin-bottom:8px; border:1px solid #d4d4d8; box-sizing:border-box; height:38px;">
+                <input type="text" id="new-branch-fb" class="search-box" placeholder="Link Facebook (tùy chọn)" style="width:100%; margin-bottom:8px; border:1px solid #d4d4d8; box-sizing:border-box; height:38px;">
+                <input type="text" id="new-branch-ig" class="search-box" placeholder="Link Instagram (tùy chọn)" style="width:100%; margin-bottom:8px; border:1px solid #d4d4d8; box-sizing:border-box; height:38px;">
+                <input type="text" id="new-branch-tk" class="search-box" placeholder="Link TikTok (tùy chọn)" style="width:100%; margin-bottom:8px; border:1px solid #d4d4d8; box-sizing:border-box; height:38px;">
+                <input type="text" id="new-branch-map" class="search-box" placeholder="Link Google Maps (tùy chọn)" style="width:100%; margin-bottom:12px; border:1px solid #d4d4d8; box-sizing:border-box; height:38px;">
+                <div style="display:flex; gap:8px;">
+                    <button id="branch-submit-btn" onclick="submitBranchForm()" class="btn-excel" style="flex:1; margin:0; border-radius:8px;">Tạo cơ sở</button>
+                    <button id="branch-cancel-btn" onclick="cancelEditBranch()" style="display:none; flex:0 0 auto; margin:0; border-radius:8px; background:#fff; color:#111; border:1px solid #d4d4d8; padding:0 16px; cursor:pointer; font-weight:700; font-size:13px; font-family:'Inter';">Hủy</button>
+                </div>
+                <div id="branch-list" style="margin-top:12px; display:flex; flex-direction:column; gap:6px;"></div>
+            </div>
+
+            <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <label id="acc-form-label" style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">Thêm tài khoản</label>
+                <input type="text" id="new-acc-email" class="search-box" placeholder="Tên đăng nhập (vd: lhphucan)" style="width:100%; margin-bottom:8px; border:1px solid #d4d4d8; box-sizing:border-box; height:38px;">
+                <input type="password" id="new-acc-pass" class="search-box" placeholder="Mật khẩu (tối thiểu 6 ký tự)" style="width:100%; margin-bottom:8px; border:1px solid #d4d4d8; box-sizing:border-box; height:38px;">
+                <div style="display:flex; gap:8px; margin-bottom:12px;">
+                    <select id="new-acc-branch" class="price-select" style="flex:1;"></select>
+                    <select id="new-acc-role" class="price-select" style="flex:1;">
+                        <option value="staff">Nhân viên (staff)</option>
+                        <option value="viewer">Chỉ xem thu nhập</option>
+                        <option value="admin">Quản trị (admin)</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button id="acc-submit-btn" onclick="submitAccountForm()" class="btn-excel" style="flex:1; margin:0; border-radius:8px;">Tạo tài khoản</button>
+                    <button id="acc-cancel-btn" onclick="cancelEditAccount()" style="display:none; flex:0 0 auto; margin:0; border-radius:8px; background:#fff; color:#111; border:1px solid #d4d4d8; padding:0 16px; cursor:pointer; font-weight:700; font-size:13px; font-family:'Inter';">Hủy</button>
+                </div>
+            </div>
+
+            <div>
+                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">Tài khoản hiện có</label>
+                <div id="account-list" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="qr-modal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
-        <div class="modal-content" style="max-width: 400px; text-align: center;">
+        <div class="modal-content" style="max-width: 360px; text-align:center;">
             <h3 style="margin-top:0; color:#111; font-size: 16px; margin-bottom: 5px; text-transform: uppercase;" id="qr-title">MÃ QR KHÁCH HÀNG</h3>
-            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Đưa mã này cho khách quét để tự động chọn cơ sở</p>
-            <div style="background: #f4f4f5; padding: 20px; border-radius: 12px; display: inline-block;">
+            <p style="font-size:12px; color:#888; margin-bottom:15px;">Khách quét mã sẽ vào thẳng đúng cơ sở này.</p>
+            <div style="background:#fff; border:1px solid #e5e5e5; border-radius:12px; padding:16px; display:inline-block;">
                 <img id="qr-image" src="" alt="QR Code" style="width: 250px; height: 250px; display: block; border-radius: 8px;">
             </div>
-            <div style="margin-top: 20px;">
-                <a id="qr-download" href="#" target="_blank" style="display:inline-block; padding:12px 24px; background:#111; color:#fff; border-radius:8px; text-decoration:none; font-weight:700; font-family:'Inter'; width:100%; box-sizing:border-box;">Mở Ảnh Phóng To (Để Lưu/In)</a>
-            </div>
+            <a id="qr-download" href="#" target="_blank" style="display:block; margin-top:15px; padding:12px 24px; background:#111; color:#fff; border-radius:8px; text-decoration:none; font-weight:700; font-family:'Inter'; box-sizing:border-box;">Mở ảnh phóng to (để lưu/in)</a>
             <button onclick="document.getElementById('qr-modal').style.display='none'" style="margin-top: 15px; background:none; border:none; color:#888; font-size:13px; font-weight:600; cursor:pointer;">Đóng lại</button>
         </div>
     </div>
-    
+
     <script src="./admin.js" defer></script>
 </body>
 </html>

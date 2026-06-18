@@ -18,10 +18,7 @@
         
         <div id="form-ui">
             <p style="color: #666; font-size: 13px; margin-bottom: 25px; font-weight: 500;">Vui lòng nhập thông tin để tra cứu Album</p>
-            <select id="branch">
-                <option value="phucyen">PHOTO NOIR PHÚC YÊN</option>
-                <option value="vinhyen">PHOTO NOIR VĨNH YÊN</option>
-            </select>
+            <select id="branch"></select>
             <input type="text" id="name" placeholder="Họ và tên của bạn">
             <input type="tel" id="phone" placeholder="Số điện thoại" onkeypress="if(event.key === 'Enter') checkData()">
             <button id="btn-submit" class="primary-btn" onclick="checkData()">
