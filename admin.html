@@ -265,6 +265,29 @@
         </div>
     </div>
 
+    <div id="price-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 380px;">
+            <h3 style="margin-top:0; color:#111; font-size: 17px; margin-bottom: 6px;">Nhập tiền lượt chụp</h3>
+            <p style="font-size:12px; color:#888; margin-bottom:16px;">Chọn hình thức thanh toán để trả ảnh cho khách.</p>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px;">
+                <button type="button" class="pay-opt" data-pay="Tiền mặt" onclick="selectPay('Tiền mặt')">Tiền mặt</button>
+                <button type="button" class="pay-opt" data-pay="Chuyển khoản" onclick="selectPay('Chuyển khoản')">Chuyển khoản</button>
+                <button type="button" class="pay-opt" data-pay="Miễn phí" onclick="selectPay('Miễn phí')">Miễn phí</button>
+            </div>
+
+            <div id="price-amount-wrap" style="margin-bottom:18px;">
+                <label style="font-size:11px; font-weight:700; color:#666; display:block; margin-bottom:6px; text-transform:uppercase;">Số tiền</label>
+                <input type="text" id="price-amount-input" inputmode="numeric" placeholder="Nhập số tiền" onkeypress="if(event.key==='Enter') confirmPrice()" style="width:100%; padding:14px; border-radius:10px; border:1px solid #d4d4d8; box-sizing:border-box; font-size:18px; font-weight:700; text-align:center; outline:none; font-family:'Inter';">
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <button onclick="cancelPrice()" style="flex:0 0 auto; padding:12px 18px; background:#f4f4f5; color:#111; border:none; border-radius:10px; cursor:pointer; font-weight:600; font-family:'Inter';">Hủy</button>
+                <button id="price-confirm-btn" onclick="confirmPrice()" class="btn-excel" style="flex:1; margin:0; border-radius:10px; height:auto; padding:12px;">Lưu &amp; trả ảnh</button>
+            </div>
+        </div>
+    </div>
+
     <script src="./admin.js" defer></script>
 </body>
 </html>

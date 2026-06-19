@@ -90,6 +90,8 @@ textarea:focus { border-color: #111; }
 .price-input { width: 100px; flex-grow: 1;}
 .price-select { width: auto; cursor: pointer; flex-grow: 1;}
 .price-input:focus, .price-select:focus { border-color: #111; box-shadow: 0 0 0 2px rgba(17,17,17,0.05); }
+/* Lượt khách chưa nhập tiền: viền đỏ cả khung card cảnh báo */
+.client-card.card-no-price { border-color: #ef4444 !important; box-shadow: 0 0 0 2px rgba(239,68,68,0.12); }
 
 .trash-notice { background: #111; color: #fff; padding: 15px; border-radius: 12px; font-size: 13px; border: 1px solid #111; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
 @media (min-width: 768px) { .trash-notice { flex-direction: row; justify-content: space-between; align-items: center; } }
@@ -99,6 +101,22 @@ textarea:focus { border-color: #111; }
 
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; animation: fadeIn 0.2s; overflow-y: auto;}
 .swal2-container { z-index: 3000 !important; }
+
+/* Đồng bộ SweetAlert với thiết kế web (font Inter, bo góc, nút vuông tone đen) */
+.swal2-popup { font-family: 'Inter', sans-serif !important; border-radius: 16px !important; padding: 24px !important; }
+.swal2-title { font-size: 18px !important; font-weight: 700 !important; color: #111 !important; }
+.swal2-html-container, .swal2-content { font-size: 13px !important; color: #52525b !important; }
+.swal2-actions { gap: 10px !important; }
+.swal2-styled { border-radius: 10px !important; font-weight: 700 !important; font-size: 13px !important; box-shadow: none !important; padding: 12px 20px !important; }
+.swal2-styled.swal2-confirm { background: #111 !important; }
+.swal2-styled.swal2-cancel { background: #f4f4f5 !important; border: 1px solid #d4d4d8 !important; }
+.swal2-input, .swal2-select { border-radius: 10px !important; border: 1px solid #d4d4d8 !important; font-family: 'Inter', sans-serif !important; box-shadow: none !important; }
+.swal2-input:focus { border-color: #111 !important; box-shadow: 0 0 0 2px rgba(17,17,17,0.05) !important; }
+
+/* Popup nhập tiền: nút chọn phương thức */
+.pay-opt { padding: 12px 6px; border: 1px solid #d4d4d8; border-radius: 10px; background: #fff; color: #52525b; font-weight: 700; font-size: 12px; cursor: pointer; transition: 0.15s; font-family: 'Inter'; }
+.pay-opt:hover { border-color: #111; }
+.pay-opt.active { background: #111; color: #fff; border-color: #111; }
 .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 100%; max-width: 440px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); box-sizing: border-box; position: relative; margin: auto;}
 
 /* BẢO ĐẢM ICON KHÔNG BỊ ĐEN TRÊN BẤT KỲ TRÌNH DUYỆT NÀO */

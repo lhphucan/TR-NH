@@ -406,11 +406,11 @@ function load() {
                     `<button class="btn-move-client admin-only" onclick="moveCustomer('${client.id}', '${safeName}')"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg> CHUYỂN CƠ SỞ KHÁC</button>
                     <button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> CHUYỂN VÀO THÙNG RÁC</button>`;
 
-                const pVal = client.price || ""; const pmVal = client.payment || "Tiền mặt";
+                const pVal = client.price ? normalizePrice(client.price) : ""; const pmVal = client.payment || "";
                 const isFree = (pVal === 'Miễn phí');
 
                 html += `
-                    <div class="client-card" data-search="${client.name ? client.name.toLowerCase() : ''} ${client.phone} ${maKh}">
+                    <div class="client-card${(!pVal && dbPath === 'data/') ? ' card-no-price' : ''}" data-search="${client.name ? client.name.toLowerCase() : ''} ${client.phone} ${maKh}">
                         <div class="client-info">
                             ${(dbPath === 'trash/') ? `<div style="margin-bottom:10px; display:flex; align-items:center; gap:10px;"><input type="checkbox" class="trash-checkbox" value="${client.id}" style="width:16px; height:16px; cursor:pointer;"><span style="font-size:12px; font-weight:600; color:#666;">CHỌN XÓA</span></div>` : ''}
                             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
@@ -424,10 +424,12 @@ function load() {
                             <div style="margin-top:auto;">
                                 <div style="font-size:11px; font-weight:600; color:#a1a1aa; margin-bottom:5px; text-transform:uppercase;">Thu nhập:</div>
                                 <div style="display:flex; gap:5px;">
-                                    <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="VD: 50.000" list="price-list" onchange="updateMoney('${client.id}')">
-                                    <select id="payment_${client.id}" class="price-select" onchange="updateMoney('${client.id}')" ${isFree ? 'disabled' : ''}>
-                                        <option value="Tiền mặt" ${pmVal === 'Tiền mặt' ? 'selected' : ''}>Tiền mặt</option>
-                                        <option value="Chuyển khoản" ${pmVal === 'Chuyển khoản' ? 'selected' : ''}>Chuyển khoản</option>
+                                    <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="" list="price-list" ${isFree ? 'disabled' : ''} onchange="updateMoney('${client.id}')">
+                                    <select id="payment_${client.id}" class="price-select" onchange="updatePayment('${client.id}')">
+                                        <option value="" ${(!isFree && !pmVal) ? 'selected' : ''}></option>
+                                        <option value="Tiền mặt" ${(pmVal === 'Tiền mặt' && !isFree) ? 'selected' : ''}>Tiền mặt</option>
+                                        <option value="Chuyển khoản" ${(pmVal === 'Chuyển khoản' && !isFree) ? 'selected' : ''}>Chuyển khoản</option>
+                                        <option value="Miễn phí" ${isFree ? 'selected' : ''}>Miễn phí</option>
                                     </select>
                                 </div>
                             </div>
@@ -471,13 +473,42 @@ function load() {
         }
 
         function updateMoney(clientId) {
-            let pVal = document.getElementById('price_' + clientId).value.trim();
+            const inp = document.getElementById('price_' + clientId);
             const paySel = document.getElementById('payment_' + clientId);
-            
-            if (pVal === 'Miễn phí') { paySel.disabled = true; paySel.value = 'Tiền mặt'; } 
-            else { paySel.disabled = false; }
-            
-            db.ref(dbPath + br + '/' + clientId).update({ price: pVal, payment: paySel.value });
+
+            // Chỉ giữ số -> "50.000 đ" (cột riêng lo phần Miễn phí)
+            const numStr = inp.value.replace(/\D/g, '');
+            const pVal = numStr ? parseInt(numStr, 10).toLocaleString('vi-VN') + ' đ' : '';
+            inp.value = pVal;
+
+            // Gõ số mà payment đang Miễn phí -> chuyển về Tiền mặt
+            let payment = paySel.value;
+            if (pVal && payment === 'Miễn phí') { payment = 'Tiền mặt'; paySel.value = 'Tiền mặt'; }
+
+            const card = inp.closest('.client-card');
+            if (card) card.classList.toggle('card-no-price', !pVal && payment !== 'Miễn phí' && dbPath === 'data/');
+            db.ref(dbPath + br + '/' + clientId).update({ price: pVal, payment });
+        }
+
+        function updatePayment(clientId) {
+            const inp = document.getElementById('price_' + clientId);
+            const paySel = document.getElementById('payment_' + clientId);
+            const card = inp.closest('.client-card');
+
+            if (paySel.value === 'Miễn phí') {
+                inp.value = 'Miễn phí';
+                inp.disabled = true;
+                if (card) card.classList.remove('card-no-price');
+                db.ref(dbPath + br + '/' + clientId).update({ price: 'Miễn phí', payment: 'Tiền mặt' });
+            } else {
+                // Chuyển từ Miễn phí sang TM/CK -> xoá để điền lại
+                inp.disabled = false;
+                if (inp.value === 'Miễn phí') inp.value = '';
+                const pVal = inp.value.trim();
+                if (card) card.classList.toggle('card-no-price', !pVal && dbPath === 'data/');
+                db.ref(dbPath + br + '/' + clientId).update({ price: pVal, payment: paySel.value });
+                if (!pVal) inp.focus();
+            }
         }
 
         function toggleSelectAllTrash(cb) { const boxes = document.querySelectorAll('.trash-checkbox'); boxes.forEach(b => b.checked = cb.checked); }
@@ -578,7 +609,7 @@ function load() {
                             const c = currentData[id]; 
                             const d = getDStr(new Date(ts)); 
                             const mk = id.split('_')[1].slice(-4);
-                            const price = c.price || '0';
+                            const price = c.price ? normalizePrice(c.price) : '0';
                             const payment = c.payment || '';
                             const cosoStr = (branchesCache[br] && branchesCache[br].name) || br;
                             csvContent += `"${d}","${c.time}","#${mk}","${c.name}","${c.phone}","${price}","${payment}","${cosoStr}"\n`;
@@ -600,7 +631,33 @@ function load() {
             });
         }
 
+        function priceIsValid(v) {
+            const low = (v || '').toLowerCase().trim();
+            if (low === 'miễn phí' || low === 'mien phi') return true;
+            const n = (v || '').replace(/\D/g, '');
+            return n !== '' && parseInt(n, 10) > 0;
+        }
+
+        function normalizePrice(raw) {
+            const v = (raw || '').trim();
+            const numStr = v.replace(/\D/g, '');
+            // Có chữ mà không có số -> Miễn phí. Có số -> "50.000 đ". Trống -> ''.
+            if (!numStr) return /[a-zA-ZÀ-ỹ]/.test(v) ? 'Miễn phí' : '';
+            return parseInt(numStr, 10).toLocaleString('vi-VN') + ' đ';
+        }
+
+        // Tra ve true neu da co gia hop le (hoac vua nhap xong trong popup), false neu huy
+        function requirePrice(clientId) {
+            const inp = document.getElementById('price_' + clientId);
+            const paySel = document.getElementById('payment_' + clientId);
+            // Đã có giá hợp lệ -> qua luôn
+            if (inp && priceIsValid(inp.value)) return Promise.resolve(true);
+            // Mở popup chọn tiền (đồng bộ thiết kế web)
+            return openPriceModal(clientId, paySel ? paySel.value : 'Tiền mặt');
+        }
+
         async function uploadPhotosToImgBB(clientId) {
+            if (!(await requirePrice(clientId))) return;
             const fileInput = document.getElementById('file_' + clientId);
             const files = fileInput.files;
             const btn = document.getElementById('btn_up_' + clientId);
@@ -637,7 +694,8 @@ function load() {
             }
         }
 
-        function addLink(clientId) {
+        async function addLink(clientId) {
+            if (!(await requirePrice(clientId))) return;
             const text = document.getElementById('new_' + clientId).value.trim();
             if(!text) return Toast.fire({ icon: 'warning', title: 'Chưa dán link!' });
             const urls = text.split(/\n/).map(u => u.trim()).filter(u => u !== ""); 
@@ -1014,3 +1072,71 @@ function revokeAccount(uid) {
         }
     });
 }
+
+// ===== Popup nhập tiền (đồng bộ thiết kế web) =====
+let _priceResolve = null, _priceClientId = null, _paySelected = 'Tiền mặt';
+
+function fmtMoneyStr(raw) {
+    const v = (raw || '').trim();
+    const num = v.replace(/\D/g, '');
+    if (!num) return /[a-zA-ZÀ-ỹ]/.test(v) ? 'Miễn phí' : '';
+    return parseInt(num, 10).toLocaleString('vi-VN') + ' đ';
+}
+
+function openPriceModal(clientId, currentPay) {
+    _priceClientId = clientId;
+    _paySelected = (currentPay === 'Chuyển khoản') ? 'Chuyển khoản' : 'Tiền mặt';
+    document.getElementById('price-amount-input').value = '';
+    selectPay(_paySelected);
+    document.getElementById('price-modal').style.display = 'flex';
+    setTimeout(() => { const a = document.getElementById('price-amount-input'); if (a && a.style.display !== 'none') a.focus(); }, 100);
+    return new Promise(resolve => { _priceResolve = resolve; });
+}
+
+function selectPay(method) {
+    _paySelected = method;
+    document.querySelectorAll('#price-modal .pay-opt').forEach(b => b.classList.toggle('active', b.getAttribute('data-pay') === method));
+    // Miễn phí: ẩn ô tiền; TM/CK: hiện ô tiền
+    document.getElementById('price-amount-wrap').style.display = (method === 'Miễn phí') ? 'none' : 'block';
+}
+
+function confirmPrice() {
+    let price, payment;
+    if (_paySelected === 'Miễn phí') {
+        price = 'Miễn phí'; payment = 'Tiền mặt';
+    } else {
+        price = fmtMoneyStr(document.getElementById('price-amount-input').value);
+        if (!price || price === 'Miễn phí') return Toast.fire({ icon: 'warning', title: 'Nhập số tiền hợp lệ.' });
+        payment = _paySelected;
+    }
+    const cid = _priceClientId;
+    db.ref(dbPath + br + '/' + cid).update({ price, payment }).then(() => {
+        const inp = document.getElementById('price_' + cid);
+        const paySel = document.getElementById('payment_' + cid);
+        if (inp) { inp.value = price; const card = inp.closest('.client-card'); if (card) card.classList.toggle('card-no-price', !price); }
+        if (paySel) { paySel.value = payment; paySel.disabled = (price === 'Miễn phí'); }
+        document.getElementById('price-modal').style.display = 'none';
+        if (_priceResolve) { _priceResolve(true); _priceResolve = null; }
+    }).catch(err => Swal.fire('Lỗi', err.message, 'error'));
+}
+
+function cancelPrice() {
+    document.getElementById('price-modal').style.display = 'none';
+    if (_priceResolve) { _priceResolve(false); _priceResolve = null; }
+}
+
+// Hủy modal -> resolve false (không trả ảnh)
+document.addEventListener('click', (e) => {
+    const m = document.getElementById('price-modal');
+    if (!m || m.style.display !== 'flex') return;
+    // nút Hủy đã có onclick đóng; bắt thêm khi click nền ngoài
+    if (e.target === m) { m.style.display = 'none'; if (_priceResolve) { _priceResolve(false); _priceResolve = null; } }
+});
+
+// Auto-format khi gõ số trong popup (chỉ giữ số)
+document.addEventListener('input', (e) => {
+    if (e.target && e.target.id === 'price-amount-input') {
+        const num = e.target.value.replace(/\D/g, '');
+        e.target.value = num ? parseInt(num, 10).toLocaleString('vi-VN') : '';
+    }
+});
