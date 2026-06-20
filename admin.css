@@ -103,9 +103,12 @@ textarea:focus { border-color: #111; }
 .swal2-container { z-index: 3000 !important; }
 
 /* Đồng bộ SweetAlert với thiết kế web (font Inter, bo góc, nút vuông tone đen) */
-.swal2-popup { font-family: 'Inter', sans-serif !important; border-radius: 16px !important; padding: 24px !important; }
-.swal2-title { font-size: 18px !important; font-weight: 700 !important; color: #111 !important; }
-.swal2-html-container, .swal2-content { font-size: 13px !important; color: #52525b !important; }
+/* CHỈ áp cho popup thường (:not(.swal2-toast)) — toast giữ nền đen chữ trắng riêng */
+.swal2-popup { font-family: 'Inter', sans-serif !important; }
+.swal2-popup:not(.swal2-toast) { border-radius: 16px !important; padding: 24px !important; }
+.swal2-popup:not(.swal2-toast) .swal2-title { font-size: 18px !important; font-weight: 700 !important; color: #111 !important; }
+.swal2-popup:not(.swal2-toast) .swal2-html-container,
+.swal2-popup:not(.swal2-toast) .swal2-content { font-size: 13px !important; color: #52525b !important; }
 .swal2-actions { gap: 10px !important; }
 .swal2-styled { border-radius: 10px !important; font-weight: 700 !important; font-size: 13px !important; box-shadow: none !important; padding: 12px 20px !important; }
 .swal2-styled.swal2-confirm { background: #111 !important; }

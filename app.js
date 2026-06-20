@@ -54,6 +54,38 @@ function showError(msg) {
 
 function getDStr(dObj) { return String(dObj.getDate()).padStart(2, '0') + '/' + String(dObj.getMonth() + 1).padStart(2, '0') + '/' + dObj.getFullYear(); }
 
+// ===== Chống spam tạo phiên (theo thiết bị) =====
+const SPAM_MAX_PER_DAY = 3;       // tối đa 3 phiên mới/ngày/thiết bị
+const SPAM_COOLDOWN_MS = 120000;  // chờ 2 phút giữa 2 lần tạo
+
+// Trả null nếu được phép tạo, hoặc chuỗi thông báo nếu bị chặn
+function spamGuardCheck() {
+    const todayStr = getDStr(new Date());
+    let log;
+    try { log = JSON.parse(localStorage.getItem('pn_create_log') || '{}'); } catch (_) { log = {}; }
+    if (log.date !== todayStr) log = { date: todayStr, count: 0, last: 0 };
+
+    const now = Date.now();
+    if (log.last && (now - log.last) < SPAM_COOLDOWN_MS) {
+        const wait = Math.ceil((SPAM_COOLDOWN_MS - (now - log.last)) / 1000);
+        return `Bạn thao tác quá nhanh. Vui lòng chờ ${wait} giây rồi thử lại.`;
+    }
+    if (log.count >= SPAM_MAX_PER_DAY) {
+        return `Bạn đã tạo tối đa ${SPAM_MAX_PER_DAY} lượt tra cứu hôm nay. Vui lòng liên hệ tiệm nếu cần hỗ trợ.`;
+    }
+    return null;
+}
+
+function spamGuardRecord() {
+    const todayStr = getDStr(new Date());
+    let log;
+    try { log = JSON.parse(localStorage.getItem('pn_create_log') || '{}'); } catch (_) { log = {}; }
+    if (log.date !== todayStr) log = { date: todayStr, count: 0, last: 0 };
+    log.count += 1;
+    log.last = Date.now();
+    localStorage.setItem('pn_create_log', JSON.stringify(log));
+}
+
 function checkData() {
     if (!db) return showError("Không thể kết nối đến hệ thống. Vui lòng kiểm tra lại mạng!");
 
@@ -91,7 +123,15 @@ function checkData() {
         if (foundData) {
             renderData(foundData, branch);
         } else {
-            // NẾU KHÔNG CÓ THÌ TẠO PHIÊN MỚI TRÊN FIREBASE
+            // Tạo phiên mới -> kiểm tra chống spam trước
+            const blocked = spamGuardCheck();
+            if (blocked) {
+                document.getElementById('spinner').style.display = 'none';
+                document.getElementById('btn-text').innerText = 'TRA CỨU';
+                document.getElementById('btn-submit').disabled = false;
+                return showError(blocked);
+            }
+
             const newId = "S_" + Date.now();
             const newData = {
                 name: name || "Khách hàng",
@@ -99,8 +139,9 @@ function checkData() {
                 status: "new",
                 time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})
             };
-            
+
             db.ref('data/' + branch + '/' + newId).set(newData).then(() => {
+                spamGuardRecord();
                 newData.id = newId;
                 localStorage.setItem('pn_client_id', newId);
                 renderData(newData, branch);
