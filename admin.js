@@ -6,6 +6,8 @@ let branchesCache = {};
 let editingBranchId = null;
 let editingAccountUid = null;
 let _restoreDrafts = {};
+let liveQuery = null;      // query đang lắng nghe danh sách khách
+let fullDataCache = null;  // toàn bộ dữ liệu, chỉ tải khi làm báo cáo
 
 const firebaseConfig = { apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw", databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "tra-anh-khach" };
 
@@ -175,7 +177,7 @@ function renderClearTargetOptions() {
     }
 }
 
-function switchB(name) { br = name; isFirstLoad = true; previousCount = 0; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); const b2 = document.getElementById('btn-'+name); if (b2) b2.classList.add('active'); load(); }
+function switchB(name) { br = name; isFirstLoad = true; previousCount = 0; LOAD_LIMIT = 200; fullDataCache = null; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); const b2 = document.getElementById('btn-'+name); if (b2) b2.classList.add('active'); load(); }
 
 function toggleTrash() {
     if (dbPath === 'data/') { 
@@ -187,7 +189,7 @@ function toggleTrash() {
         document.getElementById('btn-trash').innerHTML = '<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Thùng rác'; 
         document.getElementById('btn-trash').style.color = '#52525b'; 
     }
-    isFirstLoad = true; previousCount = 0; load();
+    isFirstLoad = true; previousCount = 0; LOAD_LIMIT = 200; load();
 }
 
 function openRevenueModal() {
@@ -213,6 +215,20 @@ function openRevenueModal() {
     document.getElementById('revenue-modal').style.display = 'flex';
 }
 
+// Danh sách chỉ tải 200 phiên gần nhất -> báo cáo phải đọc riêng toàn bộ,
+// nếu không doanh thu tháng/năm và Excel sẽ thiếu dữ liệu cũ.
+function withFullData(fn) {
+    if (dbPath !== 'data/') return fn(currentData);       // thùng rác không phân trang
+    if (fullDataCache && fullDataCache._br === br) return fn(fullDataCache.data);
+
+    Toast.fire({ icon: 'info', title: 'Đang tải dữ liệu...' });
+    return db.ref('data/' + br).once('value').then(snap => {
+        const all = snap.val() || {};
+        fullDataCache = { _br: br, data: all };
+        fn(all);
+    }).catch(err => Swal.fire('Lỗi', 'Không tải được dữ liệu: ' + err.message, 'error'));
+}
+
 function calcRevenue() {
     const fp = document.getElementById('rev-date-range')._flatpickr;
     let fTs = 0, tTs = Infinity;
@@ -229,33 +245,35 @@ function calcRevenue() {
         return Toast.fire({ icon: 'warning', title: 'Vui lòng chọn ngày!' });
     }
 
-    let dTotal = 0, dCash = 0, dTrans = 0, dCount = 0, dFree = 0;
+    withFullData(all => {
+        let dTotal = 0, dCash = 0, dTrans = 0, dCount = 0, dFree = 0;
 
-    if(currentData && dbPath === 'data/') {
-        Object.keys(currentData).forEach(id => {
-            const c = currentData[id];
-            const ts = parseInt(id.split('_')[1]);
-            if (!ts) return; // id hỏng -> không tính vào doanh thu
+        if (all && dbPath === 'data/') {
+            Object.keys(all).forEach(id => {
+                const c = all[id];
+                const ts = parseInt(id.split('_')[1]);
+                if (!ts) return; // id hỏng -> không tính vào doanh thu
 
-            if (ts >= fTs && ts <= tTs) {
-                const isFree = (c.price === 'Miễn phí');
-                const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
-                
-                dCount++;
-                if (isFree) dFree++;
-                dTotal += priceVal;
-                if (c.payment === 'Tiền mặt') dCash += priceVal;
-                if (c.payment === 'Chuyển khoản') dTrans += priceVal;
-            }
-        });
-    }
+                if (ts >= fTs && ts <= tTs) {
+                    const isFree = (c.price === 'Miễn phí');
+                    const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
 
-    document.getElementById('rev-day-title').innerText = titleStr;
-    document.getElementById('rev-day-count').innerText = dCount + ' lượt';
-    document.getElementById('rev-day-free').innerText = dFree + ' miễn phí';
-    document.getElementById('rev-day-cash').innerText = dCash.toLocaleString('vi-VN') + ' ₫';
-    document.getElementById('rev-day-trans').innerText = dTrans.toLocaleString('vi-VN') + ' ₫';
-    document.getElementById('rev-day-total').innerText = dTotal.toLocaleString('vi-VN') + ' ₫';
+                    dCount++;
+                    if (isFree) dFree++;
+                    dTotal += priceVal;
+                    if (c.payment === 'Tiền mặt') dCash += priceVal;
+                    if (c.payment === 'Chuyển khoản') dTrans += priceVal;
+                }
+            });
+        }
+
+        document.getElementById('rev-day-title').innerText = titleStr;
+        document.getElementById('rev-day-count').innerText = dCount + ' lượt';
+        document.getElementById('rev-day-free').innerText = dFree + ' miễn phí';
+        document.getElementById('rev-day-cash').innerText = dCash.toLocaleString('vi-VN') + ' ₫';
+        document.getElementById('rev-day-trans').innerText = dTrans.toLocaleString('vi-VN') + ' ₫';
+        document.getElementById('rev-day-total').innerText = dTotal.toLocaleString('vi-VN') + ' ₫';
+    });
 }
 
 function calcRevenueByMonth() {
@@ -263,74 +281,93 @@ function calcRevenueByMonth() {
     if(!mStrInput) return Toast.fire({ icon: 'warning', title: 'Vui lòng chọn tháng!' });
     const targetMonth = mStrInput; 
 
-    let mTotal = 0, mCash = 0, mTrans = 0, mCount = 0, mFree = 0;
+    withFullData(all => {
+        let mTotal = 0, mCash = 0, mTrans = 0, mCount = 0, mFree = 0;
 
-    if(currentData && dbPath === 'data/') {
-        Object.keys(currentData).forEach(id => {
-            const c = currentData[id];
-            const ts = parseInt(id.split('_')[1]);
-            if (!ts) return;
-            const dObj = new Date(ts);
-            const cMm = String(dObj.getMonth() + 1).padStart(2, '0');
-            const cYyyy = String(dObj.getFullYear());
-            const cStr = `${cMm}/${cYyyy}`;
+        if (all && dbPath === 'data/') {
+            Object.keys(all).forEach(id => {
+                const c = all[id];
+                const ts = parseInt(id.split('_')[1]);
+                if (!ts) return;
+                const dObj = new Date(ts);
+                const cMm = String(dObj.getMonth() + 1).padStart(2, '0');
+                const cYyyy = String(dObj.getFullYear());
+                const cStr = `${cMm}/${cYyyy}`;
 
-            if (cStr === targetMonth) {
-                const isFree = (c.price === 'Miễn phí');
-                const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
-                
-                mCount++;
-                if (isFree) mFree++;
-                mTotal += priceVal;
-                if (c.payment === 'Tiền mặt') mCash += priceVal;
-                if (c.payment === 'Chuyển khoản') mTrans += priceVal;
-            }
-        });
-    }
-    
-    document.getElementById('rev-month-title').innerText = `THÁNG ${targetMonth}`;
-    document.getElementById('rev-month-count').innerText = mCount + ' lượt';
-    document.getElementById('rev-month-free').innerText = mFree + ' miễn phí';
-    document.getElementById('rev-month-cash').innerText = mCash.toLocaleString('vi-VN') + ' ₫';
-    document.getElementById('rev-month-trans').innerText = mTrans.toLocaleString('vi-VN') + ' ₫';
-    document.getElementById('rev-month-total').innerText = mTotal.toLocaleString('vi-VN') + ' ₫';
+                if (cStr === targetMonth) {
+                    const isFree = (c.price === 'Miễn phí');
+                    const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
+
+                    mCount++;
+                    if (isFree) mFree++;
+                    mTotal += priceVal;
+                    if (c.payment === 'Tiền mặt') mCash += priceVal;
+                    if (c.payment === 'Chuyển khoản') mTrans += priceVal;
+                }
+            });
+        }
+
+        document.getElementById('rev-month-title').innerText = `THÁNG ${targetMonth}`;
+        document.getElementById('rev-month-count').innerText = mCount + ' lượt';
+        document.getElementById('rev-month-free').innerText = mFree + ' miễn phí';
+        document.getElementById('rev-month-cash').innerText = mCash.toLocaleString('vi-VN') + ' ₫';
+        document.getElementById('rev-month-trans').innerText = mTrans.toLocaleString('vi-VN') + ' ₫';
+        document.getElementById('rev-month-total').innerText = mTotal.toLocaleString('vi-VN') + ' ₫';
+    });
 }
 
 function calcRevenueByYear() {
     const yyyy = document.getElementById('rev-year-picker').value;
-    let yTotal = 0, yCash = 0, yTrans = 0, yCount = 0, yFree = 0;
+    withFullData(all => {
+        let yTotal = 0, yCash = 0, yTrans = 0, yCount = 0, yFree = 0;
 
-    if(currentData && dbPath === 'data/' && yyyy) {
-        Object.keys(currentData).forEach(id => {
-            const c = currentData[id];
-            const ts = parseInt(id.split('_')[1]);
-            if (!ts) return;
-            const dObj = new Date(ts);
+        if (all && dbPath === 'data/' && yyyy) {
+            Object.keys(all).forEach(id => {
+                const c = all[id];
+                const ts = parseInt(id.split('_')[1]);
+                if (!ts) return;
+                const dObj = new Date(ts);
 
-            if (String(dObj.getFullYear()) === yyyy) {
-                const isFree = (c.price === 'Miễn phí');
-                const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
-                
-                yCount++;
-                if (isFree) yFree++;
-                yTotal += priceVal;
-                if (c.payment === 'Tiền mặt') yCash += priceVal;
-                if (c.payment === 'Chuyển khoản') yTrans += priceVal;
-            }
-        });
-    }
-    
-    document.getElementById('rev-year-title').innerText = `NĂM ${yyyy}`;
-    document.getElementById('rev-year-count').innerText = yCount + ' lượt';
-    document.getElementById('rev-year-free').innerText = yFree + ' miễn phí';
-    document.getElementById('rev-year-total').innerText = yTotal.toLocaleString('vi-VN') + ' ₫';
-    document.getElementById('rev-year-cash').innerText = yCash.toLocaleString('vi-VN') + ' ₫';
-    document.getElementById('rev-year-trans').innerText = yTrans.toLocaleString('vi-VN') + ' ₫';
+                if (String(dObj.getFullYear()) === yyyy) {
+                    const isFree = (c.price === 'Miễn phí');
+                    const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
+
+                    yCount++;
+                    if (isFree) yFree++;
+                    yTotal += priceVal;
+                    if (c.payment === 'Tiền mặt') yCash += priceVal;
+                    if (c.payment === 'Chuyển khoản') yTrans += priceVal;
+                }
+            });
+        }
+
+        document.getElementById('rev-year-title').innerText = `NĂM ${yyyy}`;
+        document.getElementById('rev-year-count').innerText = yCount + ' lượt';
+        document.getElementById('rev-year-free').innerText = yFree + ' miễn phí';
+        document.getElementById('rev-year-total').innerText = yTotal.toLocaleString('vi-VN') + ' ₫';
+        document.getElementById('rev-year-cash').innerText = yCash.toLocaleString('vi-VN') + ' ₫';
+        document.getElementById('rev-year-trans').innerText = yTrans.toLocaleString('vi-VN') + ' ₫';
+    });
+}
+
+// Chỉ tải N phiên gần nhất: dựng lại cả nghìn thẻ mỗi lần DB đổi làm admin đứng hình.
+// Firebase lọc sẵn ở máy chủ nên không tải thừa về rồi mới bỏ.
+let LOAD_LIMIT = 200;
+const LOAD_LIMIT_STEP = 300;
+
+function loadMore() {
+    LOAD_LIMIT += LOAD_LIMIT_STEP;
+    isFirstLoad = true; previousCount = 0;
+    load();
+    Toast.fire({ icon: 'info', title: 'Đang tải thêm phiên cũ...' });
 }
 
 function load() {
+    if (liveQuery) { liveQuery.off(); liveQuery = null; }
     db.ref('data/' + br).off(); db.ref('trash/' + br).off();
-    db.ref(dbPath + br).on('value', snap => {
+
+    liveQuery = db.ref(dbPath + br).orderByKey().limitToLast(LOAD_LIMIT);
+    liveQuery.on('value', snap => {
         const list = document.getElementById('list-content');
         const trashHeader = document.getElementById('trash-header');
 
@@ -342,6 +379,7 @@ function load() {
 
         list.innerHTML = ""; document.getElementById('empty-msg').style.display = 'none';
         currentData = snap.val();
+        fullDataCache = null; // dữ liệu vừa đổi -> báo cáo phải đọc lại, không dùng số cũ
         _restoreDrafts = draftLinks;
 
         if(!currentData) { 
@@ -481,6 +519,15 @@ function load() {
                     groupDiv.innerHTML = html;
                     document.getElementById('list-content').appendChild(groupDiv);
                 });
+
+                // Đang xem giới hạn -> cho nút tải thêm phiên cũ
+                if (currentCount >= LOAD_LIMIT) {
+                    const more = document.createElement('div');
+                    more.style.cssText = 'text-align:center; padding:20px 0 10px;';
+                    more.innerHTML = `<button onclick="loadMore()" style="background:#fff; border:1px solid #d4d4d8; color:#52525b; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600; font-size:12px; font-family:'Inter';">TẢI THÊM PHIÊN CŨ HƠN</button>
+                        <div style="font-size:11px; color:#a1a1aa; margin-top:8px;">Đang hiển thị ${currentCount} phiên gần nhất</div>`;
+                    document.getElementById('list-content').appendChild(more);
+                }
 
                 // Trả lại link đang gõ dở sau khi DOM dựng lại
                 Object.keys(_restoreDrafts).forEach(id => {
@@ -622,17 +669,19 @@ function load() {
                         fStr = getDStr(fp.selectedDates[0]);
                     }
 
+                    // Xuất từ dữ liệu ĐẦY ĐỦ, không phải 200 phiên đang hiển thị
+                    withFullData(allData => {
                     let csvContent = "data:text/csv;charset=utf-8," + String.fromCharCode(0xFEFF) + "Ngày,Giờ,Mã KH,Họ Tên,SĐT,Giá Tiền,Nguồn Tiền,Cơ Sở\n";
                     let count = 0;
-                    
+
                     // Dấu " trong tên khách sẽ làm vỡ cột -> nhân đôi theo chuẩn CSV
                     const csvCell = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
 
-                    Object.keys(currentData).forEach(id => {
+                    Object.keys(allData || {}).forEach(id => {
                         const ts = parseInt(id.split('_')[1]);
                         if (!ts) return; // id hỏng -> bỏ, tránh xuất sai ngày
                         if (ts >= fTs && ts <= tTs) {
-                            const c = currentData[id];
+                            const c = allData[id];
                             const d = getDStr(new Date(ts));
                             const mk = id.split('_')[1].slice(-4);
                             const price = c.price ? normalizePrice(c.price) : '0';
@@ -652,8 +701,9 @@ function load() {
                     else if (fStr) fileName += "_" + fStr.replace(/\//g,'');
                     else fileName += "_All";
 
-                    link.setAttribute("download", fileName + ".csv"); document.body.appendChild(link); link.click(); 
+                    link.setAttribute("download", fileName + ".csv"); document.body.appendChild(link); link.click();
                     Toast.fire({ icon: 'success', title: `Đã xuất ${count} khách hàng` });
+                    });
                 }
             });
         }
