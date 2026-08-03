@@ -355,6 +355,44 @@ function calcRevenueByYear() {
 let LOAD_LIMIT = 200;
 const LOAD_LIMIT_STEP = 300;
 
+// Cập nhật tại chỗ một thẻ khách, không dựng lại DOM.
+// Bỏ qua ô mà người dùng đang gõ để không cướp con trỏ.
+function patchCard(clientId, c) {
+    if (!c) return;
+    const priceInp = document.getElementById('price_' + clientId);
+    if (!priceInp) return; // thẻ không nằm trong danh sách đang hiển thị
+    const card = priceInp.closest('.client-card');
+    if (!card) return;
+
+    const active = document.activeElement;
+    const pVal = c.price ? normalizePrice(c.price) : '';
+    const isFree = (pVal === 'Miễn phí');
+
+    if (priceInp !== active) {
+        priceInp.value = pVal;
+        priceInp.disabled = isFree;
+    }
+
+    const paySel = document.getElementById('payment_' + clientId);
+    if (paySel && paySel !== active) paySel.value = isFree ? 'Miễn phí' : (c.payment || '');
+
+    card.classList.toggle('card-no-price', !pVal && dbPath === 'data/');
+
+    const badge = card.querySelector('.badge');
+    if (badge) {
+        const isDone = c.status === 'completed';
+        badge.className = 'badge ' + (isDone ? 'done' : 'pending');
+        badge.innerText = isDone ? 'ĐÃ TRẢ ẢNH' : 'ĐANG CHỤP';
+    }
+
+    // Số ảnh hoặc yêu cầu in đổi -> cấu trúc thẻ khác, phải vẽ đầy đủ
+    const shownLinks = card.querySelectorAll('.link-manager .link-row').length;
+    const realLinks = c.links ? Object.keys(c.links).length : 0;
+    const shownUploads = card.querySelectorAll('[onclick^="delClientUp"]').length;
+    const realUploads = c.client_uploads ? Object.keys(c.client_uploads).length : 0;
+    return (shownLinks !== realLinks || shownUploads !== realUploads);
+}
+
 function loadMore() {
     LOAD_LIMIT += LOAD_LIMIT_STEP;
     isFirstLoad = true; previousCount = 0;
@@ -377,8 +415,26 @@ function load() {
             if (t.value.trim()) draftLinks[t.id] = t.value;
         });
 
+        const newData = snap.val();
+
+        // Sửa 1 ô giá mà vẽ lại cả 200 thẻ (~10.000 phần tử) làm trang khựng vài giây.
+        // Nếu chỉ vài khách đổi và số lượng không đổi -> chỉ thay đúng thẻ đó.
+        if (!isFirstLoad && currentData && newData && list.children.length) {
+            const oldKeys = Object.keys(currentData), newKeys = Object.keys(newData);
+            if (oldKeys.length === newKeys.length && newKeys.every(k => currentData[k])) {
+                const changed = newKeys.filter(k => JSON.stringify(currentData[k]) !== JSON.stringify(newData[k]));
+                if (changed.length && changed.length <= 5) {
+                    currentData = newData;
+                    fullDataCache = null;
+                    // patchCard trả true nếu cấu trúc thẻ đổi (thêm/bớt ảnh) -> cần vẽ đầy đủ
+                    const needFull = changed.map(id => patchCard(id, newData[id])).some(Boolean);
+                    if (!needFull) return;
+                }
+            }
+        }
+
         list.innerHTML = ""; document.getElementById('empty-msg').style.display = 'none';
-        currentData = snap.val();
+        currentData = newData;
         fullDataCache = null; // dữ liệu vừa đổi -> báo cáo phải đọc lại, không dùng số cũ
         _restoreDrafts = draftLinks;
 
@@ -1200,14 +1256,18 @@ function confirmPrice() {
         payment = _paySelected;
     }
     const cid = _priceClientId;
-    db.ref(dbPath + br + '/' + cid).update({ price, payment }).then(() => {
-        const inp = document.getElementById('price_' + cid);
-        const paySel = document.getElementById('payment_' + cid);
-        if (inp) { inp.value = price; const card = inp.closest('.client-card'); if (card) card.classList.toggle('card-no-price', !price); }
-        if (paySel) { paySel.value = payment; paySel.disabled = (price === 'Miễn phí'); }
-        document.getElementById('price-modal').style.display = 'none';
-        if (_priceResolve) { _priceResolve(true); _priceResolve = null; }
-    }).catch(err => Swal.fire('Lỗi', err.message, 'error'));
+
+    // Cập nhật giao diện NGAY, không chờ máy chủ trả lời (Firebase tự đồng bộ nền,
+    // có hàng đợi khi mất mạng). Chờ ở đây làm popup treo mấy giây.
+    const inp = document.getElementById('price_' + cid);
+    const paySel = document.getElementById('payment_' + cid);
+    if (inp) { inp.value = price; const card = inp.closest('.client-card'); if (card) card.classList.toggle('card-no-price', !price); }
+    if (paySel) { paySel.value = payment; paySel.disabled = (price === 'Miễn phí'); }
+    document.getElementById('price-modal').style.display = 'none';
+    if (_priceResolve) { _priceResolve(true); _priceResolve = null; }
+
+    db.ref(dbPath + br + '/' + cid).update({ price, payment })
+        .catch(err => Swal.fire('Lỗi', 'Không lưu được giá: ' + err.message, 'error'));
 }
 
 function cancelPrice() {
