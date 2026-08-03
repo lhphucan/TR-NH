@@ -20,7 +20,7 @@
             <p style="color: #666; font-size: 13px; margin-bottom: 25px; font-weight: 500;">Vui lòng nhập thông tin để tra cứu Album</p>
             <select id="branch"></select>
             <input type="text" id="name" placeholder="Họ và tên của bạn">
-            <input type="tel" id="phone" placeholder="Số điện thoại" onkeypress="if(event.key === 'Enter') checkData()">
+            <input type="tel" id="phone" placeholder="Số điện thoại (bắt buộc)" onkeypress="if(event.key === 'Enter') checkData()">
             <button id="btn-submit" class="primary-btn" onclick="checkData()">
                 <div class="spinner" id="spinner"></div><span id="btn-text">TRA CỨU</span>
             </button>
@@ -57,7 +57,7 @@
                 </div>
             </div>
 
-            <button onclick="location.reload()" style="background:none; border:none; color:#888; font-size:13px; font-weight:600; cursor:pointer; margin-top:25px; width:100%; display:flex; align-items:center; justify-content:center; gap:6px;">
+            <button onclick="lookupAnother()" style="background:none; border:none; color:#888; font-size:13px; font-weight:600; cursor:pointer; margin-top:25px; width:100%; display:flex; align-items:center; justify-content:center; gap:6px;">
                 <svg class="icon-svg" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 Tra cứu tài khoản khác
             </button>

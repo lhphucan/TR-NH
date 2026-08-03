@@ -5,6 +5,7 @@ let db, auth;
 let branchesCache = {};
 let editingBranchId = null;
 let editingAccountUid = null;
+let _restoreDrafts = {};
 
 const firebaseConfig = { apiKey: "AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw", databaseURL: "https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "tra-anh-khach" };
 
@@ -233,8 +234,9 @@ function calcRevenue() {
     if(currentData && dbPath === 'data/') {
         Object.keys(currentData).forEach(id => {
             const c = currentData[id];
-            const ts = parseInt(id.split('_')[1]) || Date.now();
-            
+            const ts = parseInt(id.split('_')[1]);
+            if (!ts) return; // id hỏng -> không tính vào doanh thu
+
             if (ts >= fTs && ts <= tTs) {
                 const isFree = (c.price === 'Miễn phí');
                 const priceVal = isFree ? 0 : (parseInt((c.price||'').replace(/\D/g, ''), 10) || 0);
@@ -266,7 +268,8 @@ function calcRevenueByMonth() {
     if(currentData && dbPath === 'data/') {
         Object.keys(currentData).forEach(id => {
             const c = currentData[id];
-            const ts = parseInt(id.split('_')[1]) || Date.now();
+            const ts = parseInt(id.split('_')[1]);
+            if (!ts) return;
             const dObj = new Date(ts);
             const cMm = String(dObj.getMonth() + 1).padStart(2, '0');
             const cYyyy = String(dObj.getFullYear());
@@ -300,7 +303,8 @@ function calcRevenueByYear() {
     if(currentData && dbPath === 'data/' && yyyy) {
         Object.keys(currentData).forEach(id => {
             const c = currentData[id];
-            const ts = parseInt(id.split('_')[1]) || Date.now();
+            const ts = parseInt(id.split('_')[1]);
+            if (!ts) return;
             const dObj = new Date(ts);
 
             if (String(dObj.getFullYear()) === yyyy) {
@@ -329,13 +333,21 @@ function load() {
     db.ref(dbPath + br).on('value', snap => {
         const list = document.getElementById('list-content');
         const trashHeader = document.getElementById('trash-header');
+
+        // Realtime vẽ lại toàn bộ danh sách -> giữ link đang gõ dở của từng khách
+        const draftLinks = {};
+        document.querySelectorAll('textarea[id^="new_"]').forEach(t => {
+            if (t.value.trim()) draftLinks[t.id] = t.value;
+        });
+
         list.innerHTML = ""; document.getElementById('empty-msg').style.display = 'none';
         currentData = snap.val();
-        
+        _restoreDrafts = draftLinks;
+
         if(!currentData) { 
             document.querySelector('.empty-text').innerText = (dbPath === 'trash/') ? "Thùng rác đang trống." : "Chưa có dữ liệu nào.";
             document.getElementById('empty-msg').style.display = 'block';
-            trashHeader.style.display = 'none'; previousCount = 0; return; 
+            trashHeader.style.display = 'none'; previousCount = 0; _restoreDrafts = {}; return;
         }
 
         if (dbPath === 'trash/') {
@@ -350,7 +362,9 @@ function load() {
         const groupedData = {};
         Object.keys(currentData).forEach(clientId => {
             const client = currentData[clientId];
-            const timestamp = parseInt(clientId.split('_')[1]) || Date.now();
+            // Không fallback Date.now(): id hỏng sẽ bị gom nhầm vào hôm nay
+            const timestamp = parseInt(clientId.split('_')[1]);
+            if (!timestamp) return;
             const dateStr = getDStr(new Date(timestamp));
             if(!groupedData[dateStr]) groupedData[dateStr] = { timestamp: timestamp, clients: [] };
             groupedData[dateStr].clients.push({ id: clientId, ...client, ts: timestamp });
@@ -468,6 +482,13 @@ function load() {
                     document.getElementById('list-content').appendChild(groupDiv);
                 });
 
+                // Trả lại link đang gõ dở sau khi DOM dựng lại
+                Object.keys(_restoreDrafts).forEach(id => {
+                    const t = document.getElementById(id);
+                    if (t) t.value = _restoreDrafts[id];
+                });
+                _restoreDrafts = {};
+
                 filterData();
             });
         }
@@ -481,9 +502,9 @@ function load() {
             const pVal = numStr ? parseInt(numStr, 10).toLocaleString('vi-VN') + ' đ' : '';
             inp.value = pVal;
 
-            // Gõ số mà payment đang Miễn phí -> chuyển về Tiền mặt
+            // Gõ số mà đang Miễn phí -> chuyển về Tiền mặt
             let payment = paySel.value;
-            if (pVal && payment === 'Miễn phí') { payment = 'Tiền mặt'; paySel.value = 'Tiền mặt'; }
+            if (pVal && (payment === 'Miễn phí' || !payment)) { payment = 'Tiền mặt'; paySel.value = 'Tiền mặt'; }
 
             const card = inp.closest('.client-card');
             if (card) card.classList.toggle('card-no-price', !pVal && payment !== 'Miễn phí' && dbPath === 'data/');
@@ -499,7 +520,8 @@ function load() {
                 inp.value = 'Miễn phí';
                 inp.disabled = true;
                 if (card) card.classList.remove('card-no-price');
-                db.ref(dbPath + br + '/' + clientId).update({ price: 'Miễn phí', payment: 'Tiền mặt' });
+                // Ghi đúng 'Miễn phí' — trước lưu 'Tiền mặt' làm CSV báo nhầm là có thu tiền mặt
+                db.ref(dbPath + br + '/' + clientId).update({ price: 'Miễn phí', payment: 'Miễn phí' });
             } else {
                 // Chuyển từ Miễn phí sang TM/CK -> xoá để điền lại
                 inp.disabled = false;
@@ -603,16 +625,21 @@ function load() {
                     let csvContent = "data:text/csv;charset=utf-8," + String.fromCharCode(0xFEFF) + "Ngày,Giờ,Mã KH,Họ Tên,SĐT,Giá Tiền,Nguồn Tiền,Cơ Sở\n";
                     let count = 0;
                     
+                    // Dấu " trong tên khách sẽ làm vỡ cột -> nhân đôi theo chuẩn CSV
+                    const csvCell = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+
                     Object.keys(currentData).forEach(id => {
-                        const ts = parseInt(id.split('_')[1]) || Date.now();
+                        const ts = parseInt(id.split('_')[1]);
+                        if (!ts) return; // id hỏng -> bỏ, tránh xuất sai ngày
                         if (ts >= fTs && ts <= tTs) {
-                            const c = currentData[id]; 
-                            const d = getDStr(new Date(ts)); 
+                            const c = currentData[id];
+                            const d = getDStr(new Date(ts));
                             const mk = id.split('_')[1].slice(-4);
                             const price = c.price ? normalizePrice(c.price) : '0';
-                            const payment = c.payment || '';
+                            // Dữ liệu cũ lưu 'Tiền mặt' cho khách miễn phí -> xuất đúng bản chất
+                            const payment = (price === 'Miễn phí') ? 'Miễn phí' : (c.payment || '');
                             const cosoStr = (branchesCache[br] && branchesCache[br].name) || br;
-                            csvContent += `"${d}","${c.time}","#${mk}","${c.name}","${c.phone}","${price}","${payment}","${cosoStr}"\n`;
+                            csvContent += [d, c.time, '#' + mk, c.name, c.phone, price, payment, cosoStr].map(csvCell).join(',') + "\n";
                             count++;
                         }
                     });
@@ -657,12 +684,16 @@ function load() {
         }
 
         async function uploadPhotosToImgBB(clientId) {
-            if (!(await requirePrice(clientId))) return;
+            // Giữ file TRƯỚC khi hỏi tiền: ghi giá -> listener realtime vẽ lại DOM -> input bị reset
             const fileInput = document.getElementById('file_' + clientId);
-            const files = fileInput.files;
-            const btn = document.getElementById('btn_up_' + clientId);
-
+            const files = Array.from(fileInput ? fileInput.files : []);
             if (files.length === 0) return Swal.fire({title: 'Lỗi', text: 'Chưa chọn ảnh nào!', icon: 'warning', confirmButtonColor: '#111'});
+
+            if (!(await requirePrice(clientId))) return;
+
+            // DOM có thể đã vẽ lại -> lấy lại nút theo id
+            const btn = document.getElementById('btn_up_' + clientId);
+            if (!btn) return;
 
             btn.innerHTML = `<svg class="icon-svg" style="margin-right:4px; animation: spin 1s infinite linear;" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> ĐANG TẢI...`;
             btn.disabled = true;
@@ -683,23 +714,31 @@ function load() {
                 }
                 await db.ref(dbPath + br + '/' + clientId).update({ status: "completed" });
                 Toast.fire({ icon: 'success', title: 'Tải lên hoàn tất!' });
-                fileInput.value = ""; 
-                document.getElementById('fname_'+clientId).innerText = 'Chưa có tệp';
+                const fi = document.getElementById('file_' + clientId);
+                if (fi) fi.value = "";
+                const fn = document.getElementById('fname_' + clientId);
+                if (fn) fn.innerText = 'Chưa có tệp';
             } catch (error) {
                 if(typeof Swal !== 'undefined') Swal.fire({title: 'Lỗi', text: 'Không thể kết nối tải ảnh.', icon: 'error', confirmButtonColor: '#111'});
                 else alert('Lỗi tải ảnh');
             } finally {
-                btn.innerHTML = `<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN`;
-                btn.disabled = false;
+                const b = document.getElementById('btn_up_' + clientId);
+                if (b) {
+                    b.innerHTML = `<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN`;
+                    b.disabled = false;
+                }
             }
         }
 
         async function addLink(clientId) {
-            if (!(await requirePrice(clientId))) return;
-            const text = document.getElementById('new_' + clientId).value.trim();
+            // Đọc link TRƯỚC khi hỏi tiền: ghi giá -> listener realtime vẽ lại DOM -> textarea bị xoá trắng
+            const ta = document.getElementById('new_' + clientId);
+            const text = ta ? ta.value.trim() : '';
             if(!text) return Toast.fire({ icon: 'warning', title: 'Chưa dán link!' });
-            const urls = text.split(/\n/).map(u => u.trim()).filter(u => u !== ""); 
+            const urls = text.split(/\n/).map(u => u.trim()).filter(u => u !== "");
             if(urls.length === 0) return;
+
+            if (!(await requirePrice(clientId))) return;
             const now = new Date();
             const timeStr = now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + now.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
             
@@ -708,7 +747,8 @@ function load() {
                 db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).set({ url: url, addedAt: timeStr });
             });
             db.ref(dbPath + br + '/' + clientId).update({ status: "completed" });
-            document.getElementById('new_' + clientId).value = ""; 
+            const taAfter = document.getElementById('new_' + clientId);
+            if (taAfter) taAfter.value = "";
             Toast.fire({ icon: 'success', title: 'Đã lưu link' });
         }
 
@@ -1103,7 +1143,7 @@ function selectPay(method) {
 function confirmPrice() {
     let price, payment;
     if (_paySelected === 'Miễn phí') {
-        price = 'Miễn phí'; payment = 'Tiền mặt';
+        price = 'Miễn phí'; payment = 'Miễn phí';
     } else {
         price = fmtMoneyStr(document.getElementById('price-amount-input').value);
         if (!price || price === 'Miễn phí') return Toast.fire({ icon: 'warning', title: 'Nhập số tiền hợp lệ.' });

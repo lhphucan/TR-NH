@@ -1,0 +1,71 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "branches": {
+      ".read": true,
+      "$branchId": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() == 'admin'"
+      }
+    },
+
+    "users": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() == 'admin'",
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() == 'admin'"
+      }
+    },
+
+    "data": {
+      "$branchId": {
+        ".read": true,
+
+        // Tiệm cần ghi ở tầng cơ sở để "Dọn sạch dữ liệu" xoá được cả nhánh.
+        // Khách (auth == null) không khớp điều kiện này -> chỉ ghi được ở tầng $clientId bên dưới.
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)",
+
+        "$clientId": {
+          // Nhân viên/admin: toàn quyền trên cơ sở của mình.
+          // Khách (auth == null): chỉ được TẠO phiên mới, không sửa/xoá phiên đã có.
+          ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)) || (auth == null && !data.exists() && newData.exists())",
+
+          ".validate": "auth != null || ($clientId.matches(/^S_[0-9]{10,16}$/) && newData.hasChildren(['name','phone','status','time']))",
+
+          "name":   { ".validate": "auth != null || (newData.isString() && newData.val().length <= 60)" },
+          "phone":  { ".validate": "auth != null || (newData.isString() && newData.val().length >= 9 && newData.val().length <= 15)" },
+          "status": { ".validate": "auth != null || newData.val() == 'new'" },
+          "time":   { ".validate": "auth != null || (newData.isString() && newData.val().length <= 10)" },
+
+          // Chỉ tiệm được đặt giá / hình thức thanh toán / ảnh trả khách
+          "price":   { ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)" },
+          "payment": { ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)" },
+          "links":   { ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)" },
+
+          // Khách gửi ảnh muốn in: chỉ được THÊM bản ghi mới, không sửa/xoá bản cũ
+          "client_uploads": {
+            ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)",
+            "$uploadId": {
+              ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)) || (auth == null && !data.exists() && newData.exists())",
+              ".validate": "auth != null || ($uploadId.matches(/^U_[0-9]{10,16}$/) && newData.hasChildren(['time','links']))",
+              "time":  { ".validate": "auth != null || (newData.isString() && newData.val().length <= 30)" },
+              "links": {
+                "$i": { ".validate": "auth != null || (newData.isString() && newData.val().matches(/^https:\\/\\//))" }
+              }
+            }
+          },
+
+          "$other": { ".validate": "auth != null" }
+        }
+      }
+    },
+
+    "trash": {
+      "$branchId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)",
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)"
+      }
+    }
+  }
+}

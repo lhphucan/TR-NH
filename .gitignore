@@ -10,3 +10,6 @@
 !admin.css
 !admin.js
 !.gitignore
+!database.rules.json
+!firebase.json
+!.firebaserc
