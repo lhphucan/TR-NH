@@ -214,6 +214,19 @@
             </h3>
 
             <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <label style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">API key tải ảnh (imgbb)</label>
+                <div style="font-size:11px; color:#71717a; margin-bottom:8px; line-height:1.5;">
+                    Khi tải ảnh báo hết lượt: lấy key mới tại <b>api.imgbb.com</b> &rarr; dán vào đây &rarr; Kiểm tra &rarr; Lưu.
+                    Cả trang khách và trang này dùng chung key. Để trống là dùng key mặc định.
+                </div>
+                <input type="text" id="imgbb-key-input" class="search-box" placeholder="Dán API key mới..." style="width:100%; margin-bottom:8px; border:1px solid #d4d4d8; box-sizing:border-box; height:38px; font-family:monospace; font-size:12px;">
+                <div style="display:flex; gap:8px;">
+                    <button id="btn-check-key" onclick="checkImgbbKey()" class="btn" style="flex:1; background:#fff; border:1px solid #d4d4d8; color:#52525b; height:36px; font-size:12px;">KIỂM TRA</button>
+                    <button onclick="saveImgbbKey()" class="btn btn-add" style="flex:1; height:36px; font-size:12px;">LƯU KEY</button>
+                </div>
+            </div>
+
+            <div style="background:#fafafa; border:1px solid #e5e5e5; border-radius:12px; padding:16px; margin-bottom:16px;">
                 <label id="branch-form-label" style="font-size: 11px; font-weight: 700; color: #111; display: block; margin-bottom: 8px; text-transform: uppercase;">Thêm cơ sở mới</label>
                 <input type="text" id="new-branch-id" class="search-box" placeholder="Mã cơ sở (vd: hanoi, không dấu)" style="width:100%; margin-bottom:8px; border:1px solid #d4d4d8; box-sizing:border-box; height:38px;">
                 <input type="text" id="new-branch-name" class="search-box" placeholder="Tên hiển thị (vd: Cơ sở Hà Nội)" style="width:100%; margin-bottom:8px; border:1px solid #d4d4d8; box-sizing:border-box; height:38px;">

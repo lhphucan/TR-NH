@@ -1,4 +1,7 @@
-const IMGBB_API_KEY = 'c15b60c02964bf3cebe1cf861ac30b19';
+// Key dự phòng khi chưa đặt key trong Quản lý. Key thật đọc từ config/imgbb_key
+// để hết lượt tải là đổi được ngay trên web, không phải sửa code rồi push lại.
+const IMGBB_FALLBACK_KEY = 'c15b60c02964bf3cebe1cf861ac30b19';
+let IMGBB_API_KEY = IMGBB_FALLBACK_KEY;
 let userRole = ''; let dbPath = 'data/'; let br = null;
 let currentData = {}; let previousCount = 0; let isFirstLoad = true;
 let db, auth;
@@ -120,6 +123,14 @@ async function setupUI() {
     document.getElementById('role-badge').innerText = userRole === 'admin' ? "ADMIN" : (userRole === 'viewer' ? "XEM THU NHẬP" : "NHÂN VIÊN");
 
     flatpickr("#date-filter", { mode: "range", dateFormat: "d/m/Y", locale: "vn", defaultDate: new Date() });
+
+    // Key imgbb đặt trong Quản lý; theo dõi realtime để đổi key là các máy khác nhận ngay
+    db.ref('config/imgbb_key').on('value', s => {
+        const k = (s.val() || '').trim();
+        IMGBB_API_KEY = k || IMGBB_FALLBACK_KEY;
+        const inp = document.getElementById('imgbb-key-input');
+        if (inp && inp !== document.activeElement) inp.value = k;
+    }, () => { /* không đọc được -> dùng key dự phòng */ });
 
     const bSnap = await db.ref('branches').once('value');
     branchesCache = bSnap.val() || {};
@@ -501,7 +512,10 @@ function load() {
                                         <svg class="icon-sm" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
                                         Yêu cầu in (${up.time.split(' ')[1] || ''})
                                     </span>
-                                    <button onclick="delClientUp('${client.id}', '${uId}')" class="btn-del-link" style="padding: 0 10px; height:28px;">Hoàn tất (Xóa)</button>
+                                    <div style="display:flex; gap:8px;">
+                                        <button onclick="downloadAllUploads('${client.id}', '${uId}', this)" class="btn btn-add" style="padding:0 12px; height:28px; font-size:11px;">TẢI TẤT CẢ (${up.links ? up.links.length : 0})</button>
+                                        <button onclick="delClientUp('${client.id}', '${uId}')" class="btn-del-link" style="padding: 0 10px; height:28px;">Hoàn tất (Xóa)</button>
+                                    </div>
                                 </div>
                                 <div style="display:flex; flex-wrap:wrap;">${imgLinks}</div>
                             </div>`;
@@ -883,6 +897,40 @@ function load() {
             Swal.fire({ title: 'Xóa ảnh này?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => { if(r.isConfirmed) { db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove(); Toast.fire({ icon: 'success', title: 'Đã xóa' }); }}); 
         }
 
+        // Tải toàn bộ ảnh khách gửi trong một yêu cầu in.
+        // Tải lần lượt từng file thay vì gộp zip: không cần thư viện ngoài và
+        // không vướng CORS của imgbb (thẻ <a download> không đọc nội dung ảnh).
+        async function downloadAllUploads(cId, uId, btn) {
+            const up = currentData && currentData[cId] && currentData[cId].client_uploads && currentData[cId].client_uploads[uId];
+            const links = (up && Array.isArray(up.links)) ? up.links : [];
+            if (!links.length) return Toast.fire({ icon: 'warning', title: 'Không có ảnh để tải' });
+
+            const name = (currentData[cId].name || 'Khach').replace(/[^\p{L}\p{N} _-]/gu, '').trim().replace(/\s+/g, '_') || 'Khach';
+            const maKh = cId.split('_')[1].slice(-4);
+
+            const oldHtml = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = 'ĐANG TẢI...'; }
+
+            for (let i = 0; i < links.length; i++) {
+                const url = links[i];
+                const ext = (String(url).match(/\.(jpe?g|png|webp|gif|bmp|heic)(?:\?|$)/i) || [, 'jpg'])[1];
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${name}_${maKh}_${String(i + 1).padStart(2, '0')}.${ext}`;
+                a.target = '_blank';
+                a.rel = 'noopener';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                if (btn) btn.innerHTML = `ĐANG TẢI ${i + 1}/${links.length}...`;
+                // Bấm liên tiếp quá nhanh sẽ bị trình duyệt chặn bớt
+                await new Promise(r => setTimeout(r, 400));
+            }
+
+            if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
+            Toast.fire({ icon: 'success', title: `Đã tải ${links.length} ảnh` });
+        }
+
         function delClientUp(cId, uId) {
             if(userRole !== 'admin') return;
             Swal.fire({ title: 'Xóa yêu cầu in?', showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>', confirmButtonColor: '#111' }).then(r => {
@@ -976,6 +1024,43 @@ function moveCustomer(clientId, clientName) {
             }
         }).catch(err => Swal.fire('Lỗi', err.message, 'error'));
     });
+}
+
+// Gọi thử imgbb bằng ảnh 1x1 để biết key sống hay đã hết lượt
+async function testImgbbKey(key) {
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const fd = new FormData();
+    fd.append('image', png); // imgbb nhận base64 trực tiếp
+    const res = await fetch('https://api.imgbb.com/1/upload?key=' + encodeURIComponent(key), { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.success) return { ok: true };
+    return { ok: false, msg: (data.error && data.error.message) || 'Key không dùng được' };
+}
+
+async function checkImgbbKey() {
+    const key = (document.getElementById('imgbb-key-input').value || '').trim();
+    if (!key) return Toast.fire({ icon: 'warning', title: 'Chưa nhập key' });
+
+    const btn = document.getElementById('btn-check-key');
+    const old = btn.innerHTML; btn.disabled = true; btn.innerHTML = 'ĐANG KIỂM TRA...';
+    try {
+        const r = await testImgbbKey(key);
+        if (r.ok) Swal.fire({ title: 'Key dùng được', text: 'Tải ảnh thử thành công. Bấm Lưu để áp dụng.', icon: 'success', confirmButtonColor: '#111' });
+        else Swal.fire({ title: 'Key không dùng được', text: r.msg, icon: 'error', confirmButtonColor: '#111' });
+    } catch (e) {
+        Swal.fire({ title: 'Lỗi', text: 'Không gọi được imgbb: ' + e.message, icon: 'error', confirmButtonColor: '#111' });
+    } finally { btn.disabled = false; btn.innerHTML = old; }
+}
+
+function saveImgbbKey() {
+    if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên được đổi' });
+    const key = (document.getElementById('imgbb-key-input').value || '').trim();
+    if (key && !/^[a-zA-Z0-9]{20,64}$/.test(key)) {
+        return Swal.fire({ title: 'Key không hợp lệ', text: 'Key imgbb là chuỗi chữ và số, thường 32 ký tự.', icon: 'warning', confirmButtonColor: '#111' });
+    }
+    db.ref('config/imgbb_key').set(key)
+        .then(() => Toast.fire({ icon: 'success', title: key ? 'Đã lưu key mới' : 'Đã xoá key, dùng key mặc định' }))
+        .catch(err => Swal.fire('Lỗi', 'Không lưu được: ' + err.message, 'error'));
 }
 
 function openManageModal() {

@@ -1,4 +1,7 @@
-const IMGBB_API_KEY = 'c15b60c02964bf3cebe1cf861ac30b19'; 
+// Key thật đọc từ config/imgbb_key (đổi được trong trang Quản lý của admin),
+// hằng số dưới chỉ dùng khi chưa đặt hoặc không đọc được.
+const IMGBB_FALLBACK_KEY = 'c15b60c02964bf3cebe1cf861ac30b19';
+let IMGBB_API_KEY = IMGBB_FALLBACK_KEY;
 let db;
 
 try {
@@ -16,6 +19,12 @@ let liveHandler = null;  // callback để gỡ đúng listener
 let lastLinkCount = 0;   // để biết tiệm vừa đẩy thêm ảnh mới
 let isFirstLiveRender = true; // lần vẽ đầu không báo "ảnh mới"
 
+function loadImgbbKey() {
+    return db.ref('config/imgbb_key').once('value')
+        .then(s => { const k = (s.val() || '').trim(); if (k) IMGBB_API_KEY = k; })
+        .catch(() => { /* không đọc được -> giữ key dự phòng */ });
+}
+
 function loadBranches() {
     return db.ref('branches').once('value').then(snap => {
         BRANCHES_CACHE = snap.val() || {};
@@ -32,6 +41,7 @@ function loadBranches() {
 }
 
 window.onload = () => {
+    loadImgbbKey();
     loadBranches().then(() => {
         if(localStorage.getItem('pn_name')) document.getElementById('name').value = localStorage.getItem('pn_name');
         if(localStorage.getItem('pn_phone')) document.getElementById('phone').value = localStorage.getItem('pn_phone');

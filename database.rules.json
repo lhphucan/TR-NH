@@ -3,6 +3,12 @@
     ".read": false,
     ".write": false,
 
+    "config": {
+      // Trang khách cần đọc key để tải ảnh; chỉ admin được đổi.
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() == 'admin'"
+    },
+
     "branches": {
       ".read": true,
       "$branchId": {
