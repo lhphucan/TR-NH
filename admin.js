@@ -911,33 +911,51 @@ function load() {
             const oldHtml = btn ? btn.innerHTML : '';
             if (btn) { btn.disabled = true; }
 
-            let ok = 0, failed = 0;
-            for (let i = 0; i < links.length; i++) {
-                if (btn) btn.innerHTML = `ĐANG TẢI ${i + 1}/${links.length}...`;
-                const url = links[i];
-                const ext = (String(url).match(/\.(jpe?g|png|webp|gif|bmp|heic)(?:\?|$)/i) || [, 'jpg'])[1];
-                const fileName = `${name}_${maKh}_${String(i + 1).padStart(2, '0')}.${ext}`;
+            let ok = 0, failed = 0, done = 0;
+            const PARALLEL = 4; // ảnh khách gửi thường 2-4 MB, tải tuần tự mất cả phút
 
-                try {
-                    // Phải tải nội dung ảnh về rồi mới lưu được: thuộc tính download bị
-                    // bỏ qua với ảnh khác tên miền, trình duyệt sẽ mở tab xem thay vì tải.
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
-                    const blob = await res.blob();
-                    const objUrl = URL.createObjectURL(blob);
+            // Phải tải nội dung ảnh về rồi mới lưu được: thuộc tính download bị
+            // bỏ qua với ảnh khác tên miền, trình duyệt sẽ mở tab xem thay vì tải.
+            const fetchOne = async (url) => {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return await res.blob();
+            };
 
-                    const a = document.createElement('a');
-                    a.href = objUrl;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+            const saveBlob = (blob, fileName) => {
+                const objUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = objUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+            };
+
+            // Tải song song theo lô, nhưng lưu file theo đúng thứ tự ảnh
+            for (let start = 0; start < links.length; start += PARALLEL) {
+                const batch = links.slice(start, start + PARALLEL);
+                const results = await Promise.all(batch.map(async (url) => {
+                    try {
+                        const blob = await fetchOne(url);
+                        done++;
+                        if (btn) btn.innerHTML = `ĐANG TẢI ${done}/${links.length}...`;
+                        return { blob };
+                    } catch (e) {
+                        done++;
+                        if (btn) btn.innerHTML = `ĐANG TẢI ${done}/${links.length}...`;
+                        return { err: true };
+                    }
+                }));
+
+                results.forEach((r, k) => {
+                    const i = start + k;
+                    if (r.err) { failed++; return; }
+                    const ext = (String(links[i]).match(/\.(jpe?g|png|webp|gif|bmp|heic)(?:\?|$)/i) || [, 'jpg'])[1];
+                    saveBlob(r.blob, `${name}_${maKh}_${String(i + 1).padStart(2, '0')}.${ext}`);
                     ok++;
-                } catch (e) {
-                    failed++;
-                }
-                await new Promise(r => setTimeout(r, 300));
+                });
             }
 
             if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
