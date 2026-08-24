@@ -1,4 +1,4 @@
-const IMGBB_API_KEY = 'd47a0ff216df7f718f898c65afa1cc17'; 
+const IMGBB_API_KEY = 'c15b60c02964bf3cebe1cf861ac30b19'; 
 let db;
 
 try {
@@ -340,15 +340,23 @@ async function sendToShop() {
 
     try {
         let uploadedUrls = [];
+        let lastErr = '';
         for (let i = 0; i < files.length; i++) {
             const formData = new FormData(); formData.append("image", files[i]);
             const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
             const resData = await response.json();
             // Rules chỉ nhận https -> ép về https (imgbb phục vụ cả 2)
             if (resData.success) uploadedUrls.push(String(resData.data.url).replace(/^http:\/\//i, 'https://'));
+            else lastErr = (resData.error && resData.error.message) || '';
         }
 
-        if (uploadedUrls.length === 0) return showError("Không tải được ảnh nào. Vui lòng thử lại.");
+        if (uploadedUrls.length === 0) {
+            // Hết lượt tải của dịch vụ ảnh -> không phải lỗi mạng của khách, báo cho đúng
+            if (/rate limit/i.test(lastErr)) {
+                return showError("Hệ thống ảnh đang quá tải. Vui lòng báo nhân viên để được hỗ trợ.");
+            }
+            return showError("Không tải được ảnh. Vui lòng thử lại hoặc báo nhân viên.");
+        }
 
         await db.ref('data/' + branch + '/' + currentClientId + '/client_uploads/U_' + Date.now()).set({
             time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + new Date().toLocaleDateString('vi-VN'),

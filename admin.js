@@ -1,4 +1,4 @@
-const IMGBB_API_KEY = 'd47a0ff216df7f718f898c65afa1cc17';
+const IMGBB_API_KEY = 'c15b60c02964bf3cebe1cf861ac30b19';
 let userRole = ''; let dbPath = 'data/'; let br = null;
 let currentData = {}; let previousCount = 0; let isFirstLoad = true;
 let db, auth;
@@ -806,6 +806,7 @@ function load() {
 
             try {
                 const now = new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) + ' ' + new Date().toLocaleDateString('vi-VN');
+                let okCount = 0, lastErr = '';
                 for (let i = 0; i < files.length; i++) {
                     const formData = new FormData();
                     formData.append("image", files[i]);
@@ -813,13 +814,32 @@ function load() {
                     const data = await response.json();
 
                     if (data.success) {
-                        const url = data.data.url;
+                        const url = String(data.data.url).replace(/^http:\/\//i, 'https://');
                         const linkId = "L_" + Date.now() + "_" + i;
                         await db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).set({ url: url, addedAt: now });
+                        okCount++;
+                    } else {
+                        lastErr = (data.error && data.error.message) || '';
                     }
                 }
+
+                // Trước đây không tải được ảnh nào vẫn báo "hoàn tất" và đánh dấu đã trả ảnh:
+                // nhân viên tưởng xong, khách không có ảnh.
+                if (okCount === 0) {
+                    const msg = /rate limit/i.test(lastErr)
+                        ? 'Dịch vụ ảnh (imgbb) đã hết lượt tải. Vào Quản lý để đổi API key mới.'
+                        : ('Không tải được ảnh nào.' + (lastErr ? ' (' + lastErr + ')' : ''));
+                    Swal.fire({ title: 'Tải lên thất bại', text: msg, icon: 'error', confirmButtonColor: '#111' });
+                    return;
+                }
+
                 await db.ref(dbPath + br + '/' + clientId).update({ status: "completed" });
-                Toast.fire({ icon: 'success', title: 'Tải lên hoàn tất!' });
+                const failed = files.length - okCount;
+                if (failed > 0) {
+                    Swal.fire({ title: 'Tải lên một phần', text: `Đã tải ${okCount}/${files.length} ảnh. ${failed} ảnh lỗi, vui lòng tải lại.`, icon: 'warning', confirmButtonColor: '#111' });
+                } else {
+                    Toast.fire({ icon: 'success', title: 'Tải lên hoàn tất!' });
+                }
                 const fi = document.getElementById('file_' + clientId);
                 if (fi) fi.value = "";
                 const fn = document.getElementById('fname_' + clientId);
