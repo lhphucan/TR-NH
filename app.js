@@ -342,7 +342,23 @@ async function sendToShop() {
     if (!currentClientId) return showError("Không tìm thấy phiên chụp.");
     
     const btn = document.getElementById('btn-send');
-    btn.innerHTML = `<div class="spinner" style="display:block; border-top-color:#111; border-color: rgba(0,0,0,0.1);"></div> ĐANG TẢI LÊN...`;
+    // Căn giữa bằng flex: .spinner có margin:0 auto nên nếu để display:block
+    // nó đẩy chữ lệch hẳn sang một bên.
+    const hint = document.getElementById('send-hint');
+    const setBtnLoading = (done, total) => {
+        btn.innerHTML = `<span style="display:flex; align-items:center; justify-content:center; gap:8px;">
+            <span class="spinner" style="display:block; flex:none; margin:0; border-top-color:#111; border-color: rgba(0,0,0,0.15);"></span>
+            <span>ĐANG TẢI ${done}/${total} ẢNH</span>
+        </span>`;
+        // Ảnh lớn có thể lâu -> nói rõ để khách không tưởng treo mà đóng trang
+        if (hint) {
+            hint.style.display = 'block';
+            hint.innerText = done < total
+                ? `Đang gửi ảnh ${done + 1}/${total}. Vui lòng không đóng trang.`
+                : 'Đang hoàn tất...';
+        }
+    };
+    setBtnLoading(0, files.length);
     btn.style.background = "#fff"; btn.style.color = "#111"; btn.style.border = "1px solid #111";
     btn.disabled = true;
 
@@ -358,6 +374,7 @@ async function sendToShop() {
             // Rules chỉ nhận https -> ép về https (imgbb phục vụ cả 2)
             if (resData.success) uploadedUrls.push(String(resData.data.url).replace(/^http:\/\//i, 'https://'));
             else lastErr = (resData.error && resData.error.message) || '';
+            setBtnLoading(i + 1, files.length);
         }
 
         if (uploadedUrls.length === 0) {
@@ -390,6 +407,7 @@ async function sendToShop() {
         btn.innerHTML = `GỬI ẢNH CHO TIỆM`;
         btn.style.background = "#111"; btn.style.color = "#fff"; btn.style.border = "none";
         btn.disabled = false;
+        if (hint) hint.style.display = 'none';
     }
 }
 
