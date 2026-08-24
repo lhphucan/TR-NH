@@ -396,6 +396,18 @@ function patchCard(clientId, c) {
         badge.innerText = isDone ? 'ĐÃ TRẢ ẢNH' : 'ĐANG CHỤP';
     }
 
+    // Máy khác vừa sửa link -> cập nhật ô, trừ ô đang gõ dở
+    if (c.links) {
+        Object.keys(c.links).forEach(lid => {
+            const li = document.getElementById('lnk_' + clientId + '_' + lid);
+            if (li && li !== active) {
+                const u = c.links[lid].url || '';
+                li.value = u;
+                li.setAttribute('data-orig', u);
+            }
+        });
+    }
+
     // Số ảnh hoặc yêu cầu in đổi -> cấu trúc thẻ khác, phải vẽ đầy đủ
     const shownLinks = card.querySelectorAll('.link-manager .link-row').length;
     const realLinks = c.links ? Object.keys(c.links).length : 0;
@@ -489,9 +501,13 @@ function load() {
                 let linksHtml = '';
                 if (client.links) {
                     Object.keys(client.links).forEach(linkId => {
+                        const lUrl = escapeHTML(client.links[linkId].url || '');
                         linksHtml += `<div class="link-row">
-                            <span class="time-label">${client.links[linkId].addedAt.split(' ')[0]}</span>
-                            <input type="text" value="${client.links[linkId].url}" readonly>
+                            <span class="time-label">${escapeHTML((client.links[linkId].addedAt || '').split(' ')[0])}</span>
+                            <input type="text" id="lnk_${client.id}_${linkId}" value="${lUrl}" data-orig="${lUrl}"
+                                   onchange="updateLink('${client.id}', '${linkId}')"
+                                   onkeydown="if(event.key==='Enter'){this.blur();}"
+                                   title="Sửa link rồi bấm Enter hoặc click ra ngoài để lưu">
                             <button onclick="deleteLink('${client.id}', '${linkId}')" class="btn-del-link admin-only">XÓA</button>
                         </div>`;
                     });
@@ -892,7 +908,33 @@ function load() {
             Toast.fire({ icon: 'success', title: 'Đã lưu link' });
         }
 
-        function deleteLink(clientId, linkId) { 
+        // Nhân viên sửa lại link đã dán (dán nhầm thư mục, đổi link chia sẻ...)
+        function updateLink(clientId, linkId) {
+            const inp = document.getElementById('lnk_' + clientId + '_' + linkId);
+            if (!inp) return;
+            const url = inp.value.trim();
+            const orig = inp.getAttribute('data-orig') || '';
+            if (url === orig) return; // không đổi gì
+
+            if (!url) {
+                inp.value = orig;
+                return Toast.fire({ icon: 'warning', title: 'Link trống. Dùng nút XÓA nếu muốn bỏ.' });
+            }
+            if (!/^https?:\/\//i.test(url)) {
+                inp.value = orig;
+                return Toast.fire({ icon: 'warning', title: 'Link phải bắt đầu bằng http:// hoặc https://' });
+            }
+
+            db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).update({ url }).then(() => {
+                inp.setAttribute('data-orig', url);
+                Toast.fire({ icon: 'success', title: 'Đã cập nhật link' });
+            }).catch(err => {
+                inp.value = orig;
+                Swal.fire('Lỗi', 'Không lưu được: ' + err.message, 'error');
+            });
+        }
+
+        function deleteLink(clientId, linkId) {
             if(userRole !== 'admin') return; 
             Swal.fire({ title: 'Xóa ảnh này?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => { if(r.isConfirmed) { db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove(); Toast.fire({ icon: 'success', title: 'Đã xóa' }); }}); 
         }
