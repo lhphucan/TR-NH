@@ -909,26 +909,46 @@ function load() {
             const maKh = cId.split('_')[1].slice(-4);
 
             const oldHtml = btn ? btn.innerHTML : '';
-            if (btn) { btn.disabled = true; btn.innerHTML = 'ĐANG TẢI...'; }
+            if (btn) { btn.disabled = true; }
 
+            let ok = 0, failed = 0;
             for (let i = 0; i < links.length; i++) {
+                if (btn) btn.innerHTML = `ĐANG TẢI ${i + 1}/${links.length}...`;
                 const url = links[i];
                 const ext = (String(url).match(/\.(jpe?g|png|webp|gif|bmp|heic)(?:\?|$)/i) || [, 'jpg'])[1];
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${name}_${maKh}_${String(i + 1).padStart(2, '0')}.${ext}`;
-                a.target = '_blank';
-                a.rel = 'noopener';
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                if (btn) btn.innerHTML = `ĐANG TẢI ${i + 1}/${links.length}...`;
-                // Bấm liên tiếp quá nhanh sẽ bị trình duyệt chặn bớt
-                await new Promise(r => setTimeout(r, 400));
+                const fileName = `${name}_${maKh}_${String(i + 1).padStart(2, '0')}.${ext}`;
+
+                try {
+                    // Phải tải nội dung ảnh về rồi mới lưu được: thuộc tính download bị
+                    // bỏ qua với ảnh khác tên miền, trình duyệt sẽ mở tab xem thay vì tải.
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const blob = await res.blob();
+                    const objUrl = URL.createObjectURL(blob);
+
+                    const a = document.createElement('a');
+                    a.href = objUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+                    ok++;
+                } catch (e) {
+                    failed++;
+                }
+                await new Promise(r => setTimeout(r, 300));
             }
 
             if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
-            Toast.fire({ icon: 'success', title: `Đã tải ${links.length} ảnh` });
+
+            if (ok === 0) {
+                Swal.fire({ title: 'Không tải được', text: 'Ảnh có thể đã bị xoá khỏi imgbb. Thử bấm vào từng link để kiểm tra.', icon: 'error', confirmButtonColor: '#111' });
+            } else if (failed > 0) {
+                Swal.fire({ title: 'Tải một phần', text: `Đã tải ${ok}/${links.length} ảnh. ${failed} ảnh lỗi (có thể đã bị xoá khỏi imgbb).`, icon: 'warning', confirmButtonColor: '#111' });
+            } else {
+                Toast.fire({ icon: 'success', title: `Đã tải ${ok} ảnh` });
+            }
         }
 
         function delClientUp(cId, uId) {
