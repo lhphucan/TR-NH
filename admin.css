@@ -126,3 +126,35 @@ textarea:focus { border-color: #111; }
 /* BẢO ĐẢM ICON KHÔNG BỊ ĐEN TRÊN BẤT KỲ TRÌNH DUYỆT NÀO */
 .icon-svg { width: 16px !important; height: 16px !important; min-width: 16px; min-height: 16px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
 .icon-sm { width: 14px !important; height: 14px !important; min-width: 14px; min-height: 14px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none !important; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;}
+
+/* ===== Thành phần thêm sau: theo đúng thang xám Zinc của trang ===== */
+
+/* Thanh tóm tắt hôm nay */
+.today-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 14px; background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; margin-bottom: 14px; }
+.today-bar .label { font-size: 11px; font-weight: 700; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 2px; }
+.today-chip { display: inline-flex; align-items: baseline; gap: 5px; padding: 6px 12px; border-radius: 8px; border: 1px solid #e4e4e7; background: #fafafa; color: #52525b; font-size: 12px; font-weight: 600; font-family: 'Inter'; white-space: nowrap; transition: 0.15s; }
+.today-chip b { font-size: 13px; font-weight: 700; color: #18181b; font-variant-numeric: tabular-nums; }
+button.today-chip { cursor: pointer; }
+button.today-chip:hover { border-color: #18181b; background: #fff; }
+.today-chip.warn { border-color: #d4d4d8; background: #fff; }
+.today-chip.warn b { color: #ef4444; }
+.today-chip.ok b { color: #18181b; }
+.today-total { margin-left: auto; font-size: 15px; font-weight: 700; color: #18181b; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Huy hiệu khách quen */
+.badge-loyal { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; background: #f4f4f5; color: #52525b; border: 1px solid #e4e4e7; padding: 3px 8px; border-radius: 20px; white-space: nowrap; text-transform: uppercase; }
+
+/* Nút sửa tên/SĐT trên thẻ khách */
+.btn-edit-info { background: none; border: none; cursor: pointer; color: #a1a1aa; padding: 0 0 0 8px; font-size: 10px; font-weight: 700; font-family: 'Inter'; letter-spacing: 0.3px; text-transform: uppercase; transition: 0.15s; }
+.btn-edit-info:hover { color: #18181b; }
+
+/* Nút giá nhanh trong popup nhập tiền */
+.quick-price { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+.quick-price button { padding: 11px 4px; border: 1px solid #d4d4d8; background: #fff; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 13px; font-family: 'Inter'; color: #18181b; transition: 0.15s; }
+.quick-price button:hover { border-color: #18181b; background: #fafafa; }
+
+/* Tên khách + huy hiệu trên thẻ */
+.client-name { margin: 0 0 5px 0; font-size: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Cảnh báo doanh thu chưa rõ nguồn */
+.rev-warn { display: none; font-size: 11px; color: #ef4444; font-weight: 600; margin-top: 6px; }

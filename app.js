@@ -349,26 +349,23 @@ function renderHistory(history, branch) {
                 inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><a href="${safeUrlAttr(l.url)}" target="_blank" rel="noopener noreferrer" class="view-btn" onclick="askRating('${escapeHTML(h.branch)}')">Lưu ảnh</a></div>`;
             });
         } else {
-            inner = `<div style="font-size:12px; color:#888; text-align:center; padding:14px; background:#fff; border:1px dashed #d4d4d8; border-radius:8px;">
-                <div style="width:8px; height:8px; background:#111; border-radius:50%; animation:pulse 1.5s infinite; display:inline-block; margin-right:5px;"></div>
-                Tiệm chưa gửi ảnh cho lượt này
-            </div>`;
+            inner = `<div class="hist-empty">Tiệm chưa gửi ảnh cho lượt này</div>`;
         }
 
-        html += `<div style="border:1px solid #e5e5e5; border-radius:14px; margin-bottom:12px; overflow:hidden; background:#fafafa;">
-            <button onclick="toggleHistory(${idx})" style="width:100%; background:none; border:none; padding:15px 18px; cursor:pointer; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:10px; font-family:'Inter';">
+        html += `<div class="hist-group">
+            <button onclick="toggleHistory(${idx})" class="hist-head">
                 <span>
-                    <span style="font-size:14px; font-weight:700; color:#111;">${isToday ? 'Hôm nay' : dateStr}</span>
-                    <span style="font-size:12px; color:#666; display:block; margin-top:3px;">${escapeHTML(hbName)} · ${links.length} ảnh</span>
+                    <span class="hist-date">${isToday ? 'Hôm nay' : dateStr}</span>
+                    <span class="hist-meta">${escapeHTML(hbName)} · ${links.length} ảnh</span>
                 </span>
-                <span id="hist-arrow-${idx}" style="font-size:12px; color:#888; transform:rotate(${open ? '180' : '0'}deg); transition:0.2s;">▼</span>
+                <span id="hist-arrow-${idx}" class="hist-arrow" style="transform:rotate(${open ? 180 : 0}deg);">▼</span>
             </button>
-            <div id="hist-body-${idx}" style="display:${open ? 'block' : 'none'}; padding:0 18px 18px;">${inner}</div>
+            <div id="hist-body-${idx}" class="hist-body" style="display:${open ? 'block' : 'none'};">${inner}</div>
         </div>`;
     });
 
-    html += `<div style="margin-top:20px; padding-top:18px; border-top:1px dashed #e5e5e5; text-align:center;">
-        <p style="font-size:13px; color:#666; margin:0 0 12px;">Bạn vừa chụp tại <b>${escapeHTML(bName)}</b> hôm nay?</p>
+    html += `<div class="new-session">
+        <p>Bạn vừa chụp tại <b>${escapeHTML(bName)}</b> hôm nay?</p>
         <button onclick="startNewSession()" class="primary-btn" style="padding:13px; font-size:13px;">TẠO LƯỢT CHỤP MỚI</button>
     </div>`;
 
@@ -499,8 +496,8 @@ function renderData(data, branch) {
 
     // Các lượt chụp trước của cùng SĐT, mọi cơ sở — thu gọn, bấm mới mở
     if (pastSessions.length) {
-        html += `<div style="margin-top:18px; padding-top:16px; border-top:1px dashed #e5e5e5;">
-            <p style="font-size:12px; font-weight:700; color:#111; text-transform:uppercase; margin:0 0 10px;">Các lần chụp trước</p>`;
+        html += `<div class="hist-section">
+            <p class="hist-title">Các lần chụp trước</p>`;
         pastSessions.forEach((h, idx) => {
             const d = h.data || {};
             const hDate = getDStr(new Date(h.ts));
@@ -513,17 +510,17 @@ function renderData(data, branch) {
                     inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><a href="${safeUrlAttr(l.url)}" target="_blank" rel="noopener noreferrer" class="view-btn" onclick="askRating('${escapeHTML(h.branch)}')">Lưu ảnh</a></div>`;
                 });
             } else {
-                inner = `<div style="font-size:12px; color:#888; text-align:center; padding:12px;">Lượt này chưa có ảnh</div>`;
+                inner = `<div class="hist-empty">Lượt này chưa có ảnh</div>`;
             }
-            html += `<div style="border:1px solid #e5e5e5; border-radius:12px; margin-bottom:10px; overflow:hidden; background:#fafafa;">
-                <button onclick="toggleHistory(${idx})" style="width:100%; background:none; border:none; padding:13px 16px; cursor:pointer; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:10px; font-family:'Inter';">
+            html += `<div class="hist-group">
+                <button onclick="toggleHistory(${idx})" class="hist-head">
                     <span>
-                        <span style="font-size:13px; font-weight:700; color:#111;">${hDate}</span>
-                        <span style="font-size:12px; color:#666; display:block; margin-top:2px;">${escapeHTML(hbName)} · ${lids.length} ảnh</span>
+                        <span class="hist-date">${hDate}</span>
+                        <span class="hist-meta">${escapeHTML(hbName)} · ${lids.length} ảnh</span>
                     </span>
-                    <span id="hist-arrow-${idx}" style="font-size:12px; color:#888; transition:0.2s;">▼</span>
+                    <span id="hist-arrow-${idx}" class="hist-arrow">▼</span>
                 </button>
-                <div id="hist-body-${idx}" style="display:none; padding:0 16px 16px;">${inner}</div>
+                <div id="hist-body-${idx}" class="hist-body" style="display:none;">${inner}</div>
             </div>`;
         });
         html += `</div>`;

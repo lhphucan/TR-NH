@@ -144,7 +144,7 @@
                     <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
                         <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng thu nhập</div>
                         <div id="rev-day-total" class="rev-total-num" style="font-size:20px; font-weight:700;">0 ₫</div>
-                        <div id="rev-day-unknown" style="display:none; font-size:11px; color:#ef4444; font-weight:600; margin-top:6px;"></div>
+                        <div id="rev-day-unknown" class="rev-warn"></div>
                     </div>
                 </div>
             </div>
@@ -171,7 +171,7 @@
                     <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
                         <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng thu nhập</div>
                         <div id="rev-month-total" class="rev-total-num" style="font-size:20px; font-weight:700;">0 ₫</div>
-                        <div id="rev-month-unknown" style="display:none; font-size:11px; color:#ef4444; font-weight:600; margin-top:6px;"></div>
+                        <div id="rev-month-unknown" class="rev-warn"></div>
                     </div>
                 </div>
             </div>
@@ -201,7 +201,7 @@
                     <div style="grid-column: span 2; background:#111; border-radius:8px; padding:12px; color:#fff;">
                         <div style="font-size:11px; color:#ccc; margin-bottom:4px;">Tổng thu nhập</div>
                         <div id="rev-year-total" class="rev-total-num" style="font-size:20px; font-weight:700;">0 ₫</div>
-                        <div id="rev-year-unknown" style="display:none; font-size:11px; color:#ef4444; font-weight:600; margin-top:6px;"></div>
+                        <div id="rev-year-unknown" class="rev-warn"></div>
                     </div>
                 </div>
             </div>
@@ -295,7 +295,7 @@
 
             <div id="price-amount-wrap" style="margin-bottom:18px;">
                 <label style="font-size:11px; font-weight:700; color:#666; display:block; margin-bottom:6px; text-transform:uppercase;">Số tiền</label>
-                <div id="quick-price" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px;"></div>
+                <div id="quick-price" class="quick-price"></div>
                 <input type="text" id="price-amount-input" inputmode="numeric" placeholder="Nhập số tiền" onkeypress="if(event.key==='Enter') confirmPrice()" style="width:100%; padding:14px; border-radius:10px; border:1px solid #d4d4d8; box-sizing:border-box; font-size:18px; font-weight:700; text-align:center; outline:none; font-family:'Inter';">
             </div>
 

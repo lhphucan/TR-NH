@@ -412,22 +412,20 @@ function renderTodayBar() {
     if (!n) { bar.style.display = 'none'; return; }
 
     const chip = (label, val, cls, filter) => {
-        const color = cls === 'warn' ? '#b45309' : (cls === 'ok' ? '#3f6212' : '#52525b');
-        const bg = cls === 'warn' ? '#fffbeb' : (cls === 'ok' ? '#f7fee7' : '#fafafa');
-        const bd = cls === 'warn' ? '#fcd34d' : (cls === 'ok' ? '#bef264' : '#e4e4e7');
-        const click = filter ? ` onclick="filterToday('${filter}')" style="cursor:pointer;` : ' style="';
-        return `<button type="button"${click} background:${bg}; color:${color}; border:1px solid ${bd}; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600; font-family:'Inter'; white-space:nowrap;">${label}: ${val}</button>`;
+        const tag = filter ? 'button' : 'span';
+        const attr = filter ? ` type="button" onclick="filterToday('${filter}')"` : '';
+        return `<${tag} class="today-chip${cls ? ' ' + cls : ''}"${attr}>${label} <b>${val}</b></${tag}>`;
     };
 
     bar.style.display = 'block';
-    bar.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px 14px; background:#fff; border:1px solid #e4e4e7; border-radius:12px; margin-bottom:14px;">
-        <span style="font-size:12px; font-weight:700; color:#111; text-transform:uppercase; margin-right:4px;">Hôm nay</span>
+    bar.innerHTML = `<div class="today-bar">
+        <span class="label">Hôm nay</span>
         ${chip('Khách', n, '', 'all')}
         ${noPrice ? chip('Chưa nhập tiền', noPrice, 'warn', 'noprice') : ''}
         ${noLink ? chip('Chưa trả ảnh', noLink, 'warn', 'nolink') : ''}
         ${pending ? chip('Yêu cầu in', pending, 'warn', 'pending') : ''}
-        ${(!noPrice && !noLink) ? chip('Đã xong hết', '✓', 'ok', '') : ''}
-        <span style="margin-left:auto; font-size:14px; font-weight:700; color:#111; font-variant-numeric:tabular-nums;">${revenue.toLocaleString('vi-VN')} ₫</span>
+        ${(!noPrice && !noLink) ? chip('Đã xong', '✓', 'ok', '') : ''}
+        <span class="today-total">${revenue.toLocaleString('vi-VN')} ₫</span>
     </div>`;
 }
 
@@ -664,12 +662,12 @@ function load() {
                                 <div style="font-size: 11px; color: #a1a1aa; font-family: monospace; font-weight: 600;">#${maKh}</div>
                                 <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'ĐÃ TRẢ ẢNH' : 'ĐANG CHỤP'}</span>
                             </div>
-                            <h4 style="margin: 0 0 5px 0; font-size: 16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <h4 class="client-name">
                                 <span>${escapeHTML(client.name || 'Khách hàng')}</span>
-                                ${visits > 1 ? `<span title="Khách đã đến ${visits} lần" style="font-size:10px; font-weight:700; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; padding:2px 7px; border-radius:20px; white-space:nowrap;">KHÁCH QUEN · ${visits}</span>` : ''}
+                                ${visits > 1 ? `<span class="badge-loyal" title="Khách đã đến ${visits} lần">Khách quen · ${visits}</span>` : ''}
                             </h4>
                             <div style="font-size: 13px; color: #52525b; margin-bottom: 5px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> <span>${escapeHTML(client.phone)}</span>
-                                ${(dbPath === 'data/') ? `<button onclick="editClientInfo('${client.id}')" class="admin-only" title="Sửa tên và số điện thoại" style="background:none; border:none; cursor:pointer; color:#a1a1aa; padding:0 0 0 8px; font-size:11px; font-weight:600; font-family:'Inter';">SỬA</button>` : ''}
+                                ${(dbPath === 'data/') ? `<button onclick="editClientInfo('${client.id}')" class="btn-edit-info admin-only" title="Sửa tên và số điện thoại">Sửa</button>` : ''}
                             </div>
                             <div style="font-size: 13px; color: #52525b; margin-bottom: 15px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${client.time}</div>
                             
@@ -1602,7 +1600,7 @@ function renderQuickPrice() {
                       .map(x => parseInt(x[0], 10)).sort((a, b) => a - b);
     if (!top.length) { box.innerHTML = ''; return; }
     box.innerHTML = top.map(v =>
-        `<button type="button" onclick="pickQuickPrice(${v})" style="padding:10px 4px; border:1px solid #d4d4d8; background:#fff; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; font-family:'Inter'; color:#111;">${Math.round(v/1000)}k</button>`
+        `<button type="button" onclick="pickQuickPrice(${v})">${Math.round(v / 1000)}k</button>`
     ).join('');
 }
 

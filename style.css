@@ -20,3 +20,21 @@ button.primary-btn:disabled { opacity: 0.7; cursor: not-allowed; }
 
 #result-ui { display: none; text-align: left; }
 .icon-svg { width: 16px; height: 16px; vertical-align: middle; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ===== Lịch sử các lần chụp trước ===== */
+.hist-group { border: 1px solid #e5e5e5; border-radius: 14px; margin-bottom: 10px; overflow: hidden; background: #fafafa; }
+.hist-head { width: 100%; background: none; border: none; padding: 14px 16px; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-family: 'Inter'; transition: 0.15s; }
+.hist-head:hover { background: #f0f0f0; }
+.hist-date { font-size: 14px; font-weight: 700; color: #111; display: block; }
+.hist-meta { font-size: 12px; color: #666; display: block; margin-top: 3px; font-weight: 500; }
+.hist-arrow { font-size: 11px; color: #666; transition: transform 0.2s; flex: none; }
+.hist-body { padding: 0 16px 16px; }
+.hist-empty { font-size: 12px; color: #666; text-align: center; padding: 14px; background: #fff; border: 1px dashed #e5e5e5; border-radius: 8px; }
+
+.hist-title { font-size: 12px; font-weight: 700; color: #111; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 10px; }
+.hist-section { margin-top: 20px; padding-top: 18px; border-top: 1px dashed #e5e5e5; }
+
+.new-session { margin-top: 22px; padding-top: 18px; border-top: 1px dashed #e5e5e5; text-align: center; }
+.new-session p { font-size: 13px; color: #666; margin: 0 0 12px; font-weight: 500; }
+
+#send-hint { display: none; font-size: 11px; color: #666; text-align: center; margin-top: 8px; line-height: 1.5; }
