@@ -164,7 +164,9 @@ button.today-chip:hover { border-color: #18181b; background: #fff; }
 .shoot-load { display: flex; align-items: center; justify-content: center; width: 100%; padding: 10px; background: #fff; border: 1px dashed #d4d4d8; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: #52525b; font-family: 'Inter'; transition: 0.15s; }
 .shoot-load:hover { border-color: #18181b; color: #18181b; background: #fafafa; }
 
-.shoot-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: #a1a1aa; margin-bottom: 8px; }
+.shoot-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: #a1a1aa; margin-bottom: 8px; }
+.shoot-close { background: none; border: none; cursor: pointer; color: #a1a1aa; font-size: 14px; line-height: 1; padding: 2px 6px; border-radius: 4px; font-family: 'Inter'; transition: 0.15s; }
+.shoot-close:hover { background: #f4f4f5; color: #18181b; }
 .shoot-loading { font-size: 12px; color: #52525b; text-align: center; padding: 14px; background: #fafafa; border: 1px dashed #e4e4e7; border-radius: 8px; }
 
 /* Một hàng ngang cuộn được: thẻ khách không dài ra dù cả ngày nhiều lượt */

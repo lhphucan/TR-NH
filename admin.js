@@ -505,11 +505,24 @@ function renderTodayBar() {
     if (!bar) return;
     if (dbPath !== 'data/' || !currentData) { bar.style.display = 'none'; return; }
 
-    const todayStr = getDStr(new Date());
+    // Theo khoảng ngày đang xem, không phải luôn là hôm nay
+    const fp = document.getElementById('date-filter')._flatpickr;
+    let fTs = 0, tTs = Infinity, label = 'Tất cả';
+
+    if (fp && fp.selectedDates.length > 0) {
+        fTs = new Date(fp.selectedDates[0]).setHours(0, 0, 0, 0);
+        tTs = fp.selectedDates.length > 1
+            ? new Date(fp.selectedDates[1]).setHours(23, 59, 59, 999)
+            : new Date(fp.selectedDates[0]).setHours(23, 59, 59, 999);
+        const d1 = getDStr(fp.selectedDates[0]);
+        label = (fp.selectedDates.length > 1) ? `${d1} → ${getDStr(fp.selectedDates[1])}`
+              : (d1 === getDStr(new Date()) ? 'Hôm nay' : d1);
+    }
+
     let n = 0, noPrice = 0, noLink = 0, revenue = 0, pending = 0;
     Object.keys(currentData).forEach(id => {
         const ts = parseInt(id.split('_')[1]);
-        if (!ts || getDStr(new Date(ts)) !== todayStr) return;
+        if (!ts || ts < fTs || ts > tTs) return;
         const c = currentData[id];
         n++;
         if (!c.price) noPrice++;
@@ -528,7 +541,7 @@ function renderTodayBar() {
 
     bar.style.display = 'block';
     bar.innerHTML = `<div class="today-bar">
-        <span class="label">Hôm nay</span>
+        <span class="label">${escapeHTML(label)}</span>
         ${chip('Khách', n, '', 'all')}
         ${noPrice ? chip('Chưa nhập tiền', noPrice, 'warn', 'noprice') : ''}
         ${noLink ? chip('Chưa trả ảnh', noLink, 'warn', 'nolink') : ''}
@@ -540,17 +553,28 @@ function renderTodayBar() {
 
 // Bấm vào con số trên thanh hôm nay -> lọc thẳng ra các phiên đó
 function filterToday(kind) {
-    const todayStr = getDStr(new Date());
+    // Lọc trong đúng khoảng ngày đang xem, không mặc định hôm nay
+    const fp = document.getElementById('date-filter')._flatpickr;
+    let fTs = 0, tTs = Infinity;
+    if (fp && fp.selectedDates.length > 0) {
+        fTs = new Date(fp.selectedDates[0]).setHours(0, 0, 0, 0);
+        tTs = fp.selectedDates.length > 1
+            ? new Date(fp.selectedDates[1]).setHours(23, 59, 59, 999)
+            : new Date(fp.selectedDates[0]).setHours(23, 59, 59, 999);
+    }
+
     document.getElementById('search-box').value = '';
     let shown = 0;
 
     document.querySelectorAll('.date-group').forEach(group => {
         const head = group.querySelector('.date-header span:first-child');
-        const isToday = head && head.innerText.indexOf(todayStr) !== -1;
+        const parts = head.innerText.split(', ').pop().trim().split('/');
+        const groupTs = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00`).getTime();
+        const inRange = groupTs >= fTs && groupTs <= tTs;
         let anyCard = false;
 
         group.querySelectorAll('.client-card').forEach(card => {
-            let ok = isToday;
+            let ok = inRange;
             if (ok && kind === 'noprice') ok = card.classList.contains('card-no-price');
             if (ok && kind === 'nolink') ok = !card.querySelector('.link-manager .link-row');
             if (ok && kind === 'pending') ok = !!card.querySelector('[onclick^="delClientUp"]');
@@ -861,8 +885,7 @@ function load() {
                 });
                 _restoreDrafts = {};
 
-                renderTodayBar();
-                filterData();
+                filterData();   // gọi renderTodayBar() ở cuối
             }, err => {
                 // Không có nhánh lỗi thì mất quyền đọc chỉ hiện danh sách trống, không ai biết vì sao
                 document.querySelector('.empty-text').innerText = 'Không tải được dữ liệu: ' + err.message;
@@ -961,6 +984,9 @@ function load() {
             
             document.querySelector('.empty-text').innerText = "Không tìm thấy dữ liệu khớp với bộ lọc.";
             document.getElementById('empty-msg').style.display = (visibleGroupCount === 0 && document.getElementById('list-content').innerHTML !== "") ? 'block' : 'none';
+
+            // Đổi ngày xem thì thanh tóm tắt phải tính lại theo ngày đó
+            renderTodayBar();
         }
 
         function exportExcel() {
@@ -1198,7 +1224,10 @@ function load() {
             // Gần giờ khách quét nhất lên đầu — khách thường quét ngay sau khi chụp
             ready.sort((a, b) => Math.abs(shootTs(a, clientTs) - clientTs) - Math.abs(shootTs(b, clientTs) - clientTs));
 
-            let html = '<div class="shoot-head">Chọn ảnh trả khách</div><div class="shoot-row">';
+            let html = `<div class="shoot-head">
+                <span>Chọn ảnh trả khách</span>
+                <button type="button" class="shoot-close" onclick="closeShootPicker('${clientId}')" title="Đóng">✕</button>
+            </div><div class="shoot-row">`;
             ready.forEach(s => {
                 const diff = Math.round((shootTs(s, clientTs) - clientTs) / 60000);
                 const abs = Math.abs(diff);
@@ -1233,6 +1262,16 @@ function load() {
             if (!/^\d{14}/.test(n)) return fallback;
             return new Date(+n.slice(0, 4), +n.slice(4, 6) - 1, +n.slice(6, 8),
                             +n.slice(8, 10), +n.slice(10, 12), +n.slice(12, 14)).getTime();
+        }
+
+        // Thu lại về nút bấm, khỏi chiếm chỗ khi chưa cần
+        function closeShootPicker(clientId) {
+            const box = document.getElementById('shoots_' + clientId);
+            if (!box) return;
+            box.innerHTML = `<button type="button" class="shoot-load" onclick="loadShootPicker('${clientId}')">
+                <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                XEM ẢNH VỪA CHỤP
+            </button>`;
         }
 
         function pickShoot(clientId, url, takenBy) {
