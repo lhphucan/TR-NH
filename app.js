@@ -19,6 +19,9 @@ let liveHandler = null;  // callback để gỡ đúng listener
 let lastLinkCount = 0;   // để biết tiệm vừa đẩy thêm ảnh mới
 let isFirstLiveRender = true; // lần vẽ đầu không báo "ảnh mới"
 let pastSessions = [];   // các lượt chụp trước của cùng SĐT (mọi cơ sở)
+// Khai báo ở đây vì window.onload gọi loadDriveEndpoint() ngay từ đầu file:
+// let không được hoisting nên để dưới sẽ lỗi và biến mãi rỗng.
+let GS_URL = '';
 
 function loadImgbbKey() {
     return db.ref('config/imgbb_key').once('value')
@@ -116,8 +119,6 @@ function safeUrlAttr(u) { return escapeHTML(safeUrl(u)); }
 // ===== Lưu ảnh khách gửi vào Drive của tiệm =====
 // Apps Script chỉ cấp mã truy cập ngắn hạn; ảnh đi thẳng lên Drive API vì đẩy
 // cả file qua Apps Script chậm gấp 6-10 lần và rất thất thường.
-let GS_URL = '';
-
 function loadDriveEndpoint() {
     return db.ref('config/gs_url').once('value')
         .then(s => { GS_URL = (s.val() || '').trim(); })
