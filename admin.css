@@ -215,4 +215,7 @@ button.today-chip:hover { border-color: #18181b; background: #fff; }
 .link-thumb { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 6px; overflow: hidden; background: #f4f4f5; border: 1px solid #e4e4e7; }
 .link-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; transition: transform 0.2s; }
 .link-thumb img:hover { transform: scale(1.08); }
-.link-thumb.empty { background: repeating-linear-gradient(45deg, #f4f4f5, #f4f4f5 4px, #fafafa 4px, #fafafa 8px); }
+.link-thumb.empty { background: #fafafa; position: relative; }
+.link-thumb.empty::after { content: '?'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #d4d4d8; font-size: 18px; font-weight: 700; }
+.shoot-thumb.empty::after { content: 'không xem được'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #a1a1aa; font-size: 10px; text-align: center; padding: 4px; }
+.shoot-thumb { position: relative; }

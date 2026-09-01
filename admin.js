@@ -35,6 +35,26 @@ async function driveQuery(q, fields) {
     return (await res.json()).files || [];
 }
 
+// Tìm ảnh ghép khung trong một lượt.
+// Tên file không đáng tin: máy chụp đặt IMG_4673.JPG hay 195960(H006...).jpg
+// tuỳ lúc. Nhưng ảnh ghép nặng hơn hẳn — đo được 22,5 MB so với trung bình
+// 3,8 MB trong cùng thư mục, trong khi lượt không có ảnh ghép thì file lớn
+// nhất chỉ hơn trung bình 1,3-1,8 lần.
+function findFramed(imgs) {
+    const byName = imgs.find(x => /selfbooth|noir/i.test(x.name));
+    if (byName) return byName;
+
+    const sized = imgs.filter(x => parseInt(x.size || 0) > 0);
+    if (sized.length < 3) return null;
+    const biggest = sized.reduce((a, b) => (parseInt(a.size) > parseInt(b.size) ? a : b));
+
+    // So với trung bình các ảnh CÒN LẠI: nếu tính cả nó thì chính nó kéo
+    // trung bình lên và tự làm mình không vượt ngưỡng.
+    const rest = sized.filter(x => x.id !== biggest.id);
+    const avg = rest.reduce((s, x) => s + parseInt(x.size), 0) / rest.length;
+    return parseInt(biggest.size) >= avg * 3 ? biggest : null;
+}
+
 // Ảnh mẫu của thư mục đã gửi khách — nhìn là biết đã trả đúng ảnh chưa,
 // khỏi phải mở Drive kiểm tra.
 const _folderThumb = {};   // { folderId: url | null }
@@ -51,11 +71,10 @@ async function loadLinkThumbs() {
         try {
             const imgs = await driveQuery(
                 `'${fid}' in parents and mimeType contains 'image/' and trashed=false`,
-                'files(id,name,thumbnailLink)'
+                'files(id,name,size,thumbnailLink)'
             );
             // Ưu tiên ảnh ghép khung: đó là thứ khách nhận được
-            const framed = imgs.find(x => /selfbooth|noir/i.test(x.name));
-            const pick = framed || imgs[Math.floor(imgs.length / 2)];
+            const pick = findFramed(imgs) || imgs[Math.floor(imgs.length / 2)];
             _folderThumb[fid] = (pick && pick.thumbnailLink) || null;
         } catch (e) {
             _folderThumb[fid] = null;
@@ -64,9 +83,15 @@ async function loadLinkThumbs() {
 
     boxes.forEach(b => {
         const url = _folderThumb[b.getAttribute('data-fid')];
-        if (url) b.innerHTML = `<img src="${escapeHTML(url)}" alt="" referrerpolicy="no-referrer"
-                                     onclick="zoomShoot('${escapeHTML(url)}', 'Ảnh đã gửi khách')">`;
-        else b.classList.add('empty');
+        if (url) {
+            // Không đặt referrerpolicy: Google từ chối phục vụ ảnh khi thiếu referrer
+            b.innerHTML = `<img src="${escapeHTML(url)}" alt="" title="Bấm để xem lớn"
+                                onclick="zoomShoot('${escapeHTML(url)}', 'Ảnh đã gửi khách')"
+                                onerror="this.parentNode.classList.add('empty'); this.remove();">`;
+        } else {
+            b.classList.add('empty');
+            b.title = 'Không đọc được ảnh trong thư mục này';
+        }
     });
 }
 
@@ -101,12 +126,14 @@ async function listShoots(branchId, ymd) {
             item.url = 'https://drive.google.com/drive/folders/' + ed[0].id;
             const imgs = await driveQuery(
                 `'${ed[0].id}' in parents and mimeType contains 'image/' and trashed=false`,
-                'files(id,name,thumbnailLink)'
+                'files(id,name,size,thumbnailLink)'
             );
             item.count = imgs.length;
             // Lấy ảnh giữa lượt: nhân viên chỉ cần nhìn mặt khách để xác nhận,
-            // mà ảnh đầu/cuối hay là ảnh thử hoặc ảnh hỏng.
-            const real = imgs.filter(x => !/selfbooth|noir/i.test(x.name));
+            // mà ảnh đầu/cuối hay là ảnh thử hoặc ảnh hỏng. Bỏ ảnh ghép khung
+            // vì nó gộp nhiều pose nhỏ, khó nhìn rõ mặt.
+            const framed = findFramed(imgs);
+            const real = framed ? imgs.filter(x => x.id !== framed.id) : imgs;
             const pool = real.length ? real : imgs;
             pool.sort((a, b) => a.name.localeCompare(b.name));
             const mid = pool[Math.floor(pool.length / 2)];
@@ -1288,7 +1315,7 @@ function load() {
                 const who = taken[s.id];
                 html += `<div class="shoot-card${who ? ' taken' : ''}">
                     <div class="shoot-thumb"${s.thumbs && s.thumbs.length ? ` onclick="zoomShoot('${escapeHTML(s.thumbs[0])}', '${s.time}')"` : ''}>${s.thumbs && s.thumbs.length
-                        ? `<img src="${escapeHTML(s.thumbs[0])}" alt="" referrerpolicy="no-referrer">` : '<span>—</span>'}</div>
+                        ? `<img src="${escapeHTML(s.thumbs[0])}" alt="" onerror="this.parentNode.classList.add('empty'); this.remove();">` : '<span>—</span>'}</div>
                     <div class="shoot-time">${s.time}</div>
                     <div class="shoot-diff">${diffText}</div>
                     <div class="shoot-count">${s.count || 0} ảnh</div>
