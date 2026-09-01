@@ -69,9 +69,13 @@ async function listShoots(branchId, ymd) {
                 'files(id,name,thumbnailLink)'
             );
             item.count = imgs.length;
-            // Ảnh ghép khung dễ nhận ra khách nhất -> đưa lên đầu
-            imgs.sort((a, b) => (/selfbooth|noir/i.test(a.name) ? 0 : 1) - (/selfbooth|noir/i.test(b.name) ? 0 : 1));
-            item.thumbs = imgs.slice(0, 3).map(x => x.thumbnailLink).filter(Boolean);
+            // Lấy ảnh giữa lượt: nhân viên chỉ cần nhìn mặt khách để xác nhận,
+            // mà ảnh đầu/cuối hay là ảnh thử hoặc ảnh hỏng.
+            const real = imgs.filter(x => !/selfbooth|noir/i.test(x.name));
+            const pool = real.length ? real : imgs;
+            pool.sort((a, b) => a.name.localeCompare(b.name));
+            const mid = pool[Math.floor(pool.length / 2)];
+            item.thumbs = [mid && mid.thumbnailLink].filter(Boolean);
         } catch (e) { /* lượt này lỗi thì bỏ qua, không chặn cả danh sách */ }
         return item;
     }));
