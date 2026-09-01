@@ -188,3 +188,5 @@ button.today-chip:hover { border-color: #18181b; background: #fff; }
 .shoot-pick:hover { background: #3f3f46; }
 
 .shoot-note { font-size: 11px; color: #a1a1aa; margin-top: 8px; line-height: 1.4; }
+.shoot-pick.again { background: #fff; color: #52525b; border: 1px solid #d4d4d8; }
+.shoot-pick.again:hover { background: #fafafa; border-color: #18181b; color: #18181b; }

@@ -1208,9 +1208,11 @@ function load() {
                     <div class="shoot-time">${s.time}</div>
                     <div class="shoot-diff">${diffText}</div>
                     <div class="shoot-count">${s.count || 0} ảnh</div>
-                    ${who
-                        ? `<div class="shoot-taken">Đã trả cho ${escapeHTML(who)}</div>`
-                        : `<button type="button" class="shoot-pick" onclick="pickShoot('${clientId}', '${escapeHTML(s.url)}')">CHỌN</button>`}
+                    ${who ? `<div class="shoot-taken">Đã trả cho ${escapeHTML(who)}</div>` : ''}
+                    <button type="button" class="shoot-pick${who ? ' again' : ''}"
+                            onclick="pickShoot('${clientId}', '${escapeHTML(s.url)}', ${who ? `'${escapeHTML(who)}'` : 'null'})">
+                        ${who ? 'CHỌN LẠI' : 'CHỌN'}
+                    </button>
                 </div>`;
             });
             html += '</div>';
@@ -1229,10 +1231,25 @@ function load() {
                             +n.slice(8, 10), +n.slice(10, 12), +n.slice(12, 14)).getTime();
         }
 
-        function pickShoot(clientId, url) {
-            const ta = document.getElementById('new_' + clientId);
-            if (ta) ta.value = url;
-            addLink(clientId);
+        function pickShoot(clientId, url, takenBy) {
+            const go = () => {
+                const ta = document.getElementById('new_' + clientId);
+                if (ta) ta.value = url;
+                addLink(clientId);
+            };
+
+            // Hai người chụp chung một lượt thì đều cần link — cho gán lại, chỉ hỏi
+            // để tránh gán nhầm sang khách không liên quan.
+            if (!takenBy) return go();
+            Swal.fire({
+                title: 'Lượt này đã trả rồi',
+                html: `Đã gửi cho <b>${escapeHTML(takenBy)}</b>.<br>
+                       <span style="font-size:13px;color:#666">Chọn tiếp nếu hai người chụp chung một lượt.</span>`,
+                icon: 'question', showCancelButton: true,
+                confirmButtonText: 'Vẫn gửi cho khách này',
+                cancelButtonText: '<span style="color:#111">Hủy</span>',
+                confirmButtonColor: '#111'
+            }).then(r => { if (r.isConfirmed) go(); });
         }
 
         // Khách nhập nhầm SĐT thì không tra lại được ảnh; trước phải xoá phiên rồi
