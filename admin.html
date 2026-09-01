@@ -79,6 +79,7 @@
             </div>
         </div>
 
+        <div id="today-bar" style="display:none;"></div>
         <div id="trash-header" style="display: none;"></div>
 
         <datalist id="price-list">
@@ -294,6 +295,7 @@
 
             <div id="price-amount-wrap" style="margin-bottom:18px;">
                 <label style="font-size:11px; font-weight:700; color:#666; display:block; margin-bottom:6px; text-transform:uppercase;">Số tiền</label>
+                <div id="quick-price" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px;"></div>
                 <input type="text" id="price-amount-input" inputmode="numeric" placeholder="Nhập số tiền" onkeypress="if(event.key==='Enter') confirmPrice()" style="width:100%; padding:14px; border-radius:10px; border:1px solid #d4d4d8; box-sizing:border-box; font-size:18px; font-weight:700; text-align:center; outline:none; font-family:'Inter';">
             </div>
 

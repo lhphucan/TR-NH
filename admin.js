@@ -390,6 +390,75 @@ function calcRevenueByYear() {
 let LOAD_LIMIT = 200;
 const LOAD_LIMIT_STEP = 300;
 
+// Tóm tắt ca hôm nay: trước phải cuộn hết danh sách mới biết còn sót gì
+function renderTodayBar() {
+    const bar = document.getElementById('today-bar');
+    if (!bar) return;
+    if (dbPath !== 'data/' || !currentData) { bar.style.display = 'none'; return; }
+
+    const todayStr = getDStr(new Date());
+    let n = 0, noPrice = 0, noLink = 0, revenue = 0, pending = 0;
+    Object.keys(currentData).forEach(id => {
+        const ts = parseInt(id.split('_')[1]);
+        if (!ts || getDStr(new Date(ts)) !== todayStr) return;
+        const c = currentData[id];
+        n++;
+        if (!c.price) noPrice++;
+        if (!c.links) noLink++;
+        if (c.client_uploads) pending++;
+        if (c.price && c.price !== 'Miễn phí') revenue += parseInt(String(c.price).replace(/\D/g, ''), 10) || 0;
+    });
+
+    if (!n) { bar.style.display = 'none'; return; }
+
+    const chip = (label, val, cls, filter) => {
+        const color = cls === 'warn' ? '#b45309' : (cls === 'ok' ? '#3f6212' : '#52525b');
+        const bg = cls === 'warn' ? '#fffbeb' : (cls === 'ok' ? '#f7fee7' : '#fafafa');
+        const bd = cls === 'warn' ? '#fcd34d' : (cls === 'ok' ? '#bef264' : '#e4e4e7');
+        const click = filter ? ` onclick="filterToday('${filter}')" style="cursor:pointer;` : ' style="';
+        return `<button type="button"${click} background:${bg}; color:${color}; border:1px solid ${bd}; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600; font-family:'Inter'; white-space:nowrap;">${label}: ${val}</button>`;
+    };
+
+    bar.style.display = 'block';
+    bar.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px 14px; background:#fff; border:1px solid #e4e4e7; border-radius:12px; margin-bottom:14px;">
+        <span style="font-size:12px; font-weight:700; color:#111; text-transform:uppercase; margin-right:4px;">Hôm nay</span>
+        ${chip('Khách', n, '', 'all')}
+        ${noPrice ? chip('Chưa nhập tiền', noPrice, 'warn', 'noprice') : ''}
+        ${noLink ? chip('Chưa trả ảnh', noLink, 'warn', 'nolink') : ''}
+        ${pending ? chip('Yêu cầu in', pending, 'warn', 'pending') : ''}
+        ${(!noPrice && !noLink) ? chip('Đã xong hết', '✓', 'ok', '') : ''}
+        <span style="margin-left:auto; font-size:14px; font-weight:700; color:#111; font-variant-numeric:tabular-nums;">${revenue.toLocaleString('vi-VN')} ₫</span>
+    </div>`;
+}
+
+// Bấm vào con số trên thanh hôm nay -> lọc thẳng ra các phiên đó
+function filterToday(kind) {
+    const todayStr = getDStr(new Date());
+    document.getElementById('search-box').value = '';
+    let shown = 0;
+
+    document.querySelectorAll('.date-group').forEach(group => {
+        const head = group.querySelector('.date-header span:first-child');
+        const isToday = head && head.innerText.indexOf(todayStr) !== -1;
+        let anyCard = false;
+
+        group.querySelectorAll('.client-card').forEach(card => {
+            let ok = isToday;
+            if (ok && kind === 'noprice') ok = card.classList.contains('card-no-price');
+            if (ok && kind === 'nolink') ok = !card.querySelector('.link-manager .link-row');
+            if (ok && kind === 'pending') ok = !!card.querySelector('[onclick^="delClientUp"]');
+            card.style.display = ok ? 'flex' : 'none';
+            if (ok) { anyCard = true; shown++; }
+        });
+        group.style.display = anyCard ? 'block' : 'none';
+    });
+
+    const empty = document.getElementById('empty-msg');
+    document.querySelector('.empty-text').innerText = 'Không có phiên nào khớp.';
+    empty.style.display = shown ? 'none' : 'block';
+    if (shown) Toast.fire({ icon: 'info', title: `Đang xem ${shown} phiên` });
+}
+
 // Cập nhật tại chỗ một thẻ khách, không dựng lại DOM.
 // Bỏ qua ô mà người dùng đang gõ để không cướp con trỏ.
 function patchCard(clientId, c) {
@@ -431,6 +500,12 @@ function patchCard(clientId, c) {
             }
         });
     }
+
+    // Tên hoặc SĐT đổi -> huy hiệu khách quen và ô tìm kiếm phải dựng lại
+    const h4 = card.querySelector('h4 span');
+    if (h4 && h4.innerText !== (c.name || 'Khách hàng')) return true;
+    const search = card.getAttribute('data-search') || '';
+    if (c.phone && search.indexOf(String(c.phone)) === -1) return true;
 
     // Số ảnh hoặc yêu cầu in đổi -> cấu trúc thẻ khác, phải vẽ đầy đủ
     const shownLinks = card.querySelectorAll('.link-manager .link-row').length;
@@ -475,7 +550,7 @@ function load() {
                     fullDataCache = null;
                     // patchCard trả true nếu cấu trúc thẻ đổi (thêm/bớt ảnh) -> cần vẽ đầy đủ
                     const needFull = changed.map(id => patchCard(id, newData[id])).some(Boolean);
-                    if (!needFull) return;
+                    if (!needFull) { renderTodayBar(); return; }
                 }
             }
         }
@@ -513,6 +588,14 @@ function load() {
 
         const sortedDates = Object.keys(groupedData).sort((a, b) => groupedData[b].timestamp - groupedData[a].timestamp);
         const todayStr = getDStr(new Date());
+
+        // Đếm số lần chụp theo SĐT để đánh dấu khách quen — nhân viên không có
+        // cách nào biết ai từng đến, dù hơn 200 khách đã quay lại
+        const visitCount = {};
+        Object.values(currentData).forEach(c => {
+            const p = String(c.phone || '').replace(/\D/g, '');
+            if (p.length >= 9) visitCount[p] = (visitCount[p] || 0) + 1;
+        });
 
         sortedDates.forEach(date => {
             const groupDiv = document.createElement('div'); groupDiv.className = 'date-group';
@@ -568,6 +651,8 @@ function load() {
                     `<button class="btn-move-client admin-only" onclick="moveCustomer('${client.id}', '${safeName}')"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg> CHUYỂN CƠ SỞ KHÁC</button>
                     <button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> CHUYỂN VÀO THÙNG RÁC</button>`;
 
+                const cPhone = String(client.phone || '').replace(/\D/g, '');
+                const visits = (cPhone.length >= 9 && visitCount[cPhone]) || 0;
                 const pVal = client.price ? normalizePrice(client.price) : ""; const pmVal = client.payment || "";
                 const isFree = (pVal === 'Miễn phí');
 
@@ -579,14 +664,19 @@ function load() {
                                 <div style="font-size: 11px; color: #a1a1aa; font-family: monospace; font-weight: 600;">#${maKh}</div>
                                 <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'ĐÃ TRẢ ẢNH' : 'ĐANG CHỤP'}</span>
                             </div>
-                            <h4 style="margin: 0 0 5px 0; font-size: 16px;">${escapeHTML(client.name || 'Khách hàng')}</h4>
-                            <div style="font-size: 13px; color: #52525b; margin-bottom: 5px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> ${client.phone}</div>
+                            <h4 style="margin: 0 0 5px 0; font-size: 16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                <span>${escapeHTML(client.name || 'Khách hàng')}</span>
+                                ${visits > 1 ? `<span title="Khách đã đến ${visits} lần" style="font-size:10px; font-weight:700; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; padding:2px 7px; border-radius:20px; white-space:nowrap;">KHÁCH QUEN · ${visits}</span>` : ''}
+                            </h4>
+                            <div style="font-size: 13px; color: #52525b; margin-bottom: 5px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> <span>${escapeHTML(client.phone)}</span>
+                                ${(dbPath === 'data/') ? `<button onclick="editClientInfo('${client.id}')" class="admin-only" title="Sửa tên và số điện thoại" style="background:none; border:none; cursor:pointer; color:#a1a1aa; padding:0 0 0 8px; font-size:11px; font-weight:600; font-family:'Inter';">SỬA</button>` : ''}
+                            </div>
                             <div style="font-size: 13px; color: #52525b; margin-bottom: 15px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${client.time}</div>
                             
                             <div style="margin-top:auto;">
                                 <div style="font-size:11px; font-weight:600; color:#a1a1aa; margin-bottom:5px; text-transform:uppercase;">Thu nhập:</div>
                                 <div style="display:flex; gap:5px;">
-                                    <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="" list="price-list" ${isFree ? 'disabled' : ''} onchange="updateMoney('${client.id}')">
+                                    <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="" list="price-list" inputmode="numeric" ${isFree ? 'disabled' : ''} onchange="updateMoney('${client.id}')" onkeydown="if(event.key==='Enter'){this.blur();}">
                                     <select id="payment_${client.id}" class="price-select" onchange="updatePayment('${client.id}')">
                                         <option value="" ${(!isFree && !pmVal) ? 'selected' : ''}></option>
                                         <option value="Tiền mặt" ${(pmVal === 'Tiền mặt' && !isFree) ? 'selected' : ''}>Tiền mặt</option>
@@ -646,6 +736,7 @@ function load() {
                 });
                 _restoreDrafts = {};
 
+                renderTodayBar();
                 filterData();
             }, err => {
                 // Không có nhánh lỗi thì mất quyền đọc chỉ hiện danh sách trống, không ai biết vì sao
@@ -934,6 +1025,43 @@ function load() {
             const taAfter = document.getElementById('new_' + clientId);
             if (taAfter) taAfter.value = "";
             Toast.fire({ icon: 'success', title: 'Đã lưu link' });
+        }
+
+        // Khách nhập nhầm SĐT thì không tra lại được ảnh; trước phải xoá phiên rồi
+        // bảo khách tạo lại, mất luôn ảnh đã trả.
+        function editClientInfo(clientId) {
+            if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên sửa được' });
+            const c = currentData && currentData[clientId];
+            if (!c) return;
+
+            Swal.fire({
+                title: 'Sửa thông tin khách',
+                html: `
+                    <div style="text-align:left; font-family:'Inter'; margin-top:6px;">
+                        <label style="font-size:11px; font-weight:700; color:#666; display:block; margin-bottom:5px; text-transform:uppercase;">Họ tên</label>
+                        <input id="swal-name" class="swal2-input" style="margin:0 0 12px; width:100%; font-family:'Inter';" value="${escapeHTML(c.name || '')}" maxlength="60">
+                        <label style="font-size:11px; font-weight:700; color:#666; display:block; margin-bottom:5px; text-transform:uppercase;">Số điện thoại</label>
+                        <input id="swal-phone" class="swal2-input" style="margin:0; width:100%; font-family:'Inter';" inputmode="numeric" value="${escapeHTML(c.phone || '')}" maxlength="15">
+                    </div>`,
+                showCancelButton: true,
+                confirmButtonText: 'Lưu',
+                cancelButtonText: '<span style="color:#111">Hủy</span>',
+                confirmButtonColor: '#111',
+                preConfirm: () => {
+                    const name = (document.getElementById('swal-name').value || '').trim();
+                    const phoneRaw = (document.getElementById('swal-phone').value || '').trim();
+                    const digits = phoneRaw.replace(/\D/g, '');
+                    if (!name) { Swal.showValidationMessage('Chưa nhập tên'); return false; }
+                    if (digits.length < 9 || digits.length > 11) { Swal.showValidationMessage('Số điện thoại phải 9-11 số'); return false; }
+                    return { name: name.slice(0, 60), phone: digits };
+                }
+            }).then(r => {
+                if (!r.isConfirmed || !r.value) return;
+                if (r.value.name === c.name && r.value.phone === String(c.phone || '')) return;
+                db.ref(dbPath + br + '/' + clientId).update(r.value)
+                  .then(() => Toast.fire({ icon: 'success', title: 'Đã cập nhật' }))
+                  .catch(err => Swal.fire('Lỗi', 'Không lưu được: ' + err.message, 'error'));
+            });
         }
 
         // Nhân viên sửa lại link đã dán (dán nhầm thư mục, đổi link chia sẻ...)
@@ -1444,10 +1572,34 @@ function fmtMoneyStr(raw) {
     return parseInt(num, 10).toLocaleString('vi-VN') + ' đ';
 }
 
+// Mức giá hay dùng nhất của chính cơ sở này, để bấm một chạm thay vì gõ 6 chữ số
+function renderQuickPrice() {
+    const box = document.getElementById('quick-price');
+    if (!box) return;
+    const freq = {};
+    Object.values(currentData || {}).forEach(c => {
+        const v = parseInt(String(c.price || '').replace(/\D/g, ''), 10);
+        if (v > 0) freq[v] = (freq[v] || 0) + 1;
+    });
+    const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 4)
+                      .map(x => parseInt(x[0], 10)).sort((a, b) => a - b);
+    if (!top.length) { box.innerHTML = ''; return; }
+    box.innerHTML = top.map(v =>
+        `<button type="button" onclick="pickQuickPrice(${v})" style="padding:10px 4px; border:1px solid #d4d4d8; background:#fff; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; font-family:'Inter'; color:#111;">${Math.round(v/1000)}k</button>`
+    ).join('');
+}
+
+function pickQuickPrice(v) {
+    const inp = document.getElementById('price-amount-input');
+    if (inp) inp.value = v.toLocaleString('vi-VN');
+    confirmPrice();
+}
+
 function openPriceModal(clientId, currentPay) {
     _priceClientId = clientId;
     _paySelected = (currentPay === 'Chuyển khoản') ? 'Chuyển khoản' : 'Tiền mặt';
     document.getElementById('price-amount-input').value = '';
+    renderQuickPrice();
     selectPay(_paySelected);
     document.getElementById('price-modal').style.display = 'flex';
     setTimeout(() => { const a = document.getElementById('price-amount-input'); if (a && a.style.display !== 'none') a.focus(); }, 100);
@@ -1459,6 +1611,7 @@ function selectPay(method) {
     document.querySelectorAll('#price-modal .pay-opt').forEach(b => b.classList.toggle('active', b.getAttribute('data-pay') === method));
     // Miễn phí: ẩn ô tiền; TM/CK: hiện ô tiền
     document.getElementById('price-amount-wrap').style.display = (method === 'Miễn phí') ? 'none' : 'block';
+    if (method !== 'Miễn phí') renderQuickPrice();
 }
 
 function confirmPrice() {
