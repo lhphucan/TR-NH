@@ -1197,7 +1197,10 @@ function load() {
             let html = '<div class="shoot-head">Chọn ảnh trả khách</div><div class="shoot-row">';
             ready.forEach(s => {
                 const diff = Math.round((shootTs(s, clientTs) - clientTs) / 60000);
-                const diffText = diff === 0 ? 'cùng lúc' : (diff > 0 ? `sau ${diff} phút` : `trước ${-diff} phút`);
+                const abs = Math.abs(diff);
+                // Quá 90 phút thì đọc theo giờ cho gọn, chênh lớn thế thường không phải khách này
+                const gap = abs >= 90 ? `${Math.round(abs / 60)} giờ` : `${abs} phút`;
+                const diffText = diff === 0 ? 'cùng lúc' : (diff > 0 ? `sau ${gap}` : `trước ${gap}`);
                 const who = taken[s.id];
                 html += `<div class="shoot-card${who ? ' taken' : ''}">
                     <div class="shoot-thumb">${s.thumbs && s.thumbs.length
