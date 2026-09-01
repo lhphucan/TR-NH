@@ -6,6 +6,81 @@ let IMGBB_API_KEY = IMGBB_FALLBACK_KEY;
 // Apps Script cấp mã truy cập để đọc ảnh khách gửi trong Drive của tiệm
 let GS_URL = '';
 
+// Máy đồng bộ ảnh chụp của từng cơ sở (thư mục trong mục "Máy tính" của Drive)
+const BOOTH_BY_BRANCH = { phucyen: 'SelfboothPY', vinhyen: 'SelfboothVY', xuanhoa: 'SelfboothXH' };
+const PHOTO_ROOT = '用户照片文件';   // thư mục chứa các lượt chụp
+const EDITED_NAME = '实时精修';      // thư mục ảnh đã tinh chỉnh, gửi cho khách
+
+let _driveToken = '';        // token dùng lại trong 50 phút, đỡ gọi Apps Script mỗi lần
+let _driveTokenAt = 0;
+const _shootCache = {};      // { 'phucyen|20260902': { at, list } }
+
+async function driveToken() {
+    if (_driveToken && Date.now() - _driveTokenAt < 50 * 60 * 1000) return _driveToken;
+    const d = await gsCall({ action: 'token' });
+    _driveToken = d.token;
+    _driveTokenAt = Date.now();
+    return _driveToken;
+}
+
+async function driveQuery(q, fields) {
+    const token = await driveToken();
+    const url = 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q)
+              + '&fields=' + (fields || 'files(id,name)') + '&pageSize=200&orderBy=name desc';
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) {
+        if (res.status === 401) { _driveToken = ''; }  // token hết hạn -> xin lại lần sau
+        throw new Error('Drive từ chối (HTTP ' + res.status + ')');
+    }
+    return (await res.json()).files || [];
+}
+
+// Liệt kê lượt chụp trong ngày của một cơ sở, mới nhất trước.
+// Đọc thẳng Drive API vì để Apps Script quét thư mục mất tới 80 giây.
+async function listShoots(branchId, ymd) {
+    const key = branchId + '|' + ymd;
+    const c = _shootCache[key];
+    if (c && Date.now() - c.at < 60000) return c.list;   // dùng lại trong 1 phút
+
+    const boothName = BOOTH_BY_BRANCH[branchId];
+    if (!boothName) throw new Error('Chưa biết máy chụp của cơ sở này');
+
+    // Có thể tồn tại nhiều thư mục trùng tên -> lấy cái thật sự chứa ảnh
+    const booths = await driveQuery(`name='${boothName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    let rootId = null;
+    for (const b of booths) {
+        const sub = await driveQuery(`'${b.id}' in parents and name='${PHOTO_ROOT}' and trashed=false`);
+        if (sub.length) { rootId = sub[0].id; break; }
+    }
+    if (!rootId) throw new Error('Không tìm thấy thư mục ảnh của ' + boothName);
+
+    const shoots = await driveQuery(`'${rootId}' in parents and name contains '${ymd}' and trashed=false`);
+
+    // Lấy thư mục đã tinh chỉnh + ảnh xem trước, chạy song song cho nhanh
+    const list = await Promise.all(shoots.map(async s => {
+        const item = { folderName: s.name, time: s.name.substring(8, 10) + ':' + s.name.substring(10, 12) };
+        try {
+            const ed = await driveQuery(`'${s.id}' in parents and name='${EDITED_NAME}' and trashed=false`);
+            if (!ed.length) return item;                  // chưa tinh chỉnh xong
+            item.id = ed[0].id;
+            item.url = 'https://drive.google.com/drive/folders/' + ed[0].id;
+            const imgs = await driveQuery(
+                `'${ed[0].id}' in parents and mimeType contains 'image/' and trashed=false`,
+                'files(id,name,thumbnailLink)'
+            );
+            item.count = imgs.length;
+            // Ảnh ghép khung dễ nhận ra khách nhất -> đưa lên đầu
+            imgs.sort((a, b) => (/selfbooth|noir/i.test(a.name) ? 0 : 1) - (/selfbooth|noir/i.test(b.name) ? 0 : 1));
+            item.thumbs = imgs.slice(0, 3).map(x => x.thumbnailLink).filter(Boolean);
+        } catch (e) { /* lượt này lỗi thì bỏ qua, không chặn cả danh sách */ }
+        return item;
+    }));
+
+    list.sort((a, b) => b.folderName.localeCompare(a.folderName));
+    _shootCache[key] = { at: Date.now(), list };
+    return list;
+}
+
 // Apps Script thỉnh thoảng trả trang HTML trung gian thay vì JSON -> thử lại
 async function gsCall(params, tries) {
     if (!GS_URL) throw new Error('Chưa cấu hình nơi lưu ảnh');
@@ -732,7 +807,15 @@ function load() {
                             ${clientUploadsHtml}
                             <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> ẢNH ĐÃ TRẢ KHÁCH (${client.links ? Object.keys(client.links).length : 0})</div>
                             <div style="flex-grow:1; display:flex; flex-direction:column; gap:5px;">${linksHtml}</div>
-                            
+
+                            ${(dbPath === 'data/' && !client.links) ? `
+                            <div class="shoot-picker" id="shoots_${client.id}" data-ts="${client.ts}">
+                                <button type="button" class="shoot-load" onclick="loadShootPicker('${client.id}')">
+                                    <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                    XEM ẢNH VỪA CHỤP
+                                </button>
+                            </div>` : ''}
+
                             ${(dbPath === 'data/') ? `
                             <div class="add-box">
                                 <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
@@ -1062,6 +1145,90 @@ function load() {
             const taAfter = document.getElementById('new_' + clientId);
             if (taAfter) taAfter.value = "";
             Toast.fire({ icon: 'success', title: 'Đã lưu link' });
+        }
+
+        // Hiện các lượt chụp cùng ngày để chọn thẳng, không phải mở Drive copy link
+        async function loadShootPicker(clientId) {
+            const box = document.getElementById('shoots_' + clientId);
+            if (!box) return;
+            if (!GS_URL) return Toast.fire({ icon: 'warning', title: 'Chưa cấu hình nơi lưu ảnh trong Quản lý' });
+
+            const ts = parseInt(box.getAttribute('data-ts')) || Date.now();
+            const d = new Date(ts);
+            const ymd = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+
+            box.innerHTML = '<div class="shoot-loading">Đang đọc ảnh vừa chụp...</div>';
+            try {
+                const list = await listShoots(br, ymd);
+                if (!list.length) {
+                    box.innerHTML = `<div class="shoot-loading">Không có lượt chụp nào ngày ${getDStr(d)}
+                        <button type="button" class="shoot-load" style="margin-top:8px;" onclick="loadShootPicker('${clientId}')">Thử lại</button></div>`;
+                    return;
+                }
+                renderShootPicker(clientId, list, ts);
+            } catch (e) {
+                box.innerHTML = `<div class="shoot-loading">Không đọc được: ${escapeHTML(e.message)}
+                    <button type="button" class="shoot-load" style="margin-top:8px;" onclick="loadShootPicker('${clientId}')">Thử lại</button></div>`;
+            }
+        }
+
+        function renderShootPicker(clientId, list, clientTs) {
+            const box = document.getElementById('shoots_' + clientId);
+            if (!box) return;
+
+            // Lượt đã gán cho khách khác thì không cho chọn lại, tránh hai khách chung một thư mục
+            const taken = {};
+            Object.keys(currentData || {}).forEach(cid => {
+                const c = currentData[cid];
+                if (!c.links) return;
+                Object.values(c.links).forEach(l => {
+                    const m = String(l.url || '').match(/folders\/([\w-]+)/);
+                    if (m) taken[m[1]] = c.name || 'khách khác';
+                });
+            });
+
+            const ready = list.filter(s => s.id);
+            const notReady = list.filter(s => !s.id);
+
+            // Gần giờ khách quét nhất lên đầu — khách thường quét ngay sau khi chụp
+            ready.sort((a, b) => Math.abs(shootTs(a, clientTs) - clientTs) - Math.abs(shootTs(b, clientTs) - clientTs));
+
+            let html = '<div class="shoot-head">Chọn ảnh trả khách</div><div class="shoot-row">';
+            ready.forEach(s => {
+                const diff = Math.round((shootTs(s, clientTs) - clientTs) / 60000);
+                const diffText = diff === 0 ? 'cùng lúc' : (diff > 0 ? `sau ${diff} phút` : `trước ${-diff} phút`);
+                const who = taken[s.id];
+                html += `<div class="shoot-card${who ? ' taken' : ''}">
+                    <div class="shoot-thumb">${s.thumbs && s.thumbs.length
+                        ? `<img src="${escapeHTML(s.thumbs[0])}" alt="" referrerpolicy="no-referrer">` : '<span>—</span>'}</div>
+                    <div class="shoot-time">${s.time}</div>
+                    <div class="shoot-diff">${diffText}</div>
+                    <div class="shoot-count">${s.count || 0} ảnh</div>
+                    ${who
+                        ? `<div class="shoot-taken">Đã trả cho ${escapeHTML(who)}</div>`
+                        : `<button type="button" class="shoot-pick" onclick="pickShoot('${clientId}', '${escapeHTML(s.url)}')">CHỌN</button>`}
+                </div>`;
+            });
+            html += '</div>';
+
+            if (notReady.length) {
+                html += `<div class="shoot-note">${notReady.length} lượt chưa tinh chỉnh xong (${notReady.map(s => s.time).join(', ')}) — sửa xong sẽ hiện ở đây</div>`;
+            }
+            box.innerHTML = html;
+        }
+
+        // Giờ chụp lấy từ tên thư mục dạng 20260902210042
+        function shootTs(s, fallback) {
+            const n = s.folderName || '';
+            if (!/^\d{14}/.test(n)) return fallback;
+            return new Date(+n.slice(0, 4), +n.slice(4, 6) - 1, +n.slice(6, 8),
+                            +n.slice(8, 10), +n.slice(10, 12), +n.slice(12, 14)).getTime();
+        }
+
+        function pickShoot(clientId, url) {
+            const ta = document.getElementById('new_' + clientId);
+            if (ta) ta.value = url;
+            addLink(clientId);
         }
 
         // Khách nhập nhầm SĐT thì không tra lại được ảnh; trước phải xoá phiên rồi
