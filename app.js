@@ -22,6 +22,7 @@ let pastSessions = [];   // các lượt chụp trước của cùng SĐT (mọi
 // Khai báo ở đây vì window.onload gọi loadDriveEndpoint() ngay từ đầu file:
 // let không được hoisting nên để dưới sẽ lỗi và biến mãi rỗng.
 let GS_URL = '';
+let currentClientName = '';  // tên trên PHIÊN đang mở, không phải ô nhập
 
 function loadImgbbKey() {
     return db.ref('config/imgbb_key').once('value')
@@ -374,6 +375,7 @@ function startNewSession() {
 function renderHistory(history, branch) {
     detachLive();
     currentClientId = null;
+    currentClientName = '';
     document.getElementById('form-ui').style.display = 'none';
     document.getElementById('result-ui').style.display = 'block';
     document.getElementById('upload-box').style.display = 'none';
@@ -495,6 +497,7 @@ function lookupAnother() {
 
 function backToForm() {
     currentClientId = null;
+    currentClientName = '';
     document.getElementById('result-ui').style.display = 'none';
     document.getElementById('form-ui').style.display = 'block';
     document.getElementById('spinner').style.display = 'none';
@@ -504,6 +507,8 @@ function backToForm() {
 
 function renderData(data, branch) {
     currentClientId = data.id;
+    // Tên lấy từ phiên đang mở: ô nhập và localStorage có thể còn tên khách trước
+    currentClientName = data.name || '';
     document.getElementById('form-ui').style.display = 'none';
     document.getElementById('result-ui').style.display = 'block';
 
@@ -619,8 +624,10 @@ async function sendToShop() {
             const day = getDStr(new Date()).replace(/\//g, '-');
             const maKh = String(currentClientId).split('_')[1].slice(-4);
 
-            // Mỗi khách một thư mục riêng, kèm tên để nhân viên nhận ra ngay
-            const cName = (document.getElementById('name').value.trim() || localStorage.getItem('pn_name') || 'Khach')
+            // Mỗi khách một thư mục riêng, kèm tên để nhân viên nhận ra ngay.
+            // Phải lấy tên của PHIÊN đang mở — ô nhập và localStorage còn giữ tên
+            // của lượt tra cứu trước nên dễ ghi nhầm sang khách khác.
+            const cName = (currentClientName || 'Khach')
                             .replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40) || 'Khach';
             const info = await gsCall({ action: 'folder', branch: bName, day, client: `${cName} - ${maKh}` });
             folderUrl = info.folderUrl || '';
