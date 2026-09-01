@@ -1266,13 +1266,24 @@ function moveCustomer(clientId, clientName) {
 
 // Gọi thử imgbb bằng ảnh 1x1 để biết key sống hay đã hết lượt
 async function testImgbbKey(key) {
-    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    // Ảnh 1x1 thật (Blob) — gửi chuỗi base64 trần bị imgbb chặn ở một số mạng
+    const bin = atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
     const fd = new FormData();
-    fd.append('image', png); // imgbb nhận base64 trực tiếp
+    fd.append('image', new Blob([bytes], { type: 'image/png' }), 'test.png');
+
     const res = await fetch('https://api.imgbb.com/1/upload?key=' + encodeURIComponent(key), { method: 'POST', body: fd });
     const data = await res.json();
     if (data.success) return { ok: true };
-    return { ok: false, msg: (data.error && data.error.message) || 'Key không dùng được' };
+
+    // imgbb trả nhiều loại lỗi khác nhau, phân biệt để không đổ oan cho key
+    const msg = (data.error && data.error.message) || '';
+    if (/invalid api/i.test(msg)) return { ok: false, kind: 'key', msg: 'Key không tồn tại hoặc đã bị huỷ. Kiểm tra lại chuỗi vừa dán.' };
+    if (/rate limit/i.test(msg)) return { ok: false, kind: 'limit', msg: 'Key đúng nhưng đã hết lượt tải. Cần tạo key mới trên api.imgbb.com.' };
+    if (/forbidden/i.test(msg)) return { ok: false, kind: 'network', msg: 'imgbb đang chặn mạng bạn đang dùng, không phải lỗi key. Thử lại bằng 4G hoặc mạng khác.' };
+    return { ok: false, kind: 'other', msg: msg || 'Không rõ lỗi từ imgbb.' };
 }
 
 async function checkImgbbKey() {
@@ -1283,8 +1294,14 @@ async function checkImgbbKey() {
     const old = btn.innerHTML; btn.disabled = true; btn.innerHTML = 'ĐANG KIỂM TRA...';
     try {
         const r = await testImgbbKey(key);
-        if (r.ok) Swal.fire({ title: 'Key dùng được', text: 'Tải ảnh thử thành công. Bấm Lưu để áp dụng.', icon: 'success', confirmButtonColor: '#111' });
-        else Swal.fire({ title: 'Key không dùng được', text: r.msg, icon: 'error', confirmButtonColor: '#111' });
+        if (r.ok) {
+            Swal.fire({ title: 'Key dùng được', text: 'Tải ảnh thử thành công. Bấm Lưu để áp dụng.', icon: 'success', confirmButtonColor: '#111' });
+        } else if (r.kind === 'network') {
+            // Không phải lỗi key -> đừng để nhân viên tưởng key hỏng mà đi tạo key mới
+            Swal.fire({ title: 'Chưa kiểm tra được', text: r.msg, icon: 'warning', confirmButtonColor: '#111' });
+        } else {
+            Swal.fire({ title: 'Key không dùng được', text: r.msg, icon: 'error', confirmButtonColor: '#111' });
+        }
     } catch (e) {
         Swal.fire({ title: 'Lỗi', text: 'Không gọi được imgbb: ' + e.message, icon: 'error', confirmButtonColor: '#111' });
     } finally { btn.disabled = false; btn.innerHTML = old; }
