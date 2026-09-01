@@ -43,6 +43,7 @@ function loadBranches() {
 
 window.onload = () => {
     loadImgbbKey();
+    loadDriveEndpoint();
     loadBranches().then(() => {
         if(localStorage.getItem('pn_name')) document.getElementById('name').value = localStorage.getItem('pn_name');
         if(localStorage.getItem('pn_phone')) document.getElementById('phone').value = localStorage.getItem('pn_phone');
@@ -111,6 +112,53 @@ function safeUrl(u) {
 
 // Dùng khi URL nằm trong chuỗi innerHTML
 function safeUrlAttr(u) { return escapeHTML(safeUrl(u)); }
+
+// ===== Lưu ảnh khách gửi vào Drive của tiệm =====
+// Apps Script chỉ cấp mã truy cập ngắn hạn; ảnh đi thẳng lên Drive API vì đẩy
+// cả file qua Apps Script chậm gấp 6-10 lần và rất thất thường.
+let GS_URL = '';
+
+function loadDriveEndpoint() {
+    return db.ref('config/gs_url').once('value')
+        .then(s => { GS_URL = (s.val() || '').trim(); })
+        .catch(() => { GS_URL = ''; });
+}
+
+// Apps Script thỉnh thoảng trả trang HTML trung gian thay vì JSON -> thử lại
+async function gsCall(params, tries) {
+    if (!GS_URL) throw new Error('Chưa cấu hình nơi lưu ảnh');
+    const url = GS_URL + '?' + new URLSearchParams(params).toString();
+    for (let i = 0; i < (tries || 3); i++) {
+        try {
+            const txt = await (await fetch(url)).text();
+            if (txt.trim().startsWith('{')) {
+                const d = JSON.parse(txt);
+                if (d.ok) return d;
+                throw new Error(d.error || 'Lỗi không rõ');
+            }
+        } catch (e) {
+            if (i === (tries || 3) - 1) throw e;
+        }
+        await new Promise(r => setTimeout(r, 700));
+    }
+    throw new Error('Không kết nối được nơi lưu ảnh');
+}
+
+// Đẩy một ảnh lên Drive, trả về id file
+async function driveUpload(file, token, folderId) {
+    const boundary = 'pn' + Date.now() + Math.random().toString(36).slice(2);
+    const meta = { name: file.name || 'anh.jpg', parents: [folderId] };
+    const head = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${file.type || 'image/jpeg'}\r\n\r\n`;
+    const body = new Blob([head, file, `\r\n--${boundary}--`]);
+
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
+        body
+    });
+    if (!res.ok) throw new Error('Drive từ chối (HTTP ' + res.status + ')');
+    return await res.json();
+}
 
 // Đầu số di động Việt Nam đang lưu hành (sau chuyển đổi 11 số về 10 số)
 const VN_PREFIX = /^0(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-9])\d{7}$/;
@@ -486,7 +534,7 @@ function renderData(data, branch) {
         html += `<div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e5e5e5;"><b style="font-size: 12px; color: #111; text-transform: uppercase;">Ảnh bạn đã yêu cầu in:</b>`;
         Object.keys(data.client_uploads).forEach((uploadId) => {
             const u = data.client_uploads[uploadId] || {};
-            const n = Array.isArray(u.links) ? u.links.length : 0;
+            const n = (Array.isArray(u.links) ? u.links.length : 0) + (Array.isArray(u.drive) ? u.drive.length : 0);
             html += `<div class="link-row" style="background: #fff;"><span style="font-size:12px; color:#666;">Gửi lúc: ${escapeHTML(u.time)}</span><span style="font-size: 12px; color: #111; font-weight: 600;">${n} ảnh</span></div>`;
         });
         html += `</div>`;
@@ -559,34 +607,65 @@ async function sendToShop() {
     const branch = document.getElementById('branch').value;
 
     try {
-        let uploadedUrls = [];
+        let uploadedUrls = [];   // ảnh lưu trên imgbb (đường dự phòng)
+        let driveFiles = [];     // ảnh lưu trên Drive: {id, name}
+        let folderUrl = '';
         let lastErr = '';
-        for (let i = 0; i < files.length; i++) {
-            const formData = new FormData(); formData.append("image", files[i]);
-            const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
-            const resData = await response.json();
-            // Rules chỉ nhận https -> ép về https (imgbb phục vụ cả 2)
-            if (resData.success) uploadedUrls.push(String(resData.data.url).replace(/^http:\/\//i, 'https://'));
-            else lastErr = (resData.error && resData.error.message) || '';
-            setBtnLoading(i + 1, files.length);
+
+        if (GS_URL) {
+            // Xin token + thư mục MỘT lần cho cả lượt gửi
+            const bName = (BRANCHES_CACHE[branch] && BRANCHES_CACHE[branch].name) || branch;
+            const day = getDStr(new Date()).replace(/\//g, '-');
+            const info = await gsCall({ action: 'folder', branch: bName, day });
+            folderUrl = info.folderUrl || '';
+
+            for (let i = 0; i < files.length; i++) {
+                try {
+                    const maKh = String(currentClientId).split('_')[1].slice(-4);
+                    const ext = (files[i].name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0];
+                    const renamed = new File([files[i]], `${maKh}_${String(i + 1).padStart(2, '0')}${ext}`, { type: files[i].type });
+                    const r = await driveUpload(renamed, info.token, info.folderId);
+                    driveFiles.push({ id: r.id, name: r.name });
+                } catch (e) {
+                    lastErr = e.message;
+                }
+                setBtnLoading(i + 1, files.length);
+            }
+        } else {
+            // Chưa cấu hình Drive -> dùng imgbb như trước
+            for (let i = 0; i < files.length; i++) {
+                const formData = new FormData(); formData.append("image", files[i]);
+                const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
+                const resData = await response.json();
+                // Rules chỉ nhận https -> ép về https (imgbb phục vụ cả 2)
+                if (resData.success) uploadedUrls.push(String(resData.data.url).replace(/^http:\/\//i, 'https://'));
+                else lastErr = (resData.error && resData.error.message) || '';
+                setBtnLoading(i + 1, files.length);
+            }
         }
 
-        if (uploadedUrls.length === 0) {
-            // Hết lượt tải của dịch vụ ảnh -> không phải lỗi mạng của khách, báo cho đúng
+        const okCount = driveFiles.length + uploadedUrls.length;
+        if (okCount === 0) {
             if (/rate limit/i.test(lastErr)) {
                 return showError("Hệ thống ảnh đang quá tải. Vui lòng báo nhân viên để được hỗ trợ.");
             }
-            return showError("Không tải được ảnh. Vui lòng thử lại hoặc báo nhân viên.");
+            return showError("Không gửi được ảnh. Vui lòng thử lại hoặc báo nhân viên.");
         }
 
-        await db.ref('data/' + branch + '/' + currentClientId + '/client_uploads/U_' + Date.now()).set({
-            time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + new Date().toLocaleDateString('vi-VN'),
-            links: uploadedUrls
-        });
+        const record = {
+            time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + new Date().toLocaleDateString('vi-VN')
+        };
+        if (driveFiles.length) {
+            record.drive = driveFiles;
+            if (folderUrl) record.folder = folderUrl;
+        }
+        if (uploadedUrls.length) record.links = uploadedUrls;
 
-        const missed = files.length - uploadedUrls.length;
+        await db.ref('data/' + branch + '/' + currentClientId + '/client_uploads/U_' + Date.now()).set(record);
+
+        const missed = files.length - okCount;
         const doneMsg = missed > 0
-            ? `Đã gửi ${uploadedUrls.length}/${files.length} ảnh. ${missed} ảnh lỗi, bạn gửi lại giúp tiệm nhé.`
+            ? `Đã gửi ${okCount}/${files.length} ảnh. ${missed} ảnh lỗi, bạn gửi lại giúp tiệm nhé.`
             : 'Yêu cầu in ảnh đã được gửi đến tiệm.';
 
         if(typeof Swal !== 'undefined') Swal.fire({title: 'Hoàn tất', text: doneMsg, icon: missed > 0 ? 'warning' : 'success', confirmButtonColor: '#111'});

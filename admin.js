@@ -2,6 +2,29 @@
 // để hết lượt tải là đổi được ngay trên web, không phải sửa code rồi push lại.
 const IMGBB_FALLBACK_KEY = 'c15b60c02964bf3cebe1cf861ac30b19';
 let IMGBB_API_KEY = IMGBB_FALLBACK_KEY;
+
+// Apps Script cấp mã truy cập để đọc ảnh khách gửi trong Drive của tiệm
+let GS_URL = '';
+
+// Apps Script thỉnh thoảng trả trang HTML trung gian thay vì JSON -> thử lại
+async function gsCall(params, tries) {
+    if (!GS_URL) throw new Error('Chưa cấu hình nơi lưu ảnh');
+    const url = GS_URL + '?' + new URLSearchParams(params).toString();
+    for (let i = 0; i < (tries || 3); i++) {
+        try {
+            const txt = await (await fetch(url)).text();
+            if (txt.trim().startsWith('{')) {
+                const d = JSON.parse(txt);
+                if (d.ok) return d;
+                throw new Error(d.error || 'Lỗi không rõ');
+            }
+        } catch (e) {
+            if (i === (tries || 3) - 1) throw e;
+        }
+        await new Promise(r => setTimeout(r, 700));
+    }
+    throw new Error('Không kết nối được nơi lưu ảnh');
+}
 let userRole = ''; let dbPath = 'data/'; let br = null;
 let currentData = {}; let previousCount = 0; let isFirstLoad = true;
 let db, auth;
@@ -131,6 +154,13 @@ async function setupUI() {
         const inp = document.getElementById('imgbb-key-input');
         if (inp && inp !== document.activeElement) inp.value = k;
     }, () => { /* không đọc được -> dùng key dự phòng */ });
+
+    // Nơi lưu ảnh khách gửi: có link Apps Script thì dùng Drive, để trống thì imgbb
+    db.ref('config/gs_url').on('value', s => {
+        GS_URL = (s.val() || '').trim();
+        const inp = document.getElementById('gs-url-input');
+        if (inp && inp !== document.activeElement) inp.value = GS_URL;
+    }, () => { GS_URL = ''; });
 
     const bSnap = await db.ref('branches').once('value');
     branchesCache = bSnap.val() || {};
@@ -622,9 +652,17 @@ function load() {
                 if (client.client_uploads && dbPath === 'data/') {
                     Object.keys(client.client_uploads).forEach(uId => {
                         const up = client.client_uploads[uId];
+                        // Ảnh cũ nằm trên imgbb (links), ảnh mới nằm trên Drive (drive)
+                        const upLinks = Array.isArray(up.links) ? up.links : [];
+                        const upDrive = Array.isArray(up.drive) ? up.drive : [];
+                        const upCount = upLinks.length + upDrive.length;
+
                         let imgLinks = "";
-                        up.links.forEach((l, i) => {
-                            imgLinks += `<a href="${l}" target="_blank" style="color:#111; font-size:12px; font-weight:600; text-decoration:underline; margin-right:12px; display:inline-block; margin-top:5px;">Ảnh gốc ${i+1}</a>`;
+                        upLinks.forEach((l, i) => {
+                            imgLinks += `<a href="${escapeHTML(l)}" target="_blank" rel="noopener" style="color:#111; font-size:12px; font-weight:600; text-decoration:underline; margin-right:12px; display:inline-block; margin-top:5px;">Ảnh gốc ${i+1}</a>`;
+                        });
+                        upDrive.forEach((d, i) => {
+                            imgLinks += `<a href="https://drive.google.com/file/d/${escapeHTML(d.id)}/view" target="_blank" rel="noopener" style="color:#111; font-size:12px; font-weight:600; text-decoration:underline; margin-right:12px; display:inline-block; margin-top:5px;">Ảnh gốc ${upLinks.length + i + 1}</a>`;
                         });
                         clientUploadsHtml += `
                             <div style="background:#fafafa; border:1px dashed #d4d4d8; padding:12px 15px; border-radius:10px; margin-bottom:12px;">
@@ -634,7 +672,8 @@ function load() {
                                         Yêu cầu in (${up.time.split(' ')[1] || ''})
                                     </span>
                                     <div style="display:flex; gap:8px;">
-                                        <button onclick="downloadAllUploads('${client.id}', '${uId}', this)" class="btn btn-add" style="padding:0 12px; height:28px; font-size:11px;">TẢI TẤT CẢ (${up.links ? up.links.length : 0})</button>
+                                        ${up.folder ? `<a href="${escapeHTML(up.folder)}" target="_blank" rel="noopener" class="btn" style="padding:0 12px; height:28px; font-size:11px; background:#fff; border:1px solid #d4d4d8; color:#52525b; text-decoration:none;">MỞ THƯ MỤC</a>` : ''}
+                                        <button onclick="downloadAllUploads('${client.id}', '${uId}', this)" class="btn btn-add" style="padding:0 12px; height:28px; font-size:11px;">TẢI TẤT CẢ (${upCount})</button>
                                         <button onclick="delClientUp('${client.id}', '${uId}')" class="btn-del-link" style="padding: 0 10px; height:28px;">Hoàn tất (Xóa)</button>
                                     </div>
                                 </div>
@@ -1098,8 +1137,12 @@ function load() {
         // không vướng CORS của imgbb (thẻ <a download> không đọc nội dung ảnh).
         async function downloadAllUploads(cId, uId, btn) {
             const up = currentData && currentData[cId] && currentData[cId].client_uploads && currentData[cId].client_uploads[uId];
-            const links = (up && Array.isArray(up.links)) ? up.links : [];
-            if (!links.length) return Toast.fire({ icon: 'warning', title: 'Không có ảnh để tải' });
+            const imgbbLinks = (up && Array.isArray(up.links)) ? up.links : [];
+            const driveItems = (up && Array.isArray(up.drive)) ? up.drive : [];
+            // Ảnh cũ trên imgbb và ảnh mới trên Drive dùng chung một nút
+            const items = imgbbLinks.map(u => ({ kind: 'url', url: u }))
+                            .concat(driveItems.map(d => ({ kind: 'drive', id: d.id })));
+            if (!items.length) return Toast.fire({ icon: 'warning', title: 'Không có ảnh để tải' });
 
             const name = (currentData[cId].name || 'Khach').replace(/[^\p{L}\p{N} _-]/gu, '').trim().replace(/\s+/g, '_') || 'Khach';
             const maKh = cId.split('_')[1].slice(-4);
@@ -1107,13 +1150,29 @@ function load() {
             const oldHtml = btn ? btn.innerHTML : '';
             if (btn) { btn.disabled = true; }
 
+            // Ảnh Drive nằm trong thư mục riêng tư -> xin mã truy cập một lần cho cả lượt
+            let token = '';
+            if (driveItems.length) {
+                if (btn) btn.innerHTML = 'ĐANG CHUẨN BỊ...';
+                try {
+                    token = (await gsCall({ action: 'token' })).token;
+                } catch (e) {
+                    if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
+                    return Swal.fire({ title: 'Không tải được', text: 'Không lấy được quyền đọc ảnh: ' + e.message, icon: 'error', confirmButtonColor: '#111' });
+                }
+            }
+
             let ok = 0, failed = 0, done = 0;
             const PARALLEL = 4; // ảnh khách gửi thường 2-4 MB, tải tuần tự mất cả phút
 
             // Phải tải nội dung ảnh về rồi mới lưu được: thuộc tính download bị
             // bỏ qua với ảnh khác tên miền, trình duyệt sẽ mở tab xem thay vì tải.
-            const fetchOne = async (url) => {
-                const res = await fetch(url);
+            const fetchOne = async (it) => {
+                const url = it.kind === 'drive'
+                    ? 'https://www.googleapis.com/drive/v3/files/' + it.id + '?alt=media'
+                    : it.url;
+                const opt = it.kind === 'drive' ? { headers: { Authorization: 'Bearer ' + token } } : {};
+                const res = await fetch(url, opt);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 return await res.blob();
             };
@@ -1130,17 +1189,17 @@ function load() {
             };
 
             // Tải song song theo lô, nhưng lưu file theo đúng thứ tự ảnh
-            for (let start = 0; start < links.length; start += PARALLEL) {
-                const batch = links.slice(start, start + PARALLEL);
-                const results = await Promise.all(batch.map(async (url) => {
+            for (let start = 0; start < items.length; start += PARALLEL) {
+                const batch = items.slice(start, start + PARALLEL);
+                const results = await Promise.all(batch.map(async (it) => {
                     try {
-                        const blob = await fetchOne(url);
+                        const blob = await fetchOne(it);
                         done++;
-                        if (btn) btn.innerHTML = `ĐANG TẢI ${done}/${links.length}...`;
+                        if (btn) btn.innerHTML = `ĐANG TẢI ${done}/${items.length}...`;
                         return { blob };
                     } catch (e) {
                         done++;
-                        if (btn) btn.innerHTML = `ĐANG TẢI ${done}/${links.length}...`;
+                        if (btn) btn.innerHTML = `ĐANG TẢI ${done}/${items.length}...`;
                         return { err: true };
                     }
                 }));
@@ -1148,7 +1207,10 @@ function load() {
                 results.forEach((r, k) => {
                     const i = start + k;
                     if (r.err) { failed++; return; }
-                    const ext = (String(links[i]).match(/\.(jpe?g|png|webp|gif|bmp|heic)(?:\?|$)/i) || [, 'jpg'])[1];
+                    const src = items[i].kind === 'drive' ? (r.blob.type || '') : String(items[i].url);
+                    const ext = items[i].kind === 'drive'
+                        ? ((r.blob.type || '').split('/')[1] || 'jpg').replace('jpeg', 'jpg')
+                        : (src.match(/\.(jpe?g|png|webp|gif|bmp|heic)(?:\?|$)/i) || [, 'jpg'])[1];
                     saveBlob(r.blob, `${name}_${maKh}_${String(i + 1).padStart(2, '0')}.${ext}`);
                     ok++;
                 });
@@ -1159,7 +1221,7 @@ function load() {
             if (ok === 0) {
                 Swal.fire({ title: 'Không tải được', text: 'Ảnh có thể đã bị xoá khỏi imgbb. Thử bấm vào từng link để kiểm tra.', icon: 'error', confirmButtonColor: '#111' });
             } else if (failed > 0) {
-                Swal.fire({ title: 'Tải một phần', text: `Đã tải ${ok}/${links.length} ảnh. ${failed} ảnh lỗi (có thể đã bị xoá khỏi imgbb).`, icon: 'warning', confirmButtonColor: '#111' });
+                Swal.fire({ title: 'Tải một phần', text: `Đã tải ${ok}/${items.length} ảnh. ${failed} ảnh lỗi (có thể đã bị xoá).`, icon: 'warning', confirmButtonColor: '#111' });
             } else {
                 Toast.fire({ icon: 'success', title: `Đã tải ${ok} ảnh` });
             }
@@ -1321,6 +1383,39 @@ function saveImgbbKey() {
     }
     db.ref('config/imgbb_key').set(key)
         .then(() => Toast.fire({ icon: 'success', title: key ? 'Đã lưu key mới' : 'Đã xoá key, dùng key mặc định' }))
+        .catch(err => Swal.fire('Lỗi', 'Không lưu được: ' + err.message, 'error'));
+}
+
+async function checkDriveUrl() {
+    const url = (document.getElementById('gs-url-input').value || '').trim();
+    if (!url) return Toast.fire({ icon: 'warning', title: 'Chưa nhập link' });
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)) {
+        return Swal.fire({ title: 'Link không đúng', text: 'Link phải có dạng https://script.google.com/macros/s/.../exec', icon: 'warning', confirmButtonColor: '#111' });
+    }
+
+    const btn = document.getElementById('btn-check-drive');
+    const old = btn.innerHTML; btn.disabled = true; btn.innerHTML = 'ĐANG KIỂM TRA...';
+    const saved = GS_URL;
+    try {
+        GS_URL = url;
+        await gsCall({ action: 'token' });
+        Swal.fire({ title: 'Kết nối được', text: 'Đã lấy được quyền ghi vào Drive. Bấm Lưu để áp dụng.', icon: 'success', confirmButtonColor: '#111' });
+    } catch (e) {
+        Swal.fire({ title: 'Không kết nối được', text: e.message + '. Kiểm tra lại quyền truy cập của bản triển khai (phải là "Bất kỳ ai").', icon: 'error', confirmButtonColor: '#111' });
+    } finally {
+        GS_URL = saved;
+        btn.disabled = false; btn.innerHTML = old;
+    }
+}
+
+function saveDriveUrl() {
+    if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên được đổi' });
+    const url = (document.getElementById('gs-url-input').value || '').trim();
+    if (url && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)) {
+        return Swal.fire({ title: 'Link không đúng', text: 'Link phải có dạng https://script.google.com/macros/s/.../exec', icon: 'warning', confirmButtonColor: '#111' });
+    }
+    db.ref('config/gs_url').set(url)
+        .then(() => Toast.fire({ icon: 'success', title: url ? 'Đã lưu — ảnh mới sẽ vào Drive' : 'Đã xoá — quay lại dùng imgbb' }))
         .catch(err => Swal.fire('Lỗi', 'Không lưu được: ' + err.message, 'error'));
 }
 

@@ -60,10 +60,17 @@
             ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))",
             "$uploadId": {
               ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))) || (auth == null && !data.exists() && newData.exists())",
-              ".validate": "auth != null || ($uploadId.matches(/^U_[0-9]{10,16}$/) && newData.hasChildren(['time','links']))",
+              ".validate": "auth != null || ($uploadId.matches(/^U_[0-9]{10,16}$/) && newData.hasChild('time') && (newData.hasChild('links') || newData.hasChild('drive')))",
               "time":  { ".validate": "auth != null || (newData.isString() && newData.val().length <= 30)" },
+              "folder": { ".validate": "auth != null || (newData.isString() && newData.val().matches(/^https:\\/\\/drive\\.google\\.com\\//))" },
               "links": {
                 "$i": { ".validate": "auth != null || (newData.isString() && newData.val().matches(/^https:\\/\\//))" }
+              },
+              "drive": {
+                "$i": {
+                  "id":   { ".validate": "auth != null || (newData.isString() && newData.val().length <= 80)" },
+                  "name": { ".validate": "auth != null || (newData.isString() && newData.val().length <= 120)" }
+                }
               }
             }
           },
