@@ -36,6 +36,12 @@ async function driveQuery(q, fields) {
     return (await res.json()).files || [];
 }
 
+// Drive mặc định trả ảnh cỡ 220px (~46 KB) dù ô chỉ rộng 44-150px.
+// Xin đúng cỡ cần: ô ảnh mẫu 44px chỉ tốn 12 KB, nhẹ gấp gần 4 lần.
+function thumbAt(url, size) {
+    return String(url || '').replace(/=s\d+(-c)?$/, '=s' + size);
+}
+
 // Tìm ảnh ghép khung trong một lượt.
 // Tên file không đáng tin: máy chụp đặt IMG_4673.JPG hay 195960(H006...).jpg
 // tuỳ lúc. Nhưng ảnh ghép nặng hơn hẳn — đo được 22,5 MB so với trung bình
@@ -83,7 +89,7 @@ async function loadLinkThumbs() {
             b.classList.remove('loading');
             if (url) {
                 // Không đặt referrerpolicy: Google từ chối phục vụ ảnh khi thiếu referrer
-                b.innerHTML = `<img src="${escapeHTML(url)}" alt="" title="Bấm để xem lớn"
+                b.innerHTML = `<img src="${escapeHTML(url)}" alt="" title="Bấm để xem lớn" loading="lazy" decoding="async"
                                     onclick="zoomShoot('${escapeHTML(url)}', 'Ảnh đã gửi khách')"
                                     onerror="this.parentNode.classList.add('empty'); this.remove();">`;
             } else {
@@ -103,7 +109,8 @@ async function loadLinkThumbs() {
             );
             // Ưu tiên ảnh ghép khung: đó là thứ khách nhận được
             const pick = findFramed(imgs) || imgs[Math.floor(imgs.length / 2)];
-            _folderThumb[fid] = (pick && pick.thumbnailLink) || null;
+            // Ô rộng 44px, không cần ảnh 220px
+            _folderThumb[fid] = (pick && thumbAt(pick.thumbnailLink, 100)) || null;
         } catch (e) {
             _folderThumb[fid] = null;
         }
@@ -156,6 +163,7 @@ async function listShoots(branchId, ymd) {
             const pool = real.length ? real : imgs;
             pool.sort((a, b) => a.name.localeCompare(b.name));
             const mid = pool[Math.floor(pool.length / 2)];
+            // Thẻ rộng 150px -> ảnh 220px là vừa, không cần đổi
             item.thumbs = [mid && mid.thumbnailLink].filter(Boolean);
         } catch (e) { /* lượt này lỗi thì bỏ qua, không chặn cả danh sách */ }
         return item;
@@ -1387,7 +1395,7 @@ function load() {
                 const who = taken[s.id];
                 html += `<div class="shoot-card${who ? ' taken' : ''}">
                     <div class="shoot-thumb"${s.thumbs && s.thumbs.length ? ` onclick="zoomShoot('${escapeHTML(s.thumbs[0])}', '${s.time}')"` : ''}>${s.thumbs && s.thumbs.length
-                        ? `<img src="${escapeHTML(s.thumbs[0])}" alt="" onerror="this.parentNode.classList.add('empty'); this.remove();">` : '<span>—</span>'}</div>
+                        ? `<img src="${escapeHTML(s.thumbs[0])}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('empty'); this.remove();">` : '<span>—</span>'}</div>
                     <div class="shoot-time">${s.time}</div>
                     <div class="shoot-diff">${diffText}</div>
                     <div class="shoot-count">${s.count || 0} ảnh</div>
@@ -1501,8 +1509,8 @@ function load() {
 
         // Xem to để chắc chắn đúng khách trước khi gửi link
         function zoomShoot(thumbUrl, time) {
-            // Link thumbnail của Drive kết thúc bằng =s220, đổi số là ra ảnh lớn hơn
-            const big = String(thumbUrl).replace(/=s\d+(-c)?$/, '=s1200');
+            // Ô hiển thị dùng ảnh nhỏ cho nhẹ; xem to thì xin lại bản lớn
+            const big = thumbAt(thumbUrl, 1200);
             Swal.fire({
                 title: 'Lượt chụp ' + escapeHTML(time || ''),
                 imageUrl: big,
