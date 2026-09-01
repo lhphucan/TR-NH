@@ -427,16 +427,24 @@ function openRevenueModal() {
     document.getElementById('revenue-modal').style.display = 'flex';
 }
 
-// Danh sách chỉ tải 200 phiên gần nhất -> báo cáo phải đọc riêng toàn bộ,
-// nếu không doanh thu tháng/năm và Excel sẽ thiếu dữ liệu cũ.
-function withFullData(fn) {
+// Danh sách chỉ tải các phiên gần nhất -> báo cáo phải đọc riêng, nếu không
+// doanh thu tháng/năm và Excel sẽ thiếu dữ liệu cũ.
+// Đọc cả nhánh là 377 KB (Phúc Yên) nên chỉ lấy đúng khoảng cần: id phiên là
+// S_<timestamp> nên lọc theo khoảng key được.
+function withFullData(fn, fromTs, toTs) {
     if (dbPath !== 'data/') return fn(currentData);       // thùng rác không phân trang
-    if (fullDataCache && fullDataCache._br === br) return fn(fullDataCache.data);
+
+    const key = br + '|' + (fromTs || 0) + '|' + (toTs || 0);
+    if (fullDataCache && fullDataCache._key === key) return fn(fullDataCache.data);
+
+    let q = db.ref('data/' + br).orderByKey();
+    if (fromTs) q = q.startAt('S_' + fromTs);
+    if (toTs && toTs !== Infinity) q = q.endAt('S_' + toTs);
 
     Toast.fire({ icon: 'info', title: 'Đang tải dữ liệu...' });
-    return db.ref('data/' + br).once('value').then(snap => {
+    return q.once('value').then(snap => {
         const all = snap.val() || {};
-        fullDataCache = { _br: br, data: all };
+        fullDataCache = { _key: key, data: all };
         fn(all);
     }).catch(err => Swal.fire('Lỗi', 'Không tải được dữ liệu: ' + err.message, 'error'));
 }
@@ -493,13 +501,18 @@ function calcRevenue() {
             dUnkEl.style.display = dUnknown ? 'block' : 'none';
             dUnkEl.innerText = dUnknown ? ('⚠ Chưa chọn hình thức TT: ' + dUnknown.toLocaleString('vi-VN') + ' ₫ (' + dUnknownN + ' lượt)') : '';
         }
-    });
+    }, fTs, tTs);
 }
 
 function calcRevenueByMonth() {
     const mStrInput = document.getElementById('rev-month-val').value; 
     if(!mStrInput) return Toast.fire({ icon: 'warning', title: 'Vui lòng chọn tháng!' });
-    const targetMonth = mStrInput; 
+    const targetMonth = mStrInput;
+
+    // Chỉ tải đúng tháng đó thay vì cả nhánh (377 KB ở Phúc Yên)
+    const mParts = targetMonth.split('/').map(Number);
+    const mFrom = new Date(mParts[1], mParts[0] - 1, 1).getTime();
+    const mTo = new Date(mParts[1], mParts[0], 0, 23, 59, 59, 999).getTime();
 
     withFullData(all => {
         let mTotal = 0, mCash = 0, mTrans = 0, mCount = 0, mFree = 0;
@@ -541,11 +554,13 @@ function calcRevenueByMonth() {
             mUnkEl.style.display = mUnknown ? 'block' : 'none';
             mUnkEl.innerText = mUnknown ? ('⚠ Chưa chọn hình thức TT: ' + mUnknown.toLocaleString('vi-VN') + ' ₫ (' + mUnknownN + ' lượt)') : '';
         }
-    });
+    }, mFrom, mTo);
 }
 
 function calcRevenueByYear() {
     const yyyy = document.getElementById('rev-year-picker').value;
+    const yFrom = yyyy ? new Date(+yyyy, 0, 1).getTime() : 0;
+    const yTo = yyyy ? new Date(+yyyy, 11, 31, 23, 59, 59, 999).getTime() : 0;
     withFullData(all => {
         let yTotal = 0, yCash = 0, yTrans = 0, yCount = 0, yFree = 0;
         let yUnknown = 0, yUnknownN = 0;
@@ -583,7 +598,7 @@ function calcRevenueByYear() {
         }
         document.getElementById('rev-year-cash').innerText = yCash.toLocaleString('vi-VN') + ' ₫';
         document.getElementById('rev-year-trans').innerText = yTrans.toLocaleString('vi-VN') + ' ₫';
-    });
+    }, yFrom, yTo);
 }
 
 // Chỉ tải N phiên gần nhất: dựng lại cả nghìn thẻ mỗi lần DB đổi làm admin đứng hình.
@@ -1184,7 +1199,7 @@ function load() {
 
                     link.setAttribute("download", fileName + ".csv"); document.body.appendChild(link); link.click();
                     Toast.fire({ icon: 'success', title: `Đã xuất ${count} khách hàng` });
-                    });
+                    }, fTs, tTs);
                 }
             });
         }
@@ -1351,7 +1366,10 @@ function load() {
 
             let html = `<div class="shoot-head">
                 <span>Chọn ảnh trả khách</span>
-                <button type="button" class="shoot-close" onclick="closeShootPicker('${clientId}')" title="Đóng">✕</button>
+                <span style="display:flex; gap:2px;">
+                    <button type="button" class="shoot-close" onclick="refreshShootPicker('${clientId}')" title="Xem lượt chụp mới nhất">⟳</button>
+                    <button type="button" class="shoot-close" onclick="closeShootPicker('${clientId}')" title="Đóng">✕</button>
+                </span>
             </div><div class="shoot-row">`;
             ready.forEach(s => {
                 const diff = Math.round((shootTs(s, clientTs) - clientTs) / 60000);
@@ -1420,6 +1438,16 @@ function load() {
                 if (btn) { btn.classList.remove('busy'); btn.innerHTML = old; }
             }
 
+            // Thêm ảnh ghép xong thì ảnh mẫu phải đổi theo, nếu không nhân viên
+            // nhìn vào vẫn tưởng chưa ghép
+            if (ok) {
+                delete _folderThumb[folderId];
+                document.querySelectorAll(`.link-thumb[data-fid="${folderId}"]`).forEach(el => {
+                    el.innerHTML = ''; el.classList.remove('empty'); el.removeAttribute('title');
+                });
+                loadLinkThumbs();
+            }
+
             if (ok === files.length) Toast.fire({ icon: 'success', title: `Đã thêm ${ok} ảnh vào thư mục khách` });
             else if (ok) Swal.fire({ title: 'Gửi một phần', text: `Đã thêm ${ok}/${files.length} ảnh. Số còn lại lỗi: ${lastErr}`, icon: 'warning', confirmButtonColor: '#111' });
             else Swal.fire({ title: 'Không gửi được', text: lastErr || 'Không rõ lỗi', icon: 'error', confirmButtonColor: '#111' });
@@ -1440,6 +1468,18 @@ function load() {
                 throw new Error('Drive từ chối (HTTP ' + res.status + ')');
             }
             return await res.json();
+        }
+
+        // Khách vừa chụp xong mà danh sách còn nhớ bản cũ -> bỏ nhớ, đọc lại Drive
+        function refreshShootPicker(clientId) {
+            const box = document.getElementById('shoots_' + clientId);
+            const ts = box ? parseInt(box.getAttribute('data-ts')) : 0;
+            if (ts) {
+                const d = new Date(ts);
+                const ymd = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+                delete _shootCache[br + '|' + ymd];
+            }
+            loadShootPicker(clientId);
         }
 
         // Thu lại về nút bấm, khỏi chiếm chỗ khi chưa cần
