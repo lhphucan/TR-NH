@@ -160,7 +160,7 @@ button.today-chip:hover { border-color: #18181b; background: #fff; }
 .rev-warn { display: none; font-size: 11px; color: #ef4444; font-weight: 600; margin-top: 6px; }
 
 /* ===== Chọn ảnh vừa chụp (thay cho việc mở Drive copy link) ===== */
-.shoot-picker { margin-top: auto; border-top: 1px dashed #e4e4e7; padding-top: 14px; }
+.shoot-picker { margin-top: 4px; }
 .shoot-load { display: flex; align-items: center; justify-content: center; width: 100%; padding: 10px; background: #fff; border: 1px dashed #d4d4d8; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: #52525b; font-family: 'Inter'; transition: 0.15s; }
 .shoot-load:hover { border-color: #18181b; color: #18181b; background: #fafafa; }
 

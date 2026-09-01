@@ -806,15 +806,16 @@ function load() {
                         <div class="link-manager">
                             ${clientUploadsHtml}
                             <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> ẢNH ĐÃ TRẢ KHÁCH (${client.links ? Object.keys(client.links).length : 0})</div>
-                            <div style="flex-grow:1; display:flex; flex-direction:column; gap:5px;">${linksHtml}</div>
-
-                            ${(dbPath === 'data/' && !client.links) ? `
-                            <div class="shoot-picker" id="shoots_${client.id}" data-ts="${client.ts}">
-                                <button type="button" class="shoot-load" onclick="loadShootPicker('${client.id}')">
-                                    <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                    XEM ẢNH VỪA CHỤP
-                                </button>
-                            </div>` : ''}
+                            <div style="flex-grow:1; display:flex; flex-direction:column; gap:5px;">
+                                ${linksHtml}
+                                ${(dbPath === 'data/' && !client.links) ? `
+                                <div class="shoot-picker" id="shoots_${client.id}" data-ts="${client.ts}">
+                                    <button type="button" class="shoot-load" onclick="loadShootPicker('${client.id}')">
+                                        <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                        XEM ẢNH VỪA CHỤP
+                                    </button>
+                                </div>` : ''}
+                            </div>
 
                             ${(dbPath === 'data/') ? `
                             <div class="add-box">
