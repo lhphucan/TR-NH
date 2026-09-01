@@ -42,18 +42,24 @@ async function driveQuery(q, fields) {
 // 3,8 MB trong cùng thư mục, trong khi lượt không có ảnh ghép thì file lớn
 // nhất chỉ hơn trung bình 1,3-1,8 lần.
 function findFramed(imgs) {
-    const byName = imgs.find(x => /selfbooth|noir/i.test(x.name));
-    if (byName) return byName;
+    const byName = imgs.filter(x => /selfbooth|noir/i.test(x.name));
+    // Google không tạo thumbnail cho mọi file (PNG ghép 23 MB thường không có)
+    // -> trong các ảnh ghép, ưu tiên cái xem trước được
+    if (byName.length) return byName.find(x => x.thumbnailLink) || byName[0];
 
     const sized = imgs.filter(x => parseInt(x.size || 0) > 0);
     if (sized.length < 3) return null;
-    const biggest = sized.reduce((a, b) => (parseInt(a.size) > parseInt(b.size) ? a : b));
 
-    // So với trung bình các ảnh CÒN LẠI: nếu tính cả nó thì chính nó kéo
-    // trung bình lên và tự làm mình không vượt ngưỡng.
-    const rest = sized.filter(x => x.id !== biggest.id);
-    const avg = rest.reduce((s, x) => s + parseInt(x.size), 0) / rest.length;
-    return parseInt(biggest.size) >= avg * 3 ? biggest : null;
+    // Lấy mốc từ ảnh chụp thường: dùng trung vị nửa nhỏ thay vì trung bình,
+    // vì một lượt có thể có vài bản ghép cùng cỡ lớn, chúng tự kéo trung bình
+    // lên rồi làm chính mình không vượt ngưỡng.
+    const asc = sized.slice().sort((a, b) => parseInt(a.size) - parseInt(b.size));
+    const base = parseInt(asc[Math.floor(asc.length / 4)].size);
+    const framed = sized.filter(x => parseInt(x.size) >= base * 3);
+    if (!framed.length) return null;
+
+    // Nhiều bản ghép -> ưu tiên bản xem trước được
+    return framed.find(x => x.thumbnailLink) || framed[0];
 }
 
 // Ảnh mẫu của thư mục đã gửi khách — nhìn là biết đã trả đúng ảnh chưa,
