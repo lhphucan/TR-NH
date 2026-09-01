@@ -617,14 +617,18 @@ async function sendToShop() {
             // Xin token + thư mục MỘT lần cho cả lượt gửi
             const bName = (BRANCHES_CACHE[branch] && BRANCHES_CACHE[branch].name) || branch;
             const day = getDStr(new Date()).replace(/\//g, '-');
-            const info = await gsCall({ action: 'folder', branch: bName, day });
+            const maKh = String(currentClientId).split('_')[1].slice(-4);
+
+            // Mỗi khách một thư mục riêng, kèm tên để nhân viên nhận ra ngay
+            const cName = (document.getElementById('name').value.trim() || localStorage.getItem('pn_name') || 'Khach')
+                            .replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40) || 'Khach';
+            const info = await gsCall({ action: 'folder', branch: bName, day, client: `${cName} - ${maKh}` });
             folderUrl = info.folderUrl || '';
 
             for (let i = 0; i < files.length; i++) {
                 try {
-                    const maKh = String(currentClientId).split('_')[1].slice(-4);
                     const ext = (files[i].name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0];
-                    const renamed = new File([files[i]], `${maKh}_${String(i + 1).padStart(2, '0')}${ext}`, { type: files[i].type });
+                    const renamed = new File([files[i]], `${cName}_${maKh}_${String(i + 1).padStart(2, '0')}${ext}`, { type: files[i].type });
                     const r = await driveUpload(renamed, info.token, info.folderId);
                     driveFiles.push({ id: r.id, name: r.name });
                 } catch (e) {
