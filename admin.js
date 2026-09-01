@@ -727,7 +727,10 @@ function patchCard(clientId, c) {
     }
 
     const paySel = document.getElementById('payment_' + clientId);
-    if (paySel && paySel !== active) paySel.value = isFree ? 'Miễn phí' : (c.payment || '');
+    if (paySel && paySel !== active) {
+        paySel.value = isFree ? 'Miễn phí' : (c.payment || '');
+        paySel.classList.toggle('is-empty', !paySel.value);
+    }
 
     card.classList.toggle('card-no-price', !pVal && dbPath === 'data/');
 
@@ -952,9 +955,9 @@ function load() {
                             <div style="margin-top:auto;">
                                 <div style="font-size:11px; font-weight:600; color:#a1a1aa; margin-bottom:5px; text-transform:uppercase;">Thu nhập:</div>
                                 <div style="display:flex; gap:5px;">
-                                    <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="" list="price-list" inputmode="numeric" ${isFree ? 'disabled' : ''} onchange="updateMoney('${client.id}')" onkeydown="if(event.key==='Enter'){this.blur();}">
-                                    <select id="payment_${client.id}" class="price-select" onchange="updatePayment('${client.id}')">
-                                        <option value="" ${(!isFree && !pmVal) ? 'selected' : ''}></option>
+                                    <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="Nhập tiền" list="price-list" inputmode="numeric" ${isFree ? 'disabled' : ''} onchange="updateMoney('${client.id}')" onkeydown="if(event.key==='Enter'){this.blur();}">
+                                    <select id="payment_${client.id}" class="price-select${(!isFree && !pmVal) ? ' is-empty' : ''}" onchange="updatePayment('${client.id}')">
+                                        <option value="" ${(!isFree && !pmVal) ? 'selected' : ''}>Chọn hình thức</option>
                                         <option value="Tiền mặt" ${(pmVal === 'Tiền mặt' && !isFree) ? 'selected' : ''}>Tiền mặt</option>
                                         <option value="Chuyển khoản" ${(pmVal === 'Chuyển khoản' && !isFree) ? 'selected' : ''}>Chuyển khoản</option>
                                         <option value="Miễn phí" ${isFree ? 'selected' : ''}>Miễn phí</option>
@@ -1062,6 +1065,8 @@ function load() {
         function updatePayment(clientId) {
             const inp = document.getElementById('price_' + clientId);
             const paySel = document.getElementById('payment_' + clientId);
+            // Chưa chọn thì để chữ gợi ý mờ, chọn rồi thì đậm như giá trị thật
+            if (paySel) paySel.classList.toggle('is-empty', !paySel.value);
             const card = inp.closest('.client-card');
 
             if (paySel.value === 'Miễn phí') {
@@ -2229,7 +2234,7 @@ function confirmPrice() {
     const inp = document.getElementById('price_' + cid);
     const paySel = document.getElementById('payment_' + cid);
     if (inp) { inp.value = price; const card = inp.closest('.client-card'); if (card) card.classList.toggle('card-no-price', !price); }
-    if (paySel) { paySel.value = payment; paySel.disabled = (price === 'Miễn phí'); }
+    if (paySel) { paySel.value = payment; paySel.disabled = (price === 'Miễn phí'); paySel.classList.toggle('is-empty', !payment); }
     document.getElementById('price-modal').style.display = 'none';
     if (_priceResolve) { _priceResolve(true); _priceResolve = null; }
 

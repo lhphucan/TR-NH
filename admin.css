@@ -257,3 +257,9 @@ button.today-chip:hover { border-color: #18181b; background: #fff; }
     .toolbar > div:first-child { border-right: none !important; padding-right: 0 !important; width: 100%; }
     .date-input-sm { flex: 1; min-width: 140px; }
 }
+
+/* Chưa nhập tiền / chưa chọn hình thức: chữ gợi ý mờ để phân biệt với giá trị thật */
+.price-input::placeholder { color: #a1a1aa; }
+.price-select.is-empty { color: #a1a1aa; }
+.price-select option { color: #18181b; }
+.price-select option[value=""] { color: #a1a1aa; }
