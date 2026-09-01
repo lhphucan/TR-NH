@@ -18,6 +18,7 @@ let liveRef = null;      // ref đang lắng nghe phiên hiện tại
 let liveHandler = null;  // callback để gỡ đúng listener
 let lastLinkCount = 0;   // để biết tiệm vừa đẩy thêm ảnh mới
 let isFirstLiveRender = true; // lần vẽ đầu không báo "ảnh mới"
+let pastSessions = [];   // các lượt chụp trước của cùng SĐT (mọi cơ sở)
 
 function loadImgbbKey() {
     return db.ref('config/imgbb_key').once('value')
@@ -79,6 +80,9 @@ function restoreSession(currentBranch) {
     db.ref('data/' + savedBranch + '/' + savedId).once('value').then(snap => {
         if (!snap.exists()) return clearSavedSession(); // tiệm đã xoá phiên
         attachLive(savedId, savedBranch);
+        // Nạp lịch sử các lượt trước để F5 vẫn thấy đủ như lúc tra cứu
+        const ph = normalizePhone((snap.val() || {}).phone);
+        if (ph) loadHistory(ph).then(h => { if (currentClientId === savedId) { pastSessions = h.filter(x => x.id !== savedId); renderData(Object.assign({}, snap.val(), { id: savedId }), savedBranch); } });
     }).catch(() => { /* mất mạng -> để khách tra thủ công */ });
 }
 
@@ -129,6 +133,7 @@ function normalizePhone(raw) {
 // ===== Chống spam tạo phiên (theo thiết bị) =====
 const SPAM_MAX_PER_DAY = 3;       // tối đa 3 phiên mới/ngày/thiết bị
 const SPAM_COOLDOWN_MS = 120000;  // chờ 2 phút giữa 2 lần tạo
+const SESSION_MAX_PER_DAY = 3;    // tối đa 3 lượt/ngày cho cùng SĐT (đọc từ máy chủ)
 
 // Trả null nếu được phép tạo, hoặc chuỗi thông báo nếu bị chặn
 function spamGuardCheck() {
@@ -188,61 +193,19 @@ function checkData() {
 
     const todayStr = getDStr(new Date());
 
-    db.ref('data/' + branch).once('value', (snap) => {
-        let foundData = null;
-        let foundTs = -1;
+    // Quét mọi cơ sở: khách xem được ảnh cũ ở bất kỳ đâu đã chụp.
+    // Trước chỉ tìm phiên trong ngày ở một cơ sở nên hôm sau vào lại là mất ảnh.
+    loadHistory(phoneDigits).then(history => {
+        // Phiên hôm nay ở ĐÚNG cơ sở đang quét -> mở thẳng phiên đó
+        const today = history.filter(h => h.branch === branch && getDStr(new Date(h.ts)) === todayStr);
 
-        snap.forEach(child => {
-            const data = child.val();
-            if (!data) return;
-
-            const ts = parseInt(child.key.split('_')[1]);
-            if (!ts) return; // id hỏng -> bỏ qua, không coi là hôm nay
-            const dStr = getDStr(new Date(ts));
-
-            // So sau khi chuẩn hoá: "0901 234 567", "+84901234567" và "0901234567" là một.
-            // Phiên cũ có SĐT hỏng sẽ không chuẩn hoá được -> dùng chuỗi số thô để khách cũ vẫn tra được.
-            const dbPhone = normalizePhone(data.phone) || String(data.phone || '').replace(/\D/g, '');
-            if (!dbPhone) return; // phiên thiếu SĐT -> không cho ai khớp vào
-
-            // Lọc theo SĐT và phải CÙNG NGÀY HÔM NAY, lấy phiên mới nhất
-            if (dbPhone === phoneDigits && dStr === todayStr && ts > foundTs) {
-                foundData = data;
-                foundData.id = child.key;
-                foundTs = ts;
-            }
-        });
-
-        if (foundData) {
-            attachLive(foundData.id, branch);
+        if (today.length) {
+            attachLive(today[0].id, branch, history);
+        } else if (history.length) {
+            // Có ảnh cũ nhưng chưa chụp hôm nay -> hiện lịch sử, không tự tạo phiên rác
+            renderHistory(history, branch);
         } else {
-            // Tạo phiên mới -> kiểm tra chống spam trước
-            const blocked = spamGuardCheck();
-            if (blocked) {
-                document.getElementById('spinner').style.display = 'none';
-                document.getElementById('btn-text').innerText = 'TRA CỨU';
-                document.getElementById('btn-submit').disabled = false;
-                return showError(blocked);
-            }
-
-            const newId = "S_" + Date.now();
-            const newData = {
-                // Rules giới hạn độ dài -> cắt để không bị từ chối ghi
-                name: (name || "Khách hàng").slice(0, 60),
-                phone: phoneDigits,
-                status: "new",
-                time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})
-            };
-
-            db.ref('data/' + branch + '/' + newId).set(newData).then(() => {
-                spamGuardRecord();
-                attachLive(newId, branch);
-            }).catch(() => {
-                showError("Không tạo được phiên. Vui lòng thử lại hoặc báo nhân viên.");
-                document.getElementById('spinner').style.display = 'none';
-                document.getElementById('btn-text').innerText = 'TRA CỨU';
-                document.getElementById('btn-submit').disabled = false;
-            });
+            createSession(branch, name, phoneDigits);
         }
     }).catch(error => {
         showError("Lỗi kết nối máy chủ. Vui lòng thử lại.");
@@ -252,9 +215,188 @@ function checkData() {
     });
 }
 
-// Lắng nghe realtime đúng phiên của khách: tiệm đẩy ảnh xong là hiện luôn, không cần F5
-function attachLive(clientId, branch) {
+// Quét mọi cơ sở, trả về các lượt chụp của một SĐT, mới nhất trước.
+// Dùng orderByChild để Firebase lọc ở máy chủ — tải cả nhánh về máy khách tốn
+// hàng trăm KB và càng ngày càng nặng.
+function loadHistory(phoneDigits) {
+    const ids = Object.keys(BRANCHES_CACHE);
+
+    // SĐT trong DB lưu không đồng nhất (thiếu số 0 đầu, có dấu cách) -> dò vài dạng
+    const variants = [phoneDigits];
+    if (phoneDigits.startsWith('0')) variants.push(phoneDigits.slice(1));
+    variants.push(phoneDigits.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3'));
+
+    const jobs = [];
+    ids.forEach(bid => variants.forEach(v => {
+        jobs.push(
+            db.ref('data/' + bid).orderByChild('phone').equalTo(v).once('value')
+              .then(snap => ({ bid, snap })).catch(() => null)
+        );
+    }));
+
+    return Promise.all(jobs).then(results => {
+        const seen = {}, out = [];
+        results.forEach(r => {
+            if (!r) return;
+            r.snap.forEach(child => {
+                const key = r.bid + '/' + child.key;
+                if (seen[key]) return;
+                const data = child.val();
+                if (!data) return;
+                const ts = parseInt(child.key.split('_')[1]);
+                if (!ts) return;
+                // Xác nhận lại sau chuẩn hoá: query khớp chuỗi thô nên vẫn phải lọc
+                const dbPhone = normalizePhone(data.phone) || String(data.phone || '').replace(/\D/g, '');
+                if (dbPhone !== phoneDigits) return;
+                seen[key] = 1;
+                out.push({ id: child.key, branch: r.bid, ts, data });
+            });
+        });
+        return out.sort((a, b) => b.ts - a.ts);
+    }).catch(() => []);
+}
+
+function resetSubmitBtn() {
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('btn-text').innerText = 'TRA CỨU';
+    document.getElementById('btn-submit').disabled = false;
+}
+
+// Tạo phiên mới — luôn vào cơ sở đang quét QR, không phải cơ sở của ảnh cũ đang xem
+function createSession(branch, name, phoneDigits) {
+    const blocked = spamGuardCheck();
+    if (blocked) { resetSubmitBtn(); return showError(blocked); }
+
+    // Chặn theo SĐT đọc từ máy chủ: đếm theo thiết bị vô dụng vì khách quét bằng
+    // Zalo / Chrome / Google Lens là mỗi nơi một localStorage.
+    return loadHistory(phoneDigits).then(history => {
+        const todayStr = getDStr(new Date());
+        const todayCount = history.filter(h => getDStr(new Date(h.ts)) === todayStr).length;
+        if (todayCount >= SESSION_MAX_PER_DAY) {
+            resetSubmitBtn();
+            showError(`Số điện thoại này đã có ${todayCount} lượt chụp hôm nay. Vui lòng báo nhân viên nếu cần thêm.`);
+            return;
+        }
+        return doCreateSession(branch, name, phoneDigits, history);
+    });
+}
+
+function doCreateSession(branch, name, phoneDigits, history) {
+    const newId = "S_" + Date.now();
+    const newData = {
+        // Rules giới hạn độ dài -> cắt để không bị từ chối ghi
+        name: (name || "Khách hàng").slice(0, 60),
+        phone: phoneDigits,
+        status: "new",
+        time: new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})
+    };
+
+    return db.ref('data/' + branch + '/' + newId).set(newData).then(() => {
+        spamGuardRecord();
+        attachLive(newId, branch, history);
+    }).catch(() => {
+        showError("Không tạo được phiên. Vui lòng thử lại hoặc báo nhân viên.");
+        resetSubmitBtn();
+    });
+}
+
+// Khách bấm "Tôi vừa chụp hôm nay" ở màn lịch sử
+function startNewSession() {
+    const branch = document.getElementById('branch').value;
+    const bName = (BRANCHES_CACHE[branch] && BRANCHES_CACHE[branch].name) || branch;
+    const name = document.getElementById('name').value.trim() || localStorage.getItem('pn_name') || '';
+    const phoneDigits = normalizePhone(document.getElementById('phone').value);
+    if (!phoneDigits) return showError("Vui lòng nhập lại số điện thoại.");
+
+    const ask = (typeof Swal !== 'undefined')
+        ? Swal.fire({
+            title: 'Bạn vừa chụp hôm nay?',
+            html: `Tạo lượt chụp mới tại <b>${escapeHTML(bName)}</b>.<br><span style="font-size:13px;color:#666">Nếu chỉ muốn xem ảnh cũ, hãy chọn Không.</span>`,
+            icon: 'question', showCancelButton: true,
+            confirmButtonText: 'Đúng, tôi vừa chụp', cancelButtonText: '<span style="color:#111">Không</span>',
+            confirmButtonColor: '#111', cancelButtonColor: '#fff'
+          }).then(r => r.isConfirmed)
+        : Promise.resolve(confirm('Bạn vừa chụp hôm nay tại ' + bName + '?'));
+
+    ask.then(yes => { if (yes) createSession(branch, name, phoneDigits); });
+}
+
+// Khách đã chụp trước đây nhưng chưa có phiên hôm nay: hiện lịch sử để xem lại ảnh
+function renderHistory(history, branch) {
     detachLive();
+    currentClientId = null;
+    document.getElementById('form-ui').style.display = 'none';
+    document.getElementById('result-ui').style.display = 'block';
+    document.getElementById('upload-box').style.display = 'none';
+    setSocialLinks(branch);
+    resetSubmitBtn();
+
+    const bName = (BRANCHES_CACHE[branch] && BRANCHES_CACHE[branch].name) || branch;
+    let html = '';
+
+    history.forEach((h, idx) => {
+        const d = h.data;
+        const dateStr = getDStr(new Date(h.ts));
+        const isToday = dateStr === getDStr(new Date());
+        const hbName = (BRANCHES_CACHE[h.branch] && BRANCHES_CACHE[h.branch].name) || h.branch;
+        const links = d.links ? Object.keys(d.links) : [];
+        const open = idx === 0; // lần gần nhất mở sẵn, các lần cũ thu gọn
+
+        let inner = '';
+        if (links.length) {
+            links.forEach((lid, i) => {
+                const l = d.links[lid] || {};
+                inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><a href="${safeUrlAttr(l.url)}" target="_blank" rel="noopener noreferrer" class="view-btn" onclick="askRating('${escapeHTML(h.branch)}')">Lưu ảnh</a></div>`;
+            });
+        } else {
+            inner = `<div style="font-size:12px; color:#888; text-align:center; padding:14px; background:#fff; border:1px dashed #d4d4d8; border-radius:8px;">
+                <div style="width:8px; height:8px; background:#111; border-radius:50%; animation:pulse 1.5s infinite; display:inline-block; margin-right:5px;"></div>
+                Tiệm chưa gửi ảnh cho lượt này
+            </div>`;
+        }
+
+        html += `<div style="border:1px solid #e5e5e5; border-radius:14px; margin-bottom:12px; overflow:hidden; background:#fafafa;">
+            <button onclick="toggleHistory(${idx})" style="width:100%; background:none; border:none; padding:15px 18px; cursor:pointer; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:10px; font-family:'Inter';">
+                <span>
+                    <span style="font-size:14px; font-weight:700; color:#111;">${isToday ? 'Hôm nay' : dateStr}</span>
+                    <span style="font-size:12px; color:#666; display:block; margin-top:3px;">${escapeHTML(hbName)} · ${links.length} ảnh</span>
+                </span>
+                <span id="hist-arrow-${idx}" style="font-size:12px; color:#888; transform:rotate(${open ? '180' : '0'}deg); transition:0.2s;">▼</span>
+            </button>
+            <div id="hist-body-${idx}" style="display:${open ? 'block' : 'none'}; padding:0 18px 18px;">${inner}</div>
+        </div>`;
+    });
+
+    html += `<div style="margin-top:20px; padding-top:18px; border-top:1px dashed #e5e5e5; text-align:center;">
+        <p style="font-size:13px; color:#666; margin:0 0 12px;">Bạn vừa chụp tại <b>${escapeHTML(bName)}</b> hôm nay?</p>
+        <button onclick="startNewSession()" class="primary-btn" style="padding:13px; font-size:13px;">TẠO LƯỢT CHỤP MỚI</button>
+    </div>`;
+
+    document.getElementById('album-list').innerHTML = html;
+}
+
+function toggleHistory(idx) {
+    const body = document.getElementById('hist-body-' + idx);
+    const arrow = document.getElementById('hist-arrow-' + idx);
+    if (!body) return;
+    const show = body.style.display === 'none';
+    body.style.display = show ? 'block' : 'none';
+    if (arrow) arrow.style.transform = 'rotate(' + (show ? 180 : 0) + 'deg)';
+}
+
+function setSocialLinks(branch) {
+    const social = (BRANCHES_CACHE[branch] && BRANCHES_CACHE[branch].social) || {};
+    document.getElementById('link-fb').href = safeUrl(social.fb);
+    document.getElementById('link-ig').href = safeUrl(social.ig);
+    document.getElementById('link-tk').href = safeUrl(social.tk);
+    document.getElementById('link-map').href = safeUrl(social.map);
+}
+
+// Lắng nghe realtime đúng phiên của khách: tiệm đẩy ảnh xong là hiện luôn, không cần F5
+function attachLive(clientId, branch, history) {
+    detachLive();
+    // Lịch sử các lượt chụp trước, hiện dưới album hôm nay
+    pastSessions = (history || []).filter(h => !(h.branch === branch && h.id === clientId));
 
     // Nhớ phiên để lần sau mở lại vào thẳng album (ngày lấy từ chính id S_<ts>)
     localStorage.setItem('pn_client_id', clientId);
@@ -300,6 +442,7 @@ function clearSavedSession() {
 // Khách bấm "Tra cứu tài khoản khác" -> quên phiên cũ, nếu không reload sẽ vào lại album cũ
 function lookupAnother() {
     detachLive();
+    pastSessions = [];
     clearSavedSession();
     location.reload();
 }
@@ -318,11 +461,8 @@ function renderData(data, branch) {
     document.getElementById('form-ui').style.display = 'none';
     document.getElementById('result-ui').style.display = 'block';
 
-    const social = (BRANCHES_CACHE[branch] && BRANCHES_CACHE[branch].social) || {};
-    document.getElementById('link-fb').href = safeUrl(social.fb);
-    document.getElementById('link-ig').href = safeUrl(social.ig);
-    document.getElementById('link-tk').href = safeUrl(social.tk);
-    document.getElementById('link-map').href = safeUrl(social.map);
+    document.getElementById('upload-box').style.display = 'block';
+    setSocialLinks(branch);
 
     const idTs = data.id.split('_')[1] || '';
     const ts = parseInt(idTs) || Date.now();
@@ -356,11 +496,41 @@ function renderData(data, branch) {
     }
 
     html += `</div>`;
-    document.getElementById('album-list').innerHTML = html;
 
-    document.getElementById('spinner').style.display = 'none';
-    document.getElementById('btn-text').innerText = 'TRA CỨU ALBUM';
-    document.getElementById('btn-submit').disabled = false;
+    // Các lượt chụp trước của cùng SĐT, mọi cơ sở — thu gọn, bấm mới mở
+    if (pastSessions.length) {
+        html += `<div style="margin-top:18px; padding-top:16px; border-top:1px dashed #e5e5e5;">
+            <p style="font-size:12px; font-weight:700; color:#111; text-transform:uppercase; margin:0 0 10px;">Các lần chụp trước</p>`;
+        pastSessions.forEach((h, idx) => {
+            const d = h.data || {};
+            const hDate = getDStr(new Date(h.ts));
+            const hbName = (BRANCHES_CACHE[h.branch] && BRANCHES_CACHE[h.branch].name) || h.branch;
+            const lids = d.links ? Object.keys(d.links) : [];
+            let inner = '';
+            if (lids.length) {
+                lids.forEach((lid, i) => {
+                    const l = d.links[lid] || {};
+                    inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><a href="${safeUrlAttr(l.url)}" target="_blank" rel="noopener noreferrer" class="view-btn" onclick="askRating('${escapeHTML(h.branch)}')">Lưu ảnh</a></div>`;
+                });
+            } else {
+                inner = `<div style="font-size:12px; color:#888; text-align:center; padding:12px;">Lượt này chưa có ảnh</div>`;
+            }
+            html += `<div style="border:1px solid #e5e5e5; border-radius:12px; margin-bottom:10px; overflow:hidden; background:#fafafa;">
+                <button onclick="toggleHistory(${idx})" style="width:100%; background:none; border:none; padding:13px 16px; cursor:pointer; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:10px; font-family:'Inter';">
+                    <span>
+                        <span style="font-size:13px; font-weight:700; color:#111;">${hDate}</span>
+                        <span style="font-size:12px; color:#666; display:block; margin-top:2px;">${escapeHTML(hbName)} · ${lids.length} ảnh</span>
+                    </span>
+                    <span id="hist-arrow-${idx}" style="font-size:12px; color:#888; transition:0.2s;">▼</span>
+                </button>
+                <div id="hist-body-${idx}" style="display:none; padding:0 16px 16px;">${inner}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    document.getElementById('album-list').innerHTML = html;
+    resetSubmitBtn();
 }
 
 async function sendToShop() {

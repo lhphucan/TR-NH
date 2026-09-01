@@ -28,6 +28,10 @@
       "$branchId": {
         ".read": true,
 
+        // Khách tra theo SĐT: có index thì Firebase lọc sẵn ở máy chủ,
+        // không phải tải cả nhánh về máy khách (đang 371 KB chỉ riêng Phúc Yên).
+        ".indexOn": "phone",
+
         // Tiệm cần ghi ở tầng cơ sở để "Dọn sạch dữ liệu" xoá được cả nhánh.
         // Khách (auth == null) không khớp điều kiện này -> chỉ ghi được ở tầng $clientId bên dưới.
         // Tài khoản "XEM THU NHẬP" (viewer) bị loại: chặn ở trang admin là chặn ở trình duyệt,
