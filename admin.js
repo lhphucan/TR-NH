@@ -1264,13 +1264,21 @@ function moveCustomer(clientId, clientName) {
 
 // Gọi thử imgbb bằng ảnh 1x1 để biết key sống hay đã hết lượt
 async function testImgbbKey(key) {
-    // Ảnh 1x1 thật (Blob) — gửi chuỗi base64 trần bị imgbb chặn ở một số mạng
-    const bin = atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    // Ảnh 64x64 vẽ bằng canvas: imgbb từ chối ảnh 1x1 với lỗi "forbidden",
+    // dễ tưởng nhầm là key hỏng hoặc mạng bị chặn.
+    const cv = document.createElement('canvas');
+    cv.width = 64; cv.height = 64;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(0, 0, 64, 64);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(16, 16, 32, 32);
+
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    if (!blob) return { ok: false, kind: 'other', msg: 'Không tạo được ảnh thử trên trình duyệt này.' };
 
     const fd = new FormData();
-    fd.append('image', new Blob([bytes], { type: 'image/png' }), 'test.png');
+    fd.append('image', blob, 'photonoir-test.png');
 
     const res = await fetch('https://api.imgbb.com/1/upload?key=' + encodeURIComponent(key), { method: 'POST', body: fd });
     const data = await res.json();
@@ -1280,7 +1288,7 @@ async function testImgbbKey(key) {
     const msg = (data.error && data.error.message) || '';
     if (/invalid api/i.test(msg)) return { ok: false, kind: 'key', msg: 'Key không tồn tại hoặc đã bị huỷ. Kiểm tra lại chuỗi vừa dán.' };
     if (/rate limit/i.test(msg)) return { ok: false, kind: 'limit', msg: 'Key đúng nhưng đã hết lượt tải. Cần tạo key mới trên api.imgbb.com.' };
-    if (/forbidden/i.test(msg)) return { ok: false, kind: 'network', msg: 'imgbb đang chặn mạng bạn đang dùng, không phải lỗi key. Thử lại bằng 4G hoặc mạng khác.' };
+    if (/forbidden/i.test(msg)) return { ok: false, kind: 'network', msg: 'imgbb từ chối lượt kiểm tra này, không phải lỗi key. Cứ thử gửi một ảnh thật từ trang khách để chắc chắn.' };
     return { ok: false, kind: 'other', msg: msg || 'Không rõ lỗi từ imgbb.' };
 }
 
