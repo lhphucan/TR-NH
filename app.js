@@ -108,6 +108,24 @@ function safeUrl(u) {
 // Dùng khi URL nằm trong chuỗi innerHTML
 function safeUrlAttr(u) { return escapeHTML(safeUrl(u)); }
 
+// Đầu số di động Việt Nam đang lưu hành (sau chuyển đổi 11 số về 10 số)
+const VN_PREFIX = /^0(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-9])\d{7}$/;
+
+// Trả về SĐT dạng chuẩn 10 số, hoặc '' nếu không hợp lệ.
+// Chấp nhận +84 / 84 ở đầu, khoảng trắng, dấu chấm, gạch ngang.
+function normalizePhone(raw) {
+    let d = String(raw || '').replace(/\D/g, '');
+    if (d.startsWith('840') && d.length === 12) d = d.slice(2);        // 840xxxxxxxxx
+    else if (d.startsWith('84') && (d.length === 11 || d.length === 10)) d = '0' + d.slice(2); // 84xxxxxxxxx
+    else if (d.length === 9) d = '0' + d;                              // thiếu số 0 đầu
+    if (d.length !== 10) return '';
+    if (!VN_PREFIX.test(d)) return '';
+    // Chặn số bịa kiểu 0000000000, 0111111111, 0123456789
+    if (/^(\d)\1{9}$/.test(d)) return '';
+    if (/^0(12345678|23456789)\d?$/.test(d)) return '';
+    return d;
+}
+
 // ===== Chống spam tạo phiên (theo thiết bị) =====
 const SPAM_MAX_PER_DAY = 3;       // tối đa 3 phiên mới/ngày/thiết bị
 const SPAM_COOLDOWN_MS = 120000;  // chờ 2 phút giữa 2 lần tạo
@@ -148,9 +166,17 @@ function checkData() {
     const phone = document.getElementById('phone').value.trim();
     
     // SĐT là khoá định danh phiên -> bắt buộc, nếu không khách này sẽ khớp nhầm phiên của khách khác
-    const phoneDigits = phone.replace(/\D/g, '');
-    if (!phoneDigits) return showError("Vui lòng nhập Số điện thoại.");
-    if (phoneDigits.length < 9 || phoneDigits.length > 11) return showError("Số điện thoại không hợp lệ. Vui lòng kiểm tra lại.");
+    const rawDigits = phone.replace(/\D/g, '');
+    if (!rawDigits) return showError("Vui lòng nhập Số điện thoại.");
+
+    // Kiểm tra theo đầu số nhà mạng: trước chỉ đếm 9-11 chữ số nên số bịa vẫn lọt,
+    // khách gõ nhầm cũng tạo phiên mà sau này không tra lại được.
+    const phoneDigits = normalizePhone(phone);
+    if (!phoneDigits) {
+        return showError(rawDigits.length !== 10
+            ? "Số điện thoại phải có 10 số. Vui lòng kiểm tra lại."
+            : "Số điện thoại không đúng. Vui lòng kiểm tra lại đầu số.");
+    }
 
     localStorage.setItem('pn_name', name);
     localStorage.setItem('pn_phone', phone);
@@ -174,8 +200,9 @@ function checkData() {
             if (!ts) return; // id hỏng -> bỏ qua, không coi là hôm nay
             const dStr = getDStr(new Date(ts));
 
-            // So theo chữ số để "0901 234 567" và "0901234567" là một
-            const dbPhone = String(data.phone || '').replace(/\D/g, '');
+            // So sau khi chuẩn hoá: "0901 234 567", "+84901234567" và "0901234567" là một.
+            // Phiên cũ có SĐT hỏng sẽ không chuẩn hoá được -> dùng chuỗi số thô để khách cũ vẫn tra được.
+            const dbPhone = normalizePhone(data.phone) || String(data.phone || '').replace(/\D/g, '');
             if (!dbPhone) return; // phiên thiếu SĐT -> không cho ai khớp vào
 
             // Lọc theo SĐT và phải CÙNG NGÀY HÔM NAY, lấy phiên mới nhất
