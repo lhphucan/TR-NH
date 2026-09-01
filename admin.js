@@ -35,6 +35,41 @@ async function driveQuery(q, fields) {
     return (await res.json()).files || [];
 }
 
+// Ảnh mẫu của thư mục đã gửi khách — nhìn là biết đã trả đúng ảnh chưa,
+// khỏi phải mở Drive kiểm tra.
+const _folderThumb = {};   // { folderId: url | null }
+
+async function loadLinkThumbs() {
+    if (!GS_URL) return;
+    const boxes = Array.from(document.querySelectorAll('.link-thumb[data-fid]:empty'));
+    if (!boxes.length) return;
+
+    // Gom các thư mục chưa biết ảnh mẫu, tránh gọi lại cái đã có
+    const need = [...new Set(boxes.map(b => b.getAttribute('data-fid')))].filter(f => !(f in _folderThumb));
+
+    for (const fid of need) {
+        try {
+            const imgs = await driveQuery(
+                `'${fid}' in parents and mimeType contains 'image/' and trashed=false`,
+                'files(id,name,thumbnailLink)'
+            );
+            // Ưu tiên ảnh ghép khung: đó là thứ khách nhận được
+            const framed = imgs.find(x => /selfbooth|noir/i.test(x.name));
+            const pick = framed || imgs[Math.floor(imgs.length / 2)];
+            _folderThumb[fid] = (pick && pick.thumbnailLink) || null;
+        } catch (e) {
+            _folderThumb[fid] = null;
+        }
+    }
+
+    boxes.forEach(b => {
+        const url = _folderThumb[b.getAttribute('data-fid')];
+        if (url) b.innerHTML = `<img src="${escapeHTML(url)}" alt="" referrerpolicy="no-referrer"
+                                     onclick="zoomShoot('${escapeHTML(url)}', 'Ảnh đã gửi khách')">`;
+        else b.classList.add('empty');
+    });
+}
+
 // Liệt kê lượt chụp trong ngày của một cơ sở, mới nhất trước.
 // Đọc thẳng Drive API vì để Apps Script quét thư mục mất tới 80 giây.
 async function listShoots(branchId, ymd) {
@@ -740,7 +775,10 @@ function load() {
                 if (client.links) {
                     Object.keys(client.links).forEach(linkId => {
                         const lUrl = escapeHTML(client.links[linkId].url || '');
+                        // Link thư mục Drive -> nạp ảnh mẫu để nhân viên biết đã gửi ảnh gì
+                        const fid = (String(client.links[linkId].url || '').match(/folders\/([\w-]+)/) || [])[1];
                         linksHtml += `<div class="link-row">
+                            ${fid ? `<div class="link-thumb" id="lt_${client.id}_${linkId}" data-fid="${escapeHTML(fid)}"></div>` : ''}
                             <span class="time-label">${escapeHTML((client.links[linkId].addedAt || '').split(' ')[0])}</span>
                             <input type="text" id="lnk_${client.id}_${linkId}" value="${lUrl}" data-orig="${lUrl}"
                                    onchange="updateLink('${client.id}', '${linkId}')"
@@ -898,6 +936,7 @@ function load() {
                 _restoreDrafts = {};
 
                 filterData();   // gọi renderTodayBar() ở cuối
+                loadLinkThumbs();  // nạp ảnh mẫu ngầm, không chặn hiển thị danh sách
             }, err => {
                 // Không có nhánh lỗi thì mất quyền đọc chỉ hiện danh sách trống, không ai biết vì sao
                 document.querySelector('.empty-text').innerText = 'Không tải được dữ liệu: ' + err.message;
