@@ -158,8 +158,30 @@ async function driveUpload(file, token, folderId) {
         headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
         body
     });
-    if (!res.ok) throw new Error('Drive từ chối (HTTP ' + res.status + ')');
+    if (!res.ok) {
+        const err = new Error('Drive từ chối (HTTP ' + res.status + ')');
+        // 429 quá nhanh, 5xx Google trục trặc -> thử lại được
+        err.retryable = res.status === 429 || res.status >= 500;
+        throw err;
+    }
     return await res.json();
+}
+
+// Mạng chập chờn hay Google trục trặc vài giây thì thử lại, đừng bắt khách
+// gửi lại cả lượt vì một ảnh hỏng tạm thời.
+async function driveUploadRetry(file, token, folderId, tries) {
+    let last;
+    for (let i = 0; i < (tries || 3); i++) {
+        try {
+            return await driveUpload(file, token, folderId);
+        } catch (e) {
+            last = e;
+            // Sai token hoặc file hỏng thì thử lại cũng vô ích
+            if (e.retryable === false) throw e;
+            if (i < (tries || 3) - 1) await new Promise(r => setTimeout(r, 800 * (i + 1)));
+        }
+    }
+    throw last;
 }
 
 // Đầu số di động Việt Nam đang lưu hành (sau chuyển đổi 11 số về 10 số)
@@ -636,7 +658,7 @@ async function sendToShop() {
                 try {
                     const ext = (files[i].name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0];
                     const renamed = new File([files[i]], `${cName}_${maKh}_${String(i + 1).padStart(2, '0')}${ext}`, { type: files[i].type });
-                    const r = await driveUpload(renamed, info.token, info.folderId);
+                    const r = await driveUploadRetry(renamed, info.token, info.folderId);
                     driveFiles.push({ id: r.id, name: r.name });
                 } catch (e) {
                     lastErr = e.message;
@@ -673,7 +695,13 @@ async function sendToShop() {
         }
         if (uploadedUrls.length) record.links = uploadedUrls;
 
-        await db.ref('data/' + branch + '/' + currentClientId + '/client_uploads/U_' + Date.now()).set(record);
+        // Ảnh đã nằm trên Drive rồi; nếu ghi vào hệ thống hỏng thì tiệm không thấy
+        // yêu cầu in, phải báo đúng để khách biết mà nhờ nhân viên.
+        try {
+            await db.ref('data/' + branch + '/' + currentClientId + '/client_uploads/U_' + Date.now()).set(record);
+        } catch (e) {
+            return showError(`Đã gửi ${okCount} ảnh nhưng chưa báo được cho tiệm. Vui lòng báo nhân viên kiểm tra giúp.`);
+        }
 
         const missed = files.length - okCount;
         const doneMsg = missed > 0
