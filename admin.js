@@ -258,6 +258,7 @@ function calcRevenue() {
 
     withFullData(all => {
         let dTotal = 0, dCash = 0, dTrans = 0, dCount = 0, dFree = 0;
+        let dUnknown = 0, dUnknownN = 0;
 
         if (all && dbPath === 'data/') {
             Object.keys(all).forEach(id => {
@@ -274,6 +275,8 @@ function calcRevenue() {
                     dTotal += priceVal;
                     if (c.payment === 'Tiền mặt') dCash += priceVal;
                     if (c.payment === 'Chuyển khoản') dTrans += priceVal;
+                    // Có giá mà quên chọn hình thức TT -> không vào cột nào, tổng lệch
+                    if (!isFree && priceVal > 0 && c.payment !== 'Tiền mặt' && c.payment !== 'Chuyển khoản') { dUnknown += priceVal; dUnknownN++; }
                 }
             });
         }
@@ -284,6 +287,11 @@ function calcRevenue() {
         document.getElementById('rev-day-cash').innerText = dCash.toLocaleString('vi-VN') + ' ₫';
         document.getElementById('rev-day-trans').innerText = dTrans.toLocaleString('vi-VN') + ' ₫';
         document.getElementById('rev-day-total').innerText = dTotal.toLocaleString('vi-VN') + ' ₫';
+        const dUnkEl = document.getElementById('rev-day-unknown');
+        if (dUnkEl) {
+            dUnkEl.style.display = dUnknown ? 'block' : 'none';
+            dUnkEl.innerText = dUnknown ? ('⚠ Chưa chọn hình thức TT: ' + dUnknown.toLocaleString('vi-VN') + ' ₫ (' + dUnknownN + ' lượt)') : '';
+        }
     });
 }
 
@@ -294,6 +302,7 @@ function calcRevenueByMonth() {
 
     withFullData(all => {
         let mTotal = 0, mCash = 0, mTrans = 0, mCount = 0, mFree = 0;
+        let mUnknown = 0, mUnknownN = 0;
 
         if (all && dbPath === 'data/') {
             Object.keys(all).forEach(id => {
@@ -314,6 +323,8 @@ function calcRevenueByMonth() {
                     mTotal += priceVal;
                     if (c.payment === 'Tiền mặt') mCash += priceVal;
                     if (c.payment === 'Chuyển khoản') mTrans += priceVal;
+                    // Có giá mà quên chọn hình thức TT -> không vào cột nào, tổng lệch
+                    if (!isFree && priceVal > 0 && c.payment !== 'Tiền mặt' && c.payment !== 'Chuyển khoản') { mUnknown += priceVal; mUnknownN++; }
                 }
             });
         }
@@ -324,6 +335,11 @@ function calcRevenueByMonth() {
         document.getElementById('rev-month-cash').innerText = mCash.toLocaleString('vi-VN') + ' ₫';
         document.getElementById('rev-month-trans').innerText = mTrans.toLocaleString('vi-VN') + ' ₫';
         document.getElementById('rev-month-total').innerText = mTotal.toLocaleString('vi-VN') + ' ₫';
+        const mUnkEl = document.getElementById('rev-month-unknown');
+        if (mUnkEl) {
+            mUnkEl.style.display = mUnknown ? 'block' : 'none';
+            mUnkEl.innerText = mUnknown ? ('⚠ Chưa chọn hình thức TT: ' + mUnknown.toLocaleString('vi-VN') + ' ₫ (' + mUnknownN + ' lượt)') : '';
+        }
     });
 }
 
@@ -331,6 +347,7 @@ function calcRevenueByYear() {
     const yyyy = document.getElementById('rev-year-picker').value;
     withFullData(all => {
         let yTotal = 0, yCash = 0, yTrans = 0, yCount = 0, yFree = 0;
+        let yUnknown = 0, yUnknownN = 0;
 
         if (all && dbPath === 'data/' && yyyy) {
             Object.keys(all).forEach(id => {
@@ -348,6 +365,8 @@ function calcRevenueByYear() {
                     yTotal += priceVal;
                     if (c.payment === 'Tiền mặt') yCash += priceVal;
                     if (c.payment === 'Chuyển khoản') yTrans += priceVal;
+                    // Có giá mà quên chọn hình thức TT -> không vào cột nào, tổng lệch
+                    if (!isFree && priceVal > 0 && c.payment !== 'Tiền mặt' && c.payment !== 'Chuyển khoản') { yUnknown += priceVal; yUnknownN++; }
                 }
             });
         }
@@ -356,6 +375,11 @@ function calcRevenueByYear() {
         document.getElementById('rev-year-count').innerText = yCount + ' lượt';
         document.getElementById('rev-year-free').innerText = yFree + ' miễn phí';
         document.getElementById('rev-year-total').innerText = yTotal.toLocaleString('vi-VN') + ' ₫';
+        const yUnkEl = document.getElementById('rev-year-unknown');
+        if (yUnkEl) {
+            yUnkEl.style.display = yUnknown ? 'block' : 'none';
+            yUnkEl.innerText = yUnknown ? ('⚠ Chưa chọn hình thức TT: ' + yUnknown.toLocaleString('vi-VN') + ' ₫ (' + yUnknownN + ' lượt)') : '';
+        }
         document.getElementById('rev-year-cash').innerText = yCash.toLocaleString('vi-VN') + ' ₫';
         document.getElementById('rev-year-trans').innerText = yTrans.toLocaleString('vi-VN') + ' ₫';
     });
