@@ -5,6 +5,7 @@ let IMGBB_API_KEY = IMGBB_FALLBACK_KEY;
 
 // Apps Script cấp mã truy cập để đọc ảnh khách gửi trong Drive của tiệm
 let GS_URL = '';
+const GS_KEY = '0vRhkkYveiToxF9yK4sG4rWacTaMbfNl';
 
 // Máy đồng bộ ảnh chụp của từng cơ sở (thư mục trong mục "Máy tính" của Drive)
 const BOOTH_BY_BRANCH = { phucyen: 'SelfboothPY', vinhyen: 'SelfboothVY', xuanhoa: 'SelfboothXH' };
@@ -162,7 +163,9 @@ async function listShoots(branchId, ymd) {
 // Apps Script thỉnh thoảng trả trang HTML trung gian thay vì JSON -> thử lại
 async function gsCall(params, tries) {
     if (!GS_URL) throw new Error('Chưa cấu hình nơi lưu ảnh');
-    const url = GS_URL + '?' + new URLSearchParams(params).toString();
+    // Mã dùng chung với Apps Script: link web app buộc phải cho mọi người gọi
+    // (khách chưa đăng nhập vẫn gửi ảnh được), nên cần thứ này chặn người ngoài.
+    const url = GS_URL + '?' + new URLSearchParams(Object.assign({ k: GS_KEY }, params)).toString();
     for (let i = 0; i < (tries || 3); i++) {
         try {
             const txt = await (await fetch(url)).text();

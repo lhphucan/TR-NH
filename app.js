@@ -22,6 +22,7 @@ let pastSessions = [];   // các lượt chụp trước của cùng SĐT (mọi
 // Khai báo ở đây vì window.onload gọi loadDriveEndpoint() ngay từ đầu file:
 // let không được hoisting nên để dưới sẽ lỗi và biến mãi rỗng.
 let GS_URL = '';
+const GS_KEY = '0vRhkkYveiToxF9yK4sG4rWacTaMbfNl';
 let currentClientName = '';  // tên trên PHIÊN đang mở, không phải ô nhập
 
 function loadImgbbKey() {
@@ -129,7 +130,9 @@ function loadDriveEndpoint() {
 // Apps Script thỉnh thoảng trả trang HTML trung gian thay vì JSON -> thử lại
 async function gsCall(params, tries) {
     if (!GS_URL) throw new Error('Chưa cấu hình nơi lưu ảnh');
-    const url = GS_URL + '?' + new URLSearchParams(params).toString();
+    // Mã dùng chung với Apps Script: link web app buộc phải cho mọi người gọi
+    // (khách chưa đăng nhập vẫn gửi ảnh được), nên cần thứ này chặn người ngoài.
+    const url = GS_URL + '?' + new URLSearchParams(Object.assign({ k: GS_KEY }, params)).toString();
     for (let i = 0; i < (tries || 3); i++) {
         try {
             const txt = await (await fetch(url)).text();
