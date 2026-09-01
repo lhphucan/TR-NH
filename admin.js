@@ -1324,6 +1324,13 @@ function load() {
             if (!box) return;
             if (!GS_URL) return Toast.fire({ icon: 'warning', title: 'Chưa cấu hình nơi lưu ảnh trong Quản lý' });
 
+            // Mỗi khung thêm ~150 phần tử và cả chục ảnh; quên đóng vài cái là
+            // trang nặng hẳn trên máy yếu -> chỉ giữ một khung mở
+            document.querySelectorAll('.shoot-picker').forEach(el => {
+                const id = el.id.replace('shoots_', '');
+                if (id !== clientId && el.querySelector('.shoot-row')) closeShootPicker(id);
+            });
+
             const ts = parseInt(box.getAttribute('data-ts')) || Date.now();
             const d = new Date(ts);
             const ymd = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
