@@ -669,7 +669,7 @@ function load() {
         function toggleSelectAllTrash(cb) { const boxes = document.querySelectorAll('.trash-checkbox'); boxes.forEach(b => b.checked = cb.checked); }
 
         function deleteSelectedTrash() {
-            if(userRole !== 'admin') return;
+            if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' });
             const selected = Array.from(document.querySelectorAll('.trash-checkbox:checked')).map(cb => cb.value);
             if (selected.length === 0) return Toast.fire({ icon: 'warning', title: 'Chưa chọn mục nào!' });
             
@@ -935,7 +935,7 @@ function load() {
         }
 
         function deleteLink(clientId, linkId) {
-            if(userRole !== 'admin') return; 
+            if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' }); 
             Swal.fire({ title: 'Xóa ảnh này?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => { if(r.isConfirmed) { db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove(); Toast.fire({ icon: 'success', title: 'Đã xóa' }); }}); 
         }
 
@@ -1012,7 +1012,9 @@ function load() {
         }
 
         function delClientUp(cId, uId) {
-            if(userRole !== 'admin') return;
+            // Đánh dấu in xong là việc hằng ngày của nhân viên, không phải việc quản trị.
+            // Trước đây chặn admin rồi thoát im lặng: nhân viên bấm không thấy gì xảy ra.
+            if (userRole === 'viewer') return Toast.fire({ icon: 'error', title: 'Tài khoản chỉ xem thu nhập' });
             Swal.fire({ title: 'Xóa yêu cầu in?', showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>', confirmButtonColor: '#111' }).then(r => {
                 if(r.isConfirmed) {
                     db.ref(dbPath + br + '/' + cId + '/client_uploads/' + uId).remove();
@@ -1022,7 +1024,7 @@ function load() {
         }
 
         function softDeleteCustomer(clientId, clientName) { 
-            if(userRole !== 'admin') return; 
+            if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' }); 
             Swal.fire({ title: 'Chuyển vào Thùng Rác?', text: "Khách hàng " + clientName, icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Chuyển', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
                 if (r.isConfirmed) {
                     db.ref('data/' + br + '/' + clientId).once('value').then(snap => db.ref('trash/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('data/' + br + '/' + clientId).remove())).then(() => Toast.fire({ icon: 'success', title: 'Đã chuyển thùng rác' })).catch(err => Swal.fire('Lỗi', err.message, 'error'));
@@ -1031,12 +1033,12 @@ function load() {
         }
 
         function restoreCustomer(clientId, clientName) { 
-            if(userRole !== 'admin') return; 
+            if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' }); 
             db.ref('trash/' + br + '/' + clientId).once('value').then(snap => db.ref('data/' + br + '/' + clientId).set(snap.val()).then(() => db.ref('trash/' + br + '/' + clientId).remove())).then(() => Toast.fire({ icon: 'success', title: "Đã khôi phục " + clientName })).catch(err => Swal.fire('Lỗi', err.message, 'error')); 
         }
 
         function hardDeleteCustomer(clientId, clientName) { 
-            if(userRole !== 'admin') return; 
+            if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' }); 
             Swal.fire({ title: 'Xóa Vĩnh Viễn?', text: "Nhập chữ XOA để xác nhận xóa khách " + clientName, icon: 'warning', input: 'text', inputPlaceholder: 'Nhập XOA...', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
                 if (r.isConfirmed) {
                     if(r.value === 'XOA') { db.ref('trash/' + br + '/' + clientId).remove().then(() => Toast.fire({ icon: 'success', title: 'Đã xóa vĩnh viễn' })); } 
@@ -1072,7 +1074,7 @@ function load() {
         }
 
 function moveCustomer(clientId, clientName) {
-    if (userRole !== 'admin') return;
+    if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' });
     const targets = Object.keys(branchesCache).filter(id => id !== br);
     if (targets.length === 0) return Toast.fire({ icon: 'warning', title: 'Không có cơ sở khác để chuyển.' });
 
@@ -1182,7 +1184,7 @@ function resetBranchForm() {
 function cancelEditBranch() { resetBranchForm(); }
 
 function editBranch(branchId) {
-    if (userRole !== 'admin') return;
+    if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' });
     const b = branchesCache[branchId] || {};
     const s = b.social || {};
     editingBranchId = branchId;
@@ -1200,7 +1202,7 @@ function editBranch(branchId) {
 }
 
 function submitBranchForm() {
-    if (userRole !== 'admin') return;
+    if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' });
     const name = document.getElementById('new-branch-name').value.trim();
     if (!name) return Toast.fire({ icon: 'warning', title: 'Vui lòng nhập tên hiển thị.' });
     const social = {
@@ -1257,7 +1259,7 @@ function loadBranchList() {
 }
 
 function deleteBranch(branchId) {
-    if (userRole !== 'admin') return;
+    if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' });
     const name = (branchesCache[branchId] && branchesCache[branchId].name) || branchId;
     Swal.fire({
         title: 'Xóa cơ sở "' + name + '"?',
@@ -1298,7 +1300,7 @@ function resetAccountForm() {
 function cancelEditAccount() { resetAccountForm(); }
 
 function editAccount(uid) {
-    if (userRole !== 'admin') return;
+    if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' });
     db.ref('users/' + uid).once('value').then(snap => {
         const u = snap.val();
         if (!u) return;
@@ -1318,7 +1320,7 @@ function editAccount(uid) {
 }
 
 function submitAccountForm() {
-    if (userRole !== 'admin') return;
+    if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' });
     const branch = document.getElementById('new-acc-branch').value;
     const role = document.getElementById('new-acc-role').value;
     const branchVal = (role === 'admin') ? '*' : branch;
@@ -1395,7 +1397,7 @@ function showQRCode() {
 }
 
 function revokeAccount(uid) {
-    if (userRole !== 'admin') return;
+    if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' });
     if (uid === auth.currentUser.uid) return Toast.fire({ icon: 'warning', title: 'Không thể tự thu hồi quyền của chính mình.' });
     Swal.fire({ title: 'Thu hồi quyền truy cập?', text: 'Tài khoản sẽ không đọc/ghi được dữ liệu nào nữa (vẫn đăng nhập được nhưng vô hiệu). Để xóa hẳn tài khoản, vào Firebase Console > Authentication.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Thu hồi', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
         if (r.isConfirmed) {

@@ -30,12 +30,14 @@
 
         // Tiệm cần ghi ở tầng cơ sở để "Dọn sạch dữ liệu" xoá được cả nhánh.
         // Khách (auth == null) không khớp điều kiện này -> chỉ ghi được ở tầng $clientId bên dưới.
-        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)",
+        // Tài khoản "XEM THU NHẬP" (viewer) bị loại: chặn ở trang admin là chặn ở trình duyệt,
+        // mở Console gọi thẳng db.ref().remove() vẫn xoá được nếu rules không kiểm tra role.
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))",
 
         "$clientId": {
           // Nhân viên/admin: toàn quyền trên cơ sở của mình.
           // Khách (auth == null): chỉ được TẠO phiên mới, không sửa/xoá phiên đã có.
-          ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)) || (auth == null && !data.exists() && newData.exists())",
+          ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))) || (auth == null && !data.exists() && newData.exists())",
 
           ".validate": "auth != null || ($clientId.matches(/^S_[0-9]{10,16}$/) && newData.hasChildren(['name','phone','status','time']))",
 
@@ -45,15 +47,15 @@
           "time":   { ".validate": "auth != null || (newData.isString() && newData.val().length <= 10)" },
 
           // Chỉ tiệm được đặt giá / hình thức thanh toán / ảnh trả khách
-          "price":   { ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)" },
-          "payment": { ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)" },
-          "links":   { ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)" },
+          "price":   { ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))" },
+          "payment": { ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))" },
+          "links":   { ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))" },
 
           // Khách gửi ảnh muốn in: chỉ được THÊM bản ghi mới, không sửa/xoá bản cũ
           "client_uploads": {
-            ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)",
+            ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))",
             "$uploadId": {
-              ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)) || (auth == null && !data.exists() && newData.exists())",
+              ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))) || (auth == null && !data.exists() && newData.exists())",
               ".validate": "auth != null || ($uploadId.matches(/^U_[0-9]{10,16}$/) && newData.hasChildren(['time','links']))",
               "time":  { ".validate": "auth != null || (newData.isString() && newData.val().length <= 30)" },
               "links": {
@@ -70,7 +72,7 @@
     "trash": {
       "$branchId": {
         ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)",
-        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)"
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))"
       }
     }
   }
