@@ -260,10 +260,19 @@ function showLoginError(msg) {
     else alert(msg);
 }
 
+// Đổi ngày phải tải lại từ máy chủ: chỉ giữ sẵn các phiên gần nhất nên ngày cũ
+// có thể chưa nằm trong đó, lọc suông sẽ ra danh sách trống.
+function applyDateFilter() {
+    isFirstLoad = true; previousCount = 0;
+    load();
+}
+
 function clearDateFilter() {
     const fp = document.getElementById('date-filter')._flatpickr;
     if(fp) fp.clear();
-    filterData();
+    LOAD_LIMIT = LOAD_LIMIT_BASE;
+    isFirstLoad = true; previousCount = 0;
+    load();
 }
 
 function login() {
@@ -380,7 +389,7 @@ function renderClearTargetOptions() {
     }
 }
 
-function switchB(name) { br = name; isFirstLoad = true; previousCount = 0; LOAD_LIMIT = 200; fullDataCache = null; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); const b2 = document.getElementById('btn-'+name); if (b2) b2.classList.add('active'); load(); }
+function switchB(name) { br = name; isFirstLoad = true; previousCount = 0; LOAD_LIMIT = LOAD_LIMIT_BASE; fullDataCache = null; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); const b2 = document.getElementById('btn-'+name); if (b2) b2.classList.add('active'); load(); }
 
 function toggleTrash() {
     if (dbPath === 'data/') { 
@@ -392,7 +401,7 @@ function toggleTrash() {
         document.getElementById('btn-trash').innerHTML = '<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Thùng rác'; 
         document.getElementById('btn-trash').style.color = '#52525b'; 
     }
-    isFirstLoad = true; previousCount = 0; LOAD_LIMIT = 200; load();
+    isFirstLoad = true; previousCount = 0; LOAD_LIMIT = LOAD_LIMIT_BASE; load();
 }
 
 function openRevenueModal() {
@@ -579,8 +588,11 @@ function calcRevenueByYear() {
 
 // Chỉ tải N phiên gần nhất: dựng lại cả nghìn thẻ mỗi lần DB đổi làm admin đứng hình.
 // Firebase lọc sẵn ở máy chủ nên không tải thừa về rồi mới bỏ.
-let LOAD_LIMIT = 200;
-const LOAD_LIMIT_STEP = 300;
+// Máy tính bảng và máy cũ chậm hẳn từ khoảng 5.000 phần tử DOM; mỗi thẻ khách
+// khoảng 49 phần tử nên 60 phiên là ~2.900 — vẫn phủ hết một ca làm việc.
+const LOAD_LIMIT_BASE = 60;
+let LOAD_LIMIT = LOAD_LIMIT_BASE;
+const LOAD_LIMIT_STEP = 60;
 
 // Tóm tắt ca hôm nay: trước phải cuộn hết danh sách mới biết còn sót gì
 function renderTodayBar() {
@@ -740,7 +752,19 @@ function load() {
     if (liveQuery) { liveQuery.off(); liveQuery = null; }
     db.ref('data/' + br).off(); db.ref('trash/' + br).off();
 
-    liveQuery = db.ref(dbPath + br).orderByKey().limitToLast(LOAD_LIMIT);
+    // Chọn ngày thì tải đúng khoảng ngày đó, không thì lấy các phiên gần nhất.
+    // Id phiên là S_<timestamp> nên lọc theo khoảng key được.
+    const fp0 = document.getElementById('date-filter') && document.getElementById('date-filter')._flatpickr;
+    if (fp0 && fp0.selectedDates.length > 0) {
+        const from = new Date(fp0.selectedDates[0]).setHours(0, 0, 0, 0);
+        const to = fp0.selectedDates.length > 1
+            ? new Date(fp0.selectedDates[1]).setHours(23, 59, 59, 999)
+            : new Date(fp0.selectedDates[0]).setHours(23, 59, 59, 999);
+        liveQuery = db.ref(dbPath + br).orderByKey()
+                      .startAt('S_' + from).endAt('S_' + to);
+    } else {
+        liveQuery = db.ref(dbPath + br).orderByKey().limitToLast(LOAD_LIMIT);
+    }
     liveQuery.on('value', snap => {
         const list = document.getElementById('list-content');
         const trashHeader = document.getElementById('trash-header');
@@ -967,8 +991,10 @@ function load() {
                     document.getElementById('list-content').appendChild(groupDiv);
                 });
 
-                // Đang xem giới hạn -> cho nút tải thêm phiên cũ
-                if (currentCount >= LOAD_LIMIT) {
+                // Đang lọc ngày thì đã tải đủ ngày đó, không cần nút tải thêm
+                const fpNow = document.getElementById('date-filter')._flatpickr;
+                const filtering = fpNow && fpNow.selectedDates.length > 0;
+                if (!filtering && currentCount >= LOAD_LIMIT) {
                     const more = document.createElement('div');
                     more.style.cssText = 'text-align:center; padding:20px 0 10px;';
                     more.innerHTML = `<button onclick="loadMore()" style="background:#fff; border:1px solid #d4d4d8; color:#52525b; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:600; font-size:12px; font-family:'Inter';">TẢI THÊM PHIÊN CŨ HƠN</button>
