@@ -746,7 +746,7 @@ function load() {
                                    onchange="updateLink('${client.id}', '${linkId}')"
                                    onkeydown="if(event.key==='Enter'){this.blur();}"
                                    title="Sửa link rồi bấm Enter hoặc click ra ngoài để lưu">
-                            <button onclick="deleteLink('${client.id}', '${linkId}')" class="btn-del-link admin-only">XÓA</button>
+                            <button onclick="deleteLink('${client.id}', '${linkId}')" class="btn-del-link">XÓA</button>
                         </div>`;
                     });
                 }
@@ -775,9 +775,9 @@ function load() {
                                         Yêu cầu in (${up.time.split(' ')[1] || ''})
                                     </span>
                                     <div style="display:flex; gap:8px;">
-                                        ${up.folder ? `<a href="${escapeHTML(up.folder)}" target="_blank" rel="noopener" class="btn" style="padding:0 12px; height:28px; font-size:11px; background:#fff; border:1px solid #d4d4d8; color:#52525b; text-decoration:none;">MỞ THƯ MỤC</a>` : ''}
-                                        <button onclick="downloadAllUploads('${client.id}', '${uId}', this)" class="btn btn-add" style="padding:0 12px; height:28px; font-size:11px;">TẢI TẤT CẢ (${upCount})</button>
-                                        <button onclick="delClientUp('${client.id}', '${uId}')" class="btn-del-link" style="padding: 0 10px; height:28px;">Hoàn tất (Xóa)</button>
+                                        ${up.folder ? `<a href="${escapeHTML(up.folder)}" target="_blank" rel="noopener" class="up-btn ghost">MỞ THƯ MỤC</a>` : ''}
+                                        <button onclick="downloadAllUploads('${client.id}', '${uId}', this)" class="up-btn solid">TẢI TẤT CẢ (${upCount})</button>
+                                        <button onclick="delClientUp('${client.id}', '${uId}')" class="up-btn danger">Hoàn tất (Xóa)</button>
                                     </div>
                                 </div>
                                 <div style="display:flex; flex-wrap:wrap;">${imgLinks}</div>
@@ -1439,7 +1439,9 @@ function load() {
         }
 
         function deleteLink(clientId, linkId) {
-            if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' }); 
+            // Chọn nhầm thư mục thì phải gỡ được ngay, là việc hằng ngày của nhân viên
+            if (userRole === 'viewer') return Toast.fire({ icon: 'error', title: 'Tài khoản chỉ xem thu nhập' });
+
             Swal.fire({ title: 'Xóa ảnh này?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => { if(r.isConfirmed) { db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).remove(); Toast.fire({ icon: 'success', title: 'Đã xóa' }); }}); 
         }
 

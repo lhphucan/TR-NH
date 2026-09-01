@@ -201,3 +201,12 @@ button.today-chip:hover { border-color: #18181b; background: #fff; }
 .shoot-thumb:hover img { transform: scale(1.05); }
 .shoot-thumb img { transition: transform 0.2s; }
 .shoot-zoom-img { max-height: 70vh !important; width: auto !important; border-radius: 10px; }
+
+/* Ba nút trong khối "Yêu cầu in": cùng chiều cao, cùng bo góc */
+.up-btn { display: inline-flex; align-items: center; justify-content: center; height: 30px; padding: 0 12px; border-radius: 8px; font-size: 11px; font-weight: 700; font-family: 'Inter'; cursor: pointer; white-space: nowrap; text-decoration: none; box-sizing: border-box; transition: 0.15s; border: 1px solid transparent; }
+.up-btn.solid { background: #18181b; color: #fff; }
+.up-btn.solid:hover { background: #3f3f46; }
+.up-btn.ghost { background: #fff; color: #52525b; border-color: #d4d4d8; }
+.up-btn.ghost:hover { border-color: #18181b; color: #18181b; }
+.up-btn.danger { background: #fff; color: #ef4444; border-color: #e5e5e5; }
+.up-btn.danger:hover { border-color: #ef4444; background: #fef2f2; }
