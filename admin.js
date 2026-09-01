@@ -623,6 +623,10 @@ function load() {
                 _restoreDrafts = {};
 
                 filterData();
+            }, err => {
+                // Không có nhánh lỗi thì mất quyền đọc chỉ hiện danh sách trống, không ai biết vì sao
+                document.querySelector('.empty-text').innerText = 'Không tải được dữ liệu: ' + err.message;
+                document.getElementById('empty-msg').style.display = 'block';
             });
         }
 
