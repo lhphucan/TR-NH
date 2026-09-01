@@ -455,7 +455,7 @@ function renderTodayBar() {
         ${noLink ? chip('Chưa trả ảnh', noLink, 'warn', 'nolink') : ''}
         ${pending ? chip('Yêu cầu in', pending, 'warn', 'pending') : ''}
         ${(!noPrice && !noLink) ? chip('Đã xong', '✓', 'ok', '') : ''}
-        <span class="today-total">${revenue.toLocaleString('vi-VN')} ₫</span>
+        <span class="today-total admin-only">${revenue.toLocaleString('vi-VN')} ₫</span>
     </div>`;
 }
 
