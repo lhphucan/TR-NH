@@ -791,6 +791,9 @@ function load() {
                     `<button class="btn-move-client admin-only" onclick="moveCustomer('${client.id}', '${safeName}')"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg> CHUYỂN CƠ SỞ KHÁC</button>
                     <button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> CHUYỂN VÀO THÙNG RÁC</button>`;
 
+                // Chỉ thêm được ảnh khi link đã trả là thư mục Drive
+                const hasDriveFolder = client.links && Object.values(client.links)
+                    .some(l => /drive\.google\.com\/drive\/folders\//.test(String(l.url || '')));
                 const cPhone = String(client.phone || '').replace(/\D/g, '');
                 const visits = (cPhone.length >= 9 && visitCount[cPhone]) || 0;
                 const pVal = client.price ? normalizePrice(client.price) : ""; const pmVal = client.payment || "";
@@ -836,6 +839,15 @@ function load() {
                             <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> ẢNH ĐÃ TRẢ KHÁCH (${client.links ? Object.keys(client.links).length : 0})</div>
                             <div style="flex-grow:1; display:flex; flex-direction:column; gap:5px;">
                                 ${linksHtml}
+                                ${(dbPath === 'data/' && hasDriveFolder) ? `
+                                <div class="add-to-folder">
+                                    <label for="addfolder_input_${client.id}" id="addfolder_${client.id}" class="add-folder-btn">
+                                        <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                        THÊM ẢNH GHÉP VÀO THƯ MỤC KHÁCH
+                                    </label>
+                                    <input type="file" id="addfolder_input_${client.id}" multiple accept="image/*" style="display:none;"
+                                           onchange="addToClientFolder('${client.id}', this)">
+                                </div>` : ''}
                                 ${(dbPath === 'data/' && !client.links) ? `
                                 <div class="shoot-picker" id="shoots_${client.id}" data-ts="${client.ts}">
                                     <button type="button" class="shoot-load" onclick="loadShootPicker('${client.id}')">
@@ -1262,6 +1274,59 @@ function load() {
             if (!/^\d{14}/.test(n)) return fallback;
             return new Date(+n.slice(0, 4), +n.slice(4, 6) - 1, +n.slice(6, 8),
                             +n.slice(8, 10), +n.slice(10, 12), +n.slice(12, 14)).getTime();
+        }
+
+        // Đẩy ảnh ghép Canva vào đúng thư mục đã gửi khách, khỏi mở Drive tìm lại
+        async function addToClientFolder(clientId, input) {
+            const files = Array.from(input.files || []);
+            input.value = '';
+            if (!files.length) return;
+
+            const c = currentData && currentData[clientId];
+            const links = c && c.links ? Object.values(c.links).map(l => l.url) : [];
+            const folderId = links.map(u => (String(u).match(/folders\/([\w-]+)/) || [])[1]).find(Boolean);
+            if (!folderId) return Swal.fire({ title: 'Chưa có thư mục', text: 'Khách này chưa được gán thư mục ảnh trên Drive.', icon: 'warning', confirmButtonColor: '#111' });
+
+            const btn = document.getElementById('addfolder_' + clientId);
+            const old = btn ? btn.innerHTML : '';
+            if (btn) { btn.classList.add('busy'); btn.innerHTML = 'ĐANG GỬI 0/' + files.length; }
+
+            let ok = 0, lastErr = '';
+            try {
+                const token = await driveToken();
+                for (let i = 0; i < files.length; i++) {
+                    try {
+                        await driveUploadAdmin(files[i], token, folderId);
+                        ok++;
+                    } catch (e) { lastErr = e.message; }
+                    if (btn) btn.innerHTML = `ĐANG GỬI ${i + 1}/${files.length}`;
+                }
+            } catch (e) {
+                lastErr = e.message;
+            } finally {
+                if (btn) { btn.classList.remove('busy'); btn.innerHTML = old; }
+            }
+
+            if (ok === files.length) Toast.fire({ icon: 'success', title: `Đã thêm ${ok} ảnh vào thư mục khách` });
+            else if (ok) Swal.fire({ title: 'Gửi một phần', text: `Đã thêm ${ok}/${files.length} ảnh. Số còn lại lỗi: ${lastErr}`, icon: 'warning', confirmButtonColor: '#111' });
+            else Swal.fire({ title: 'Không gửi được', text: lastErr || 'Không rõ lỗi', icon: 'error', confirmButtonColor: '#111' });
+        }
+
+        async function driveUploadAdmin(file, token, folderId) {
+            const boundary = 'pn' + Date.now() + Math.random().toString(36).slice(2);
+            const meta = { name: file.name || 'anh.jpg', parents: [folderId] };
+            const head = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${file.type || 'image/jpeg'}\r\n\r\n`;
+            const body = new Blob([head, file, `\r\n--${boundary}--`]);
+            const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
+                body
+            });
+            if (!res.ok) {
+                if (res.status === 401) _driveToken = '';
+                throw new Error('Drive từ chối (HTTP ' + res.status + ')');
+            }
+            return await res.json();
         }
 
         // Thu lại về nút bấm, khỏi chiếm chỗ khi chưa cần
