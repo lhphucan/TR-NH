@@ -38,3 +38,9 @@ button.primary-btn:disabled { opacity: 0.7; cursor: not-allowed; }
 .new-session p { font-size: 13px; color: #666; margin: 0 0 12px; font-weight: 500; }
 
 #send-hint { display: none; font-size: 11px; color: #666; text-align: center; margin-top: 8px; line-height: 1.5; }
+
+/* Màn hình cảm ứng: ô nhập 16px để iOS không tự phóng to trang khi bấm vào */
+@media (hover: none) and (pointer: coarse) {
+    input, select { font-size: 16px; }
+    .primary-btn, .view-btn, .hist-head { min-height: 46px; }
+}

@@ -222,3 +222,38 @@ button.today-chip:hover { border-color: #18181b; background: #fff; }
 .link-thumb.loading { background: linear-gradient(90deg, #f4f4f5 25%, #e4e4e7 50%, #f4f4f5 75%); background-size: 200% 100%; animation: thumbShimmer 1.2s infinite; }
 @keyframes thumbShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .link-thumb.loading { animation: none; } }
+
+/* ===== Màn hình cảm ứng: nút đủ to để bấm, ô nhập không làm iOS tự phóng ===== */
+@media (hover: none) and (pointer: coarse) {
+    /* Chuẩn cảm ứng cần vùng bấm 44px; nút 30-36px hay bấm trượt */
+    .btn, .btn-excel, .up-btn, .shoot-pick, .shoot-load,
+    .btn-del-link, .add-folder-btn, .today-chip { min-height: 44px; }
+
+    .btn-del-client, .btn-move-client, .btn-restore { min-height: 46px; }
+    .shoot-close, .btn-edit-info { min-width: 40px; min-height: 40px; }
+
+    /* iOS tự phóng to trang khi bấm vào ô nhập có chữ nhỏ hơn 16px */
+    input[type="text"], input[type="tel"], input[type="password"],
+    input[type="number"], select, textarea,
+    .search-box, .date-input-sm, .price-input, .price-select,
+    .link-row input { font-size: 16px; }
+
+    .price-input, .price-select, .search-box, .date-input-sm { height: 44px; }
+    .link-row input { height: 44px; }
+
+    /* Thẻ lượt chụp to hơn cho dễ nhìn và dễ bấm */
+    .shoot-card { flex: 0 0 170px; }
+    .shoot-thumb { height: 150px; }
+
+    /* Ảnh mẫu cạnh link: to hơn để bấm phóng to không trượt */
+    .link-thumb { flex: 0 0 52px; width: 52px; height: 52px; }
+}
+
+/* Điện thoại: xếp dọc cho khỏi chật */
+@media (max-width: 560px) {
+    .today-bar { padding: 10px 12px; }
+    .today-total { margin-left: 0; width: 100%; text-align: right; }
+    .toolbar { padding: 12px; }
+    .toolbar > div:first-child { border-right: none !important; padding-right: 0 !important; width: 100%; }
+    .date-input-sm { flex: 1; min-width: 140px; }
+}
