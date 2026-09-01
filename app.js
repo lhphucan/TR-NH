@@ -654,10 +654,16 @@ async function sendToShop() {
             const info = await gsCall({ action: 'folder', branch: bName, day, client: `${cName} - ${maKh}` });
             folderUrl = info.folderUrl || '';
 
+            // Khách gửi nhiều đợt vào cùng thư mục: thêm giờ gửi để tên không trùng,
+            // Drive không ghi đè mà tạo file thứ hai cùng tên.
+            const now = new Date();
+            const hhmmss = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0')
+                       + String(now.getSeconds()).padStart(2, '0');
+
             for (let i = 0; i < files.length; i++) {
                 try {
                     const ext = (files[i].name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0];
-                    const renamed = new File([files[i]], `${cName}_${maKh}_${String(i + 1).padStart(2, '0')}${ext}`, { type: files[i].type });
+                    const renamed = new File([files[i]], `${cName}_${maKh}_${hhmmss}_${String(i + 1).padStart(2, '0')}${ext}`, { type: files[i].type });
                     const r = await driveUploadRetry(renamed, info.token, info.folderId);
                     driveFiles.push({ id: r.id, name: r.name });
                 } catch (e) {
