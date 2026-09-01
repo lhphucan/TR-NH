@@ -1248,7 +1248,7 @@ function load() {
                 const diffText = diff === 0 ? 'cùng lúc' : (diff > 0 ? `sau ${gap}` : `trước ${gap}`);
                 const who = taken[s.id];
                 html += `<div class="shoot-card${who ? ' taken' : ''}">
-                    <div class="shoot-thumb">${s.thumbs && s.thumbs.length
+                    <div class="shoot-thumb"${s.thumbs && s.thumbs.length ? ` onclick="zoomShoot('${escapeHTML(s.thumbs[0])}', '${s.time}')"` : ''}>${s.thumbs && s.thumbs.length
                         ? `<img src="${escapeHTML(s.thumbs[0])}" alt="" referrerpolicy="no-referrer">` : '<span>—</span>'}</div>
                     <div class="shoot-time">${s.time}</div>
                     <div class="shoot-diff">${diffText}</div>
@@ -1337,6 +1337,21 @@ function load() {
                 <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                 XEM ẢNH VỪA CHỤP
             </button>`;
+        }
+
+        // Xem to để chắc chắn đúng khách trước khi gửi link
+        function zoomShoot(thumbUrl, time) {
+            // Link thumbnail của Drive kết thúc bằng =s220, đổi số là ra ảnh lớn hơn
+            const big = String(thumbUrl).replace(/=s\d+(-c)?$/, '=s1200');
+            Swal.fire({
+                title: 'Lượt chụp ' + escapeHTML(time || ''),
+                imageUrl: big,
+                imageAlt: '',
+                width: 'auto',
+                showConfirmButton: false,
+                showCloseButton: true,
+                customClass: { image: 'shoot-zoom-img' }
+            });
         }
 
         function pickShoot(clientId, url, takenBy) {
