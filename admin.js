@@ -15,7 +15,9 @@ const EDITED_NAME = '实时精修';      // thư mục ảnh đã tinh chỉnh, 
 // Giữ qua F5: xin token mất 2-6 giây, hỏi danh sách lượt mất 2 giây — tải lại
 // trang mà phải chờ từ đầu thì rất chậm. Thay đổi mới vẫn được phát hiện qua
 // Changes API nên dữ liệu không bị cũ.
-const CACHE_KEY = 'pn_drive_cache';
+// Đổi số cuối khi cách chọn ảnh mẫu thay đổi: bản nhớ cũ giữ ảnh chọn theo
+// cách cũ, không đổi khoá thì nhân viên vẫn thấy ảnh sai cho tới khi xoá tay.
+const CACHE_KEY = 'pn_drive_cache_v2';
 
 function loadCache() {
     try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); }
@@ -475,24 +477,38 @@ async function downloadSelected() {
 // 3,8 MB trong cùng thư mục, trong khi lượt không có ảnh ghép thì file lớn
 // nhất chỉ hơn trung bình 1,3-1,8 lần.
 function findFramed(imgs) {
-    const byName = imgs.filter(x => /selfbooth|noir/i.test(x.name));
-    // Google không tạo thumbnail cho mọi file (PNG ghép 23 MB thường không có)
-    // -> trong các ảnh ghép, ưu tiên cái xem trước được
-    if (byName.length) return byName.find(x => x.thumbnailLink) || byName[0];
+    // Một lượt thường có nhiều bản ghép cùng khổ (đo được ở Vĩnh Yên: 10 bản
+    // đều 6250x4405, chỉ khác dung lượng). Bản nặng nhất là bản trả khách.
+    // Google không tạo thumbnail cho mọi file, nên trong các bản ghép ưu tiên
+    // bản xem trước được, và trong số đó lấy bản nặng nhất.
+    const heaviest = list => {
+        if (!list.length) return null;
+        const desc = list.slice().sort((a, b) => parseInt(b.size || 0) - parseInt(a.size || 0));
+        return desc.find(x => x.thumbnailLink) || desc[0];
+    };
 
+    const framed = allFramed(imgs);
+    if (framed.length) return heaviest(framed);
+
+    // Không lần được theo cỡ (lượt quá ít ảnh, hoặc Drive không trả dung lượng)
+    // -> đành nhận theo tên. Không đặt nhánh này lên trước vì bản nặng nhất
+    // nhiều khi mang tên khác hẳn: ở Vĩnh Yên bản 18 MB tên "BW CHỮ TRANG"
+    // còn 9 bản nhẹ hơn mới mang tên "BW NOIR VY".
+    return heaviest(imgs.filter(x => /selfbooth|noir/i.test(x.name)));
+}
+
+// Mọi ảnh ghép trong lượt. Một lượt hay có cả chục bản, nên chỗ nào muốn ảnh
+// chụp thường phải loại hết chứ không chỉ loại một bản.
+function allFramed(imgs) {
     const sized = imgs.filter(x => parseInt(x.size || 0) > 0);
-    if (sized.length < 3) return null;
+    if (sized.length < 3) return [];
 
     // Lấy mốc từ ảnh chụp thường: dùng trung vị nửa nhỏ thay vì trung bình,
     // vì một lượt có thể có vài bản ghép cùng cỡ lớn, chúng tự kéo trung bình
     // lên rồi làm chính mình không vượt ngưỡng.
     const asc = sized.slice().sort((a, b) => parseInt(a.size) - parseInt(b.size));
     const base = parseInt(asc[Math.floor(asc.length / 4)].size);
-    const framed = sized.filter(x => parseInt(x.size) >= base * 3);
-    if (!framed.length) return null;
-
-    // Nhiều bản ghép -> ưu tiên bản xem trước được
-    return framed.find(x => x.thumbnailLink) || framed[0];
+    return sized.filter(x => parseInt(x.size) >= base * 3);
 }
 
 // Ảnh mẫu của thư mục đã gửi khách — nhìn là biết đã trả đúng ảnh chưa,
@@ -604,10 +620,11 @@ async function listShoots(branchId, ymd) {
             // Giữ luôn danh sách ảnh: mở album lượt này khỏi hỏi Drive lần nữa
             item.imgs = imgs;
             // Lấy ảnh giữa lượt: nhân viên chỉ cần nhìn mặt khách để xác nhận,
-            // mà ảnh đầu/cuối hay là ảnh thử hoặc ảnh hỏng. Bỏ ảnh ghép khung
-            // vì nó gộp nhiều pose nhỏ, khó nhìn rõ mặt.
-            const framed = findFramed(imgs);
-            const real = framed ? imgs.filter(x => x.id !== framed.id) : imgs;
+            // mà ảnh đầu/cuối hay là ảnh thử hoặc ảnh hỏng. Bỏ hết ảnh ghép
+            // khung vì chúng gộp nhiều pose nhỏ, khó nhìn rõ mặt — một lượt có
+            // thể có cả chục bản ghép nên phải loại tất, không chỉ một.
+            const skip = new Set(allFramed(imgs).map(x => x.id));
+            const real = imgs.filter(x => !skip.has(x.id));
             const pool = real.length ? real : imgs;
             pool.sort((a, b) => a.name.localeCompare(b.name));
             const mid = pool[Math.floor(pool.length / 2)];
