@@ -508,7 +508,14 @@ function allFramed(imgs) {
     // lên rồi làm chính mình không vượt ngưỡng.
     const asc = sized.slice().sort((a, b) => parseInt(a.size) - parseInt(b.size));
     const base = parseInt(asc[Math.floor(asc.length / 4)].size);
-    return sized.filter(x => parseInt(x.size) >= base * 3);
+    const framed = sized.filter(x => parseInt(x.size) >= base * 3);
+    if (framed.length) return framed;
+
+    // Không ảnh nào vượt ngưỡng: hoặc lượt chưa ghép, hoặc lượt chỉ còn ảnh
+    // ghép nên chúng tự làm mốc cho nhau. Phân biệt bằng cỡ tuyệt đối — ảnh
+    // chụp thường đo được 2-3 MB, bản ghép 10-27 MB.
+    const BIG = 6 * 1024 * 1024;
+    return sized.every(x => parseInt(x.size) >= BIG) ? sized : [];
 }
 
 // Ảnh mẫu của thư mục đã gửi khách — nhìn là biết đã trả đúng ảnh chưa,
