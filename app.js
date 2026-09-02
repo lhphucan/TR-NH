@@ -752,8 +752,10 @@ function askRating(br) {
 let _alb = [];        // ảnh của thư mục đang mở
 let _albBranch = '';  // cơ sở, để hỏi đánh giá sau khi khách lưu ảnh
 
-// Ảnh xem trước: đủ nhìn rõ mặt, không cần nét vì chạm vào là xem bản to
-function albThumb(id) { return 'https://lh3.googleusercontent.com/d/' + id + '=s400'; }
+// Ảnh xem trước: hai cột trên điện thoại nên mỗi ô rộng khoảng 178 điểm,
+// màn Retina x3 cần ảnh 534 pixel thật. Đo được 600 nét mọi màn mà chỉ tốn
+// 15 KB một ảnh (400 thì 7 KB nhưng hơi mờ trên máy đời mới).
+function albThumb(id) { return 'https://lh3.googleusercontent.com/d/' + id + '=s600'; }
 
 // Bản gốc: =s0 trả đúng từng byte như file trên Drive, không nén
 function albFull(id) { return 'https://lh3.googleusercontent.com/d/' + id + '=s0'; }
