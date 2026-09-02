@@ -48,13 +48,31 @@ if (_cached.shoots) {
     });
 }
 
-async function driveToken() {
-    if (_driveToken && Date.now() - _driveTokenAt < 50 * 60 * 1000) return _driveToken;
+// Xin token mất 1,5-2,3 giây. Hai việc tránh cho người dùng phải chờ:
+// - Nhiều chỗ hỏi cùng lúc thì chỉ xin một lần, cả nhóm chờ chung (_tokenWait).
+// - Còn 5 phút nữa hết hạn thì lặng lẽ xin mới trong nền, vẫn trả token cũ ngay.
+let _tokenWait = null;
+
+async function fetchToken() {
     const d = await gsCall({ action: 'token' });
     _driveToken = d.token;
     _driveTokenAt = Date.now();
     saveCache({ token: _driveToken, tokenAt: _driveTokenAt });
     return _driveToken;
+}
+
+async function driveToken() {
+    const age = Date.now() - _driveTokenAt;
+    if (_driveToken && age < 50 * 60 * 1000) {
+        // Sắp hết hạn -> gia hạn nền để lần sau không ai phải chờ
+        if (age > 45 * 60 * 1000 && !_tokenWait) {
+            _tokenWait = fetchToken().catch(() => _driveToken).finally(() => { _tokenWait = null; });
+        }
+        return _driveToken;
+    }
+    if (_tokenWait) return _tokenWait;   // đã có người đang xin -> chờ chung
+    _tokenWait = fetchToken().finally(() => { _tokenWait = null; });
+    return _tokenWait;
 }
 
 async function driveQuery(q, fields) {
@@ -242,6 +260,16 @@ function gridThumbSize() {
     return 200;
 }
 
+// Tìm danh sách ảnh của một lượt trong thứ đã nhớ. Danh sách lượt hỏi Drive
+// kèm ảnh sẵn rồi nên mở album không cần hỏi lại.
+function shootImgs(folderId) {
+    for (const k in _shootCache) {
+        const hit = (_shootCache[k].list || []).find(s => s.id === folderId && s.imgs);
+        if (hit) return hit.imgs;
+    }
+    return null;
+}
+
 // ===== Album ảnh: khách không có điện thoại thì xem chọn ngay trên máy quán =====
 let _albumShoot = null;      // lượt đang mở
 let _albumPicked = {};       // { fileId: {name} }
@@ -305,7 +333,8 @@ async function openAlbum(folderId, time) {
     body.innerHTML = '<div class="album-loading">Đang tải ảnh...</div>';
 
     try {
-        const imgs = await driveQuery(
+        // Danh sách lượt đã hỏi kèm ảnh rồi -> vẽ ngay, khỏi chờ Drive lần nữa
+        const imgs = shootImgs(folderId) || await driveQuery(
             `'${folderId}' in parents and mimeType contains 'image/' and trashed=false`,
             'files(id,name,size,thumbnailLink)'
         );
@@ -481,12 +510,12 @@ async function loadLinkThumbs() {
     boxes.forEach(b => { const fid = b.getAttribute('data-fid'); if (fid in _folderThumb) show(fid); });
 }
 
-// Liệt kê lượt chụp trong ngày của một cơ sở, mới nhất trước.
-// Đọc thẳng Drive API vì để Apps Script quét thư mục mất tới 80 giây.
-async function listShoots(branchId, ymd) {
-    const key = branchId + '|' + ymd;
-    const c = _shootCache[key];
-    if (c && Date.now() - c.at < 60000) return c.list;   // dùng lại trong 1 phút
+// Thư mục ảnh gốc của mỗi cơ sở không bao giờ đổi, nhưng tìm nó tốn 2 lần hỏi
+// Drive nối tiếp (~950ms). Nhớ lại để chỉ tìm một lần duy nhất.
+const _rootCache = _cached.roots || {};   // { branchId: folderId }
+
+async function photoRoot(branchId) {
+    if (_rootCache[branchId]) return _rootCache[branchId];
 
     const boothName = BOOTH_BY_BRANCH[branchId];
     if (!boothName) throw new Error('Chưa biết máy chụp của cơ sở này');
@@ -499,6 +528,22 @@ async function listShoots(branchId, ymd) {
         if (sub.length) { rootId = sub[0].id; break; }
     }
     if (!rootId) throw new Error('Không tìm thấy thư mục ảnh của ' + boothName);
+
+    _rootCache[branchId] = rootId;
+    saveCache({ roots: _rootCache });
+    return rootId;
+}
+
+// Liệt kê lượt chụp trong ngày của một cơ sở, mới nhất trước.
+// Đọc thẳng Drive API vì để Apps Script quét thư mục mất tới 80 giây.
+async function listShoots(branchId, ymd) {
+    const key = branchId + '|' + ymd;
+    const c = _shootCache[key];
+    // Dùng lại 10 phút: ảnh mới không bị bỏ sót vì Changes API canh Drive mỗi
+    // 20 giây khi đang mở album, có đổi là xoá chỗ nhớ này ngay.
+    if (c && Date.now() - c.at < 10 * 60 * 1000) return c.list;
+
+    const rootId = await photoRoot(branchId);
 
     const shoots = await driveQuery(`'${rootId}' in parents and name contains '${ymd}' and trashed=false`);
 
@@ -515,6 +560,8 @@ async function listShoots(branchId, ymd) {
                 'files(id,name,size,thumbnailLink)'
             );
             item.count = imgs.length;
+            // Giữ luôn danh sách ảnh: mở album lượt này khỏi hỏi Drive lần nữa
+            item.imgs = imgs;
             // Lấy ảnh giữa lượt: nhân viên chỉ cần nhìn mặt khách để xác nhận,
             // mà ảnh đầu/cuối hay là ảnh thử hoặc ảnh hỏng. Bỏ ảnh ghép khung
             // vì nó gộp nhiều pose nhỏ, khó nhìn rõ mặt.
@@ -700,6 +747,9 @@ async function setupUI() {
         GS_URL = (s.val() || '').trim();
         const inp = document.getElementById('gs-url-input');
         if (inp && inp !== document.activeElement) inp.value = GS_URL;
+        // Xin token ngay bây giờ trong nền: tới lúc bấm Album ảnh là có sẵn,
+        // đỡ 1,5-2,3 giây đứng chờ.
+        if (GS_URL) driveToken().catch(() => {});
     }, () => { GS_URL = ''; });
 
     const bSnap = await db.ref('branches').once('value');
