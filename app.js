@@ -765,23 +765,32 @@ async function openAlbum(url, branch) {
     if (!fid) { window.open(url, '_blank', 'noopener'); return; }   // link lạ -> mở Drive như cũ
 
     _albBranch = branch || '';
-    Swal.fire({ title: 'Đang mở ảnh...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+    // Mở khung rồi mới đọc: khách thấy album hiện ra ngay, chỗ ảnh báo đang
+    // tải. Hộp thoại chờ của thư viện có màu và cỡ chữ riêng, nhìn rời hẳn
+    // khỏi trang nên không dùng.
+    const grid = document.getElementById('alb-grid');
+    document.getElementById('alb-count').innerText = 'Đang tải...';
+    grid.innerHTML = '<p class="alb-loading">Đang mở ảnh...</p>';
+    document.getElementById('alb-modal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
 
     try {
         const d = await gsCall({ action: 'album', folder: fid });
         _alb = d.images || [];
     } catch (e) {
-        Swal.close();
         // Không đọc được thì vẫn cho khách vào Drive, đừng để khách tay trắng
-        return Swal.fire({
-            title: 'Chưa mở được album', text: 'Bạn vẫn xem ảnh trên Google Drive được.',
-            icon: 'warning', confirmButtonText: 'Mở Google Drive', confirmButtonColor: '#111'
-        }).then(r => { if (r.isConfirmed) window.open(url, '_blank', 'noopener'); });
+        document.getElementById('alb-count').innerText = 'Chưa mở được';
+        grid.innerHTML = `<p class="alb-loading">Chưa mở được album.<br>
+            <button type="button" class="view-btn" style="margin-top:12px;"
+                    onclick="window.open('${safeUrlAttr(url)}', '_blank', 'noopener')">Mở Google Drive</button></p>`;
+        return;
     }
 
-    Swal.close();
     if (!_alb.length) {
-        return Swal.fire({ title: 'Chưa có ảnh', text: 'Thư mục này chưa có ảnh nào.', icon: 'info', confirmButtonColor: '#111' });
+        document.getElementById('alb-count').innerText = '0 ảnh';
+        grid.innerHTML = '<p class="alb-loading">Thư mục này chưa có ảnh nào.</p>';
+        return;
     }
 
     document.getElementById('alb-count').innerText = _alb.length + ' ảnh';
@@ -789,8 +798,6 @@ async function openAlbum(url, branch) {
         <button type="button" class="alb-item" onclick="albZoom(${i})">
             <img src="${escapeHTML(albThumb(x.id))}" alt="" loading="lazy" decoding="async">
         </button>`).join('');
-    document.getElementById('alb-modal').style.display = 'flex';
-    document.body.style.overflow = 'hidden';
 }
 
 function closeAlbum() {
