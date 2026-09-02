@@ -42,6 +42,12 @@ function thumbAt(url, size) {
     return String(url || '').replace(/=s\d+(-c)?$/, '=s' + size);
 }
 
+// Ô lưới rộng 160px, nhưng màn Retina cần gấp đôi mới không mờ.
+// Máy yếu thường màn thường -> lấy ảnh nhẹ; iPad Retina mới lấy bản to hơn.
+function gridThumbSize() {
+    return (window.devicePixelRatio || 1) >= 1.5 ? 320 : 200;
+}
+
 // ===== Album ảnh: khách không có điện thoại thì xem chọn ngay trên máy quán =====
 let _albumShoot = null;      // lượt đang mở
 let _albumPicked = {};       // { fileId: {name} }
@@ -118,7 +124,7 @@ async function openAlbum(folderId, time) {
             <div class="album-item" id="ai_${x.id}">
                 <div class="album-img" onclick="zoomShoot('${escapeHTML(x.thumbnailLink || '')}', '${escapeHTML(x.name)}')">
                     ${x.thumbnailLink
-                        ? `<img src="${escapeHTML(thumbAt(x.thumbnailLink, 220))}" alt="" loading="lazy" decoding="async">`
+                        ? `<img src="${escapeHTML(thumbAt(x.thumbnailLink, gridThumbSize()))}" alt="" loading="lazy" decoding="async">`
                         : '<span>—</span>'}
                 </div>
                 <button type="button" class="album-tick" onclick="toggleAlbumPick('${x.id}', '${escapeHTML(x.name)}')" aria-label="Chọn ảnh"></button>

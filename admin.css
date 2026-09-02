@@ -316,3 +316,13 @@ body.album-open { overflow: hidden; }
     .album-item.picked .album-tick::after { line-height: 32px; font-size: 18px; }
     .album-back, .album-close { min-height: 44px; }
 }
+
+/* iPad và máy yếu: giúp trình duyệt bỏ qua phần ngoài màn khi cuộn lưới ảnh */
+.album-item, .shoot-card { content-visibility: auto; contain-intrinsic-size: 220px; }
+
+/* Bỏ độ trễ 300ms khi chạm, và chặn trình duyệt hiểu nhầm thành cử chỉ cuộn */
+.album-tick, .album-img, .shoot-pick, .shoot-load, .up-btn,
+button, .btn, label[for] { touch-action: manipulation; }
+
+/* Không bôi xanh khi chạm giữ ảnh */
+.album-img, .album-tick, .shoot-thumb { -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
