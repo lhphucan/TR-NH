@@ -42,10 +42,92 @@ function thumbAt(url, size) {
     return String(url || '').replace(/=s\d+(-c)?$/, '=s' + size);
 }
 
-// Ô lưới rộng 160px, nhưng màn Retina cần gấp đôi mới không mờ.
-// Máy yếu thường màn thường -> lấy ảnh nhẹ; iPad Retina mới lấy bản to hơn.
+// ===== Tự phát hiện ảnh mới trên Drive =====
+// Hỏi Drive "có gì đổi không" mất 0,29 giây và không phải quét lại thư mục,
+// nên rẻ hơn nhiều so với đọc lại toàn bộ. Chỉ chạy khi có khung đang mở.
+let _watchTimer = null;
+let _watchToken = null;
+const WATCH_EVERY = 20000;
+
+async function startDriveWatch() {
+    if (_watchTimer || !GS_URL) return;
+    try {
+        const token = await driveToken();
+        const r = await fetch('https://www.googleapis.com/drive/v3/changes/startPageToken', { headers: { Authorization: 'Bearer ' + token } });
+        _watchToken = (await r.json()).startPageToken;
+    } catch (e) { return; }
+    _watchTimer = setInterval(checkDriveChanges, WATCH_EVERY);
+}
+
+function stopDriveWatch() {
+    if (_watchTimer) clearInterval(_watchTimer);
+    _watchTimer = null;
+}
+
+// Còn chỗ nào đang mở không; hết thì dừng hỏi cho đỡ tốn pin
+function anyDriveViewOpen() {
+    return document.getElementById('album-modal').style.display === 'flex'
+        || !!document.querySelector('.shoot-picker .shoot-row');
+}
+
+async function checkDriveChanges() {
+    if (!_watchToken) return;
+    if (!anyDriveViewOpen()) return stopDriveWatch();
+    if (document.hidden) return;   // tab ẩn thì khỏi hỏi
+
+    let data;
+    try {
+        const token = await driveToken();
+        const r = await fetch('https://www.googleapis.com/drive/v3/changes?pageToken=' + _watchToken
+                            + '&fields=newStartPageToken,nextPageToken,changes(fileId)&pageSize=100',
+                            { headers: { Authorization: 'Bearer ' + token } });
+        if (!r.ok) return;
+        data = await r.json();
+    } catch (e) { return; }
+
+    _watchToken = data.newStartPageToken || data.nextPageToken || _watchToken;
+    const changes = data.changes || [];
+    if (!changes.length) return;
+
+    // Có file đổi -> bỏ nhớ rồi vẽ lại đúng chỗ đang mở
+    Object.keys(_shootCache).forEach(k => delete _shootCache[k]);
+    Object.keys(_folderThumb).forEach(k => delete _folderThumb[k]);
+
+    if (document.getElementById('album-modal').style.display === 'flex') {
+        if (_albumShoot) refreshAlbumKeepPicks();
+        else albumBack();
+    }
+
+    const openPicker = document.querySelector('.shoot-picker .shoot-row');
+    if (openPicker) {
+        const id = openPicker.closest('.shoot-picker').id.replace('shoots_', '');
+        loadShootPicker(id);
+    }
+
+    document.querySelectorAll('.link-thumb[data-fid]').forEach(el => {
+        el.innerHTML = ''; el.classList.remove('empty');
+    });
+    loadLinkThumbs();
+}
+
+// Vẽ lại album nhưng giữ nguyên ảnh khách đã tích chọn
+async function refreshAlbumKeepPicks() {
+    const keep = Object.assign({}, _albumPicked);
+    const title = document.getElementById('album-title').innerText.replace('Lượt ', '');
+    await openAlbum(_albumShoot, title);
+    Object.keys(keep).forEach(id => {
+        if (document.getElementById('ai_' + id)) {
+            _albumPicked[id] = keep[id];
+            document.getElementById('ai_' + id).classList.add('picked');
+        }
+    });
+    updateAlbumCount();
+}
+
+// Ảnh xem trước chỉ cần đủ nhận ra ảnh nào, không cần nét — ô rộng 160px nên
+// 200px là vừa. Không tăng theo màn Retina vì nặng gấp đôi mà lợi ích không đáng.
 function gridThumbSize() {
-    return (window.devicePixelRatio || 1) >= 1.5 ? 320 : 200;
+    return 200;
 }
 
 // ===== Album ảnh: khách không có điện thoại thì xem chọn ngay trên máy quán =====
@@ -56,6 +138,7 @@ async function openAlbumBrowser() {
     if (!GS_URL) return Toast.fire({ icon: 'warning', title: 'Chưa cấu hình nơi lưu ảnh trong Quản lý' });
     document.getElementById('album-modal').style.display = 'flex';
     document.body.classList.add('album-open');
+    startDriveWatch();
     albumBack();
 }
 
@@ -64,6 +147,7 @@ function closeAlbumBrowser() {
     document.body.classList.remove('album-open');
     _albumShoot = null;
     _albumPicked = {};
+    if (!anyDriveViewOpen()) stopDriveWatch();
 }
 
 // Về màn chọn lượt chụp
@@ -1518,6 +1602,7 @@ function load() {
                     return;
                 }
                 renderShootPicker(clientId, list, ts);
+                startDriveWatch();
             } catch (e) {
                 box.innerHTML = `<div class="shoot-loading">Không đọc được: ${escapeHTML(e.message)}
                     <button type="button" class="shoot-load" style="margin-top:8px;" onclick="loadShootPicker('${clientId}')">Thử lại</button></div>`;
@@ -1685,6 +1770,7 @@ function load() {
                 <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                 ${label}
             </button>`;
+            if (!anyDriveViewOpen()) stopDriveWatch();
         }
 
         // Xem to để chắc chắn đúng khách trước khi gửi link
