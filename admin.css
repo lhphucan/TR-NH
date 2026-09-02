@@ -227,7 +227,10 @@ button.today-chip:hover { border-color: #18181b; background: #fff; }
 @media (hover: none) and (pointer: coarse) {
     /* Chuẩn cảm ứng cần vùng bấm 44px; nút 30-36px hay bấm trượt */
     .btn, .btn-excel, .up-btn, .shoot-pick, .shoot-load,
-    .btn-del-link, .add-folder-btn, .today-chip { min-height: 44px; }
+    .btn-del-link, .add-folder-btn { min-height: 44px; }
+    /* Chỉ chip bấm được mới cần vùng chạm 44px; chip chỉ để đọc mà cao 44px
+       thì thanh tóm tắt phình ra, đẩy số tiền xuống hàng riêng. */
+    button.today-chip { min-height: 44px; }
 
     .btn-del-client, .btn-move-client, .btn-restore { min-height: 46px; }
     .shoot-close, .btn-edit-info { min-width: 40px; min-height: 40px; }
@@ -326,3 +329,46 @@ button, .btn, label[for] { touch-action: manipulation; }
 
 /* Không bôi xanh khi chạm giữ ảnh */
 .album-img, .album-tick, .shoot-thumb { -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+
+/* ===== Điện thoại: sửa những chỗ tràn ngang và chiếm chỗ ===== */
+@media (max-width: 560px) {
+    body { padding: 8px; }
+
+    /* Khung nổi bị tràn: nó có max-width tính bằng pixel đặt thẳng trong HTML
+       nên trên màn hẹp vẫn rộng hơn màn, chữ và số tiền bị cắt mất bên trái.
+       Ép về đúng bề ngang màn, trừ chỗ cho lề. */
+    /* Album ảnh chiếm trọn màn hình, không thuộc nhóm này */
+    .modal-overlay:not(#album-modal) { padding: 10px; align-items: flex-start; }
+    .modal-overlay .modal-content {
+        max-width: 100% !important;
+        padding: 18px 16px !important;
+        margin: 10px auto !important;
+    }
+
+    /* Menu 7 nút xuống 3 hàng, ăn nửa màn hình. Cho trượt ngang một hàng,
+       kéo bằng ngón tay như dải cơ sở bên dưới. */
+    .admin-header { flex-wrap: nowrap !important; gap: 10px !important; margin-bottom: 14px !important; }
+    .admin-menu {
+        flex: 1; min-width: 0;
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap !important;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+    }
+    .admin-menu::-webkit-scrollbar { display: none; }
+    .admin-menu > button,
+    .admin-menu > div { flex: 0 0 auto; white-space: nowrap; }
+    .admin-header h2 { font-size: 16px !important; }
+
+    /* Dải cơ sở: cho biết còn tab nữa bên phải, không cắt cụt giữa chữ */
+    .tabs { gap: 8px; margin-bottom: 14px; padding-right: 20px; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab-btn { padding: 10px 14px; font-size: 12px; }
+
+    /* Số tiền lớn tràn ra khỏi ô -> cho xuống dòng thay vì cắt */
+    .rev-total-num { font-size: 18px !important; word-break: break-word; }
+
+    /* Thanh công cụ: ô tìm kiếm và nút xuất nằm cùng hàng cho gọn */
+    .toolbar { gap: 8px; }
+    .search-box { flex: 1; min-width: 0; }
+}
