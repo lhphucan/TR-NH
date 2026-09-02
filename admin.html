@@ -293,6 +293,11 @@
                 <h3 id="album-title">Album ảnh</h3>
                 <button type="button" class="album-close" onclick="closeAlbumBrowser()" title="Đóng">✕</button>
             </div>
+            <div id="album-date-bar" class="album-datebar">
+                <button type="button" class="album-day" id="album-day-today" onclick="albumSetDay(0)">Hôm nay</button>
+                <button type="button" class="album-day" id="album-day-yest" onclick="albumSetDay(1)">Hôm qua</button>
+                <input type="date" id="album-date" class="album-date" onchange="albumPickDate()">
+            </div>
             <div id="album-body" class="album-body"></div>
             <div id="album-foot" class="album-foot" style="display:none;">
                 <span id="album-count">Chưa chọn ảnh nào</span>

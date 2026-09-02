@@ -372,3 +372,16 @@ button, .btn, label[for] { touch-action: manipulation; }
     .toolbar { gap: 8px; }
     .search-box { flex: 1; min-width: 0; }
 }
+
+/* Album có ngày riêng: khách xem ảnh không liên quan tới ngày đang lọc danh sách */
+.album-datebar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #e4e4e7; flex: none; flex-wrap: wrap; }
+.album-day { padding: 8px 14px; border: 1px solid #d4d4d8; border-radius: 8px; background: #fff; color: #52525b; font-size: 13px; font-weight: 600; font-family: 'Inter'; cursor: pointer; white-space: nowrap; transition: 0.15s; }
+.album-day:hover { border-color: #18181b; color: #18181b; }
+.album-day.active { background: #18181b; color: #fff; border-color: #18181b; }
+.album-date { padding: 0 12px; height: 36px; border: 1px solid #d4d4d8; border-radius: 8px; font-size: 13px; font-family: 'Inter'; color: #18181b; background: #fff; outline: none; box-sizing: border-box; }
+.album-date:focus { border-color: #18181b; }
+
+@media (hover: none) and (pointer: coarse) {
+    .album-day { min-height: 44px; }
+    .album-date { height: 44px; font-size: 16px; }
+}

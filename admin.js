@@ -41,12 +41,16 @@ if (_cached.token && Date.now() - (_cached.tokenAt || 0) < 50 * 60 * 1000) {
     _driveToken = _cached.token;
     _driveTokenAt = _cached.tokenAt;
 }
-// Chỉ giữ lượt chụp trong ngày: hôm sau dữ liệu cũ không còn dùng
+// Giữ lượt chụp 3 ngày gần nhất: album xem được ngày cũ nên hôm qua vẫn cần,
+// còn xa hơn thì hiếm khi mở mà đo được 45 KB mỗi cơ sở mỗi ngày.
 if (_cached.shoots) {
-    const todayKey = (() => { const d = new Date();
-        return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0'); })();
+    const keep = [];
+    for (let i = 0; i < 3; i++) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        keep.push('|' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0'));
+    }
     Object.keys(_cached.shoots).forEach(k => {
-        if (k.endsWith('|' + todayKey)) _shootCache[k] = _cached.shoots[k];
+        if (keep.some(suffix => k.endsWith(suffix))) _shootCache[k] = _cached.shoots[k];
     });
 }
 
@@ -245,8 +249,9 @@ async function checkDriveChanges(background) {
 async function refreshShootListKeepView() {
     const wrap = document.querySelector('.album-shoots');
     if (!wrap) return;
-    const now = new Date();
-    const ymd = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+    // Theo ngày album đang xem, không phải hôm nay: xem ngày cũ mà đếm lượt
+    // hôm nay thì số lệch, màn hình vẽ lại liên tục.
+    const ymd = ymdOf(_albumDay);
     try {
         const list = (await listShoots(br, ymd)).filter(s => s.id);
         if (list.length !== wrap.children.length) albumBack();
@@ -316,9 +321,58 @@ function shootImgs(folderId) {
 // ===== Album ảnh: khách không có điện thoại thì xem chọn ngay trên máy quán =====
 let _albumShoot = null;      // lượt đang mở
 let _albumPicked = {};       // { fileId: {name} }
+// Ngày album xem, tách khỏi bộ lọc danh sách khách: khách đứng chờ lấy ảnh vừa
+// chụp, còn danh sách có thể đang lọc cả tuần để xem doanh thu.
+let _albumDay = new Date();
+
+function ymdOf(d) {
+    return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+}
+
+// Ô ngày của trình duyệt cần dạng 2026-09-02
+function isoOf(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// Đánh dấu nút nào đang chọn và đồng bộ ô ngày
+function albumSyncDateBar() {
+    const today = ymdOf(new Date());
+    const yest = new Date(); yest.setDate(yest.getDate() - 1);
+    const cur = ymdOf(_albumDay);
+
+    const bt = document.getElementById('album-day-today');
+    const by = document.getElementById('album-day-yest');
+    if (bt) bt.classList.toggle('active', cur === today);
+    if (by) by.classList.toggle('active', cur === ymdOf(yest));
+
+    const inp = document.getElementById('album-date');
+    if (inp) {
+        inp.max = isoOf(new Date());   // chưa chụp thì không có gì để xem
+        if (inp !== document.activeElement) inp.value = isoOf(_albumDay);
+    }
+}
+
+// Nút Hôm nay / Hôm qua
+function albumSetDay(daysAgo) {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    _albumDay = d;
+    albumBack();
+}
+
+// Chọn ngày bất kỳ trong ô ngày
+function albumPickDate() {
+    const v = document.getElementById('album-date').value;   // 2026-09-02
+    if (!v) return;
+    const [y, m, d] = v.split('-').map(Number);
+    if (!y || !m || !d) return;
+    _albumDay = new Date(y, m - 1, d);
+    albumBack();
+}
 
 async function openAlbumBrowser() {
     if (!GS_URL) return Toast.fire({ icon: 'warning', title: 'Chưa cấu hình nơi lưu ảnh trong Quản lý' });
+    _albumDay = new Date();   // mỗi lần mở đều về hôm nay: khách đang đứng chờ
     document.getElementById('album-modal').style.display = 'flex';
     document.body.classList.add('album-open');
     startDriveWatch();
@@ -340,16 +394,19 @@ async function albumBack() {
     document.getElementById('album-back').style.display = 'none';
     document.getElementById('album-foot').style.display = 'none';
     document.getElementById('album-title').innerText = 'Album ảnh';
+    document.getElementById('album-date-bar').style.display = 'flex';
 
     const body = document.getElementById('album-body');
     body.innerHTML = '<div class="album-loading">Đang đọc ảnh vừa chụp...</div>';
 
-    const now = new Date();
-    const ymd = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+    albumSyncDateBar();
+    const ymd = ymdOf(_albumDay);
+    const isToday = ymd === ymdOf(new Date());
     try {
         const list = (await listShoots(br, ymd)).filter(s => s.id);
         if (!list.length) {
-            body.innerHTML = '<div class="album-loading">Hôm nay chưa có lượt chụp nào đã tinh chỉnh xong.</div>';
+            const khi = isToday ? 'Hôm nay' : 'Ngày ' + _albumDay.getDate() + '/' + (_albumDay.getMonth() + 1);
+            body.innerHTML = `<div class="album-loading">${khi} chưa có lượt chụp nào đã tinh chỉnh xong.</div>`;
             return;
         }
         body.innerHTML = '<div class="album-shoots">' + list.map(s => `
@@ -371,6 +428,8 @@ async function openAlbum(folderId, time) {
     _albumPicked = {};
     document.getElementById('album-back').style.display = 'block';
     document.getElementById('album-title').innerText = 'Lượt ' + time;
+    // Đang xem ảnh trong một lượt thì đổi ngày không có nghĩa gì -> ẩn đi
+    document.getElementById('album-date-bar').style.display = 'none';
 
     const body = document.getElementById('album-body');
     body.innerHTML = '<div class="album-loading">Đang tải ảnh...</div>';
