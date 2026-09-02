@@ -42,6 +42,161 @@ function thumbAt(url, size) {
     return String(url || '').replace(/=s\d+(-c)?$/, '=s' + size);
 }
 
+// ===== Album ảnh: khách không có điện thoại thì xem chọn ngay trên máy quán =====
+let _albumShoot = null;      // lượt đang mở
+let _albumPicked = {};       // { fileId: {name} }
+
+async function openAlbumBrowser() {
+    if (!GS_URL) return Toast.fire({ icon: 'warning', title: 'Chưa cấu hình nơi lưu ảnh trong Quản lý' });
+    document.getElementById('album-modal').style.display = 'flex';
+    document.body.classList.add('album-open');
+    albumBack();
+}
+
+function closeAlbumBrowser() {
+    document.getElementById('album-modal').style.display = 'none';
+    document.body.classList.remove('album-open');
+    _albumShoot = null;
+    _albumPicked = {};
+}
+
+// Về màn chọn lượt chụp
+async function albumBack() {
+    _albumShoot = null;
+    _albumPicked = {};
+    document.getElementById('album-back').style.display = 'none';
+    document.getElementById('album-foot').style.display = 'none';
+    document.getElementById('album-title').innerText = 'Album ảnh';
+
+    const body = document.getElementById('album-body');
+    body.innerHTML = '<div class="album-loading">Đang đọc ảnh vừa chụp...</div>';
+
+    const now = new Date();
+    const ymd = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+    try {
+        const list = (await listShoots(br, ymd)).filter(s => s.id);
+        if (!list.length) {
+            body.innerHTML = '<div class="album-loading">Hôm nay chưa có lượt chụp nào đã tinh chỉnh xong.</div>';
+            return;
+        }
+        body.innerHTML = '<div class="album-shoots">' + list.map(s => `
+            <button type="button" class="album-shoot" onclick="openAlbum('${s.id}', '${escapeHTML(s.time)}')">
+                <div class="album-shoot-thumb">${s.thumbs && s.thumbs.length
+                    ? `<img src="${escapeHTML(s.thumbs[0])}" alt="" loading="lazy" decoding="async">` : '<span>—</span>'}</div>
+                <div class="album-shoot-time">${escapeHTML(s.time)}</div>
+                <div class="album-shoot-count">${s.count || 0} ảnh</div>
+            </button>`).join('') + '</div>';
+    } catch (e) {
+        body.innerHTML = `<div class="album-loading">Không đọc được: ${escapeHTML(e.message)}
+            <button type="button" class="shoot-load" style="margin-top:10px;" onclick="albumBack()">Thử lại</button></div>`;
+    }
+}
+
+// Mở album một lượt: lưới ảnh, chạm ảnh để xem to, chạm ô tròn để chọn
+async function openAlbum(folderId, time) {
+    _albumShoot = folderId;
+    _albumPicked = {};
+    document.getElementById('album-back').style.display = 'block';
+    document.getElementById('album-title').innerText = 'Lượt ' + time;
+
+    const body = document.getElementById('album-body');
+    body.innerHTML = '<div class="album-loading">Đang tải ảnh...</div>';
+
+    try {
+        const imgs = await driveQuery(
+            `'${folderId}' in parents and mimeType contains 'image/' and trashed=false`,
+            'files(id,name,size,thumbnailLink)'
+        );
+        if (!imgs.length) {
+            body.innerHTML = '<div class="album-loading">Thư mục này chưa có ảnh.</div>';
+            return;
+        }
+        imgs.sort((a, b) => a.name.localeCompare(b.name));
+
+        // Xem dùng ảnh nhỏ cho nhẹ máy; tải về vẫn lấy bản gốc qua Drive API
+        body.innerHTML = '<div class="album-grid">' + imgs.map(x => `
+            <div class="album-item" id="ai_${x.id}">
+                <div class="album-img" onclick="zoomShoot('${escapeHTML(x.thumbnailLink || '')}', '${escapeHTML(x.name)}')">
+                    ${x.thumbnailLink
+                        ? `<img src="${escapeHTML(thumbAt(x.thumbnailLink, 220))}" alt="" loading="lazy" decoding="async">`
+                        : '<span>—</span>'}
+                </div>
+                <button type="button" class="album-tick" onclick="toggleAlbumPick('${x.id}', '${escapeHTML(x.name)}')" aria-label="Chọn ảnh"></button>
+            </div>`).join('') + '</div>';
+
+        document.getElementById('album-foot').style.display = 'flex';
+        updateAlbumCount();
+    } catch (e) {
+        body.innerHTML = `<div class="album-loading">Không tải được: ${escapeHTML(e.message)}</div>`;
+    }
+}
+
+function toggleAlbumPick(id, name) {
+    if (_albumPicked[id]) delete _albumPicked[id];
+    else _albumPicked[id] = { name };
+    const el = document.getElementById('ai_' + id);
+    if (el) el.classList.toggle('picked', !!_albumPicked[id]);
+    updateAlbumCount();
+}
+
+function updateAlbumCount() {
+    const n = Object.keys(_albumPicked).length;
+    document.getElementById('album-count').innerText = n ? `Đã chọn ${n} ảnh` : 'Chưa chọn ảnh nào';
+    const btn = document.getElementById('album-download');
+    btn.disabled = !n;
+    btn.innerText = n ? `TẢI ${n} ẢNH` : 'TẢI ẢNH ĐÃ CHỌN';
+}
+
+// Tải bản GỐC, không phải ảnh xem trước
+async function downloadSelected() {
+    const ids = Object.keys(_albumPicked);
+    if (!ids.length) return;
+
+    const btn = document.getElementById('album-download');
+    const bar = document.getElementById('album-count');
+    btn.disabled = true;
+
+    let token;
+    try { token = await driveToken(); }
+    catch (e) { btn.disabled = false; return Swal.fire({ title: 'Không tải được', text: e.message, icon: 'error', confirmButtonColor: '#111' }); }
+
+    let ok = 0, failed = 0, done = 0;
+    const PARALLEL = 3;   // ảnh gốc 4 MB, nhiều luồng quá thì máy yếu nghẽn
+
+    for (let start = 0; start < ids.length; start += PARALLEL) {
+        const batch = ids.slice(start, start + PARALLEL);
+        const results = await Promise.all(batch.map(async id => {
+            try {
+                const res = await fetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media',
+                                        { headers: { Authorization: 'Bearer ' + token } });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const blob = await res.blob();
+                done++; bar.innerText = `Đang tải ${done}/${ids.length}...`;
+                btn.innerText = `${done}/${ids.length}`;
+                return { blob, name: _albumPicked[id].name };
+            } catch (e) {
+                done++; bar.innerText = `Đang tải ${done}/${ids.length}...`;
+                return { err: true };
+            }
+        }));
+
+        results.forEach(r => {
+            if (r.err) { failed++; return; }
+            const url = URL.createObjectURL(r.blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = r.name;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+            ok++;
+        });
+    }
+
+    btn.disabled = false;
+    updateAlbumCount();
+    if (failed) Swal.fire({ title: 'Tải một phần', text: `Đã tải ${ok}/${ids.length} ảnh, ${failed} ảnh lỗi.`, icon: 'warning', confirmButtonColor: '#111' });
+    else Toast.fire({ icon: 'success', title: `Đã tải ${ok} ảnh` });
+}
+
 // Tìm ảnh ghép khung trong một lượt.
 // Tên file không đáng tin: máy chụp đặt IMG_4673.JPG hay 195960(H006...).jpg
 // tuỳ lúc. Nhưng ảnh ghép nặng hơn hẳn — đo được 22,5 MB so với trung bình
