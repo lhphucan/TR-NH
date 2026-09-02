@@ -140,34 +140,71 @@ function stopDriveWatch() {
     _watchTimer = null;
 }
 
+// Theo dõi nền: ảnh ghép hay được thêm vào thư mục khách lúc nhân viên đang ở
+// danh sách, không mở album. Không có cái này thì ảnh mẫu đứng nguyên ảnh chưa
+// ghép cho tới khi tải lại trang. Nhịp thưa hơn nhiều để đỡ tốn.
+let _bgTimer = null;
+const BG_EVERY = 120000;
+
+function startBgWatch() {
+    if (_bgTimer || !GS_URL) return;
+    _bgTimer = setInterval(() => {
+        if (document.hidden) return;              // tab ẩn thì khỏi hỏi
+        if (_watchTimer) return;                  // album đang mở, đã có nhịp nhanh lo
+        if (!document.querySelector('.link-thumb[data-fid]')) return;   // không có ảnh mẫu nào
+        checkDriveChanges(true);
+    }, BG_EVERY);
+}
+
 // Còn chỗ nào đang mở không; hết thì dừng hỏi cho đỡ tốn pin
 function anyDriveViewOpen() {
     return document.getElementById('album-modal').style.display === 'flex'
         || !!document.querySelector('.shoot-picker .shoot-row');
 }
 
-async function checkDriveChanges() {
-    if (!_watchToken) return;
-    if (!anyDriveViewOpen()) return stopDriveWatch();
+async function checkDriveChanges(background) {
+    if (!_watchToken) {
+        if (!background) return;
+        // Nhịp nền tự lấy mốc lần đầu, không cần album mở mới có
+        try {
+            const token = await driveToken();
+            const r = await fetch('https://www.googleapis.com/drive/v3/changes/startPageToken', { headers: { Authorization: 'Bearer ' + token } });
+            _watchToken = (await r.json()).startPageToken;
+            saveCache({ lastToken: _watchToken });
+        } catch (e) { return; }
+        return;   // lần này chỉ lấy mốc, lần sau mới so
+    }
+    if (!background && !anyDriveViewOpen()) return stopDriveWatch();
     if (document.hidden) return;   // tab ẩn thì khỏi hỏi
 
     let data;
     try {
         const token = await driveToken();
+        // Xin kèm parents để biết ảnh mới rơi vào thư mục nào, khỏi vẽ lại cả trang
         const r = await fetch('https://www.googleapis.com/drive/v3/changes?pageToken=' + _watchToken
-                            + '&fields=newStartPageToken,nextPageToken,changes(fileId)&pageSize=100',
+                            + '&fields=newStartPageToken,nextPageToken,changes(fileId,file(parents))&pageSize=100',
                             { headers: { Authorization: 'Bearer ' + token } });
         if (!r.ok) return;
         data = await r.json();
     } catch (e) { return; }
 
     _watchToken = data.newStartPageToken || data.nextPageToken || _watchToken;
+    // Ghi lại mốc để lần tải trang sau biết đã xem tới đâu, khỏi vẽ lại thừa
+    saveCache({ lastToken: _watchToken });
     const changes = data.changes || [];
     if (!changes.length) return;
 
-    // Có file đổi -> bỏ nhớ rồi vẽ lại đúng chỗ đang mở
+    // Thư mục chứa các file vừa đổi: chỉ những ô ảnh mẫu này mới cần vẽ lại,
+    // vẽ lại cả trang thì mỗi lần khách gửi ảnh là màn hình nháy một lượt.
+    const hitFolders = new Set();
+    changes.forEach(c => (c.file && c.file.parents || []).forEach(f => hitFolders.add(f)));
+
+    // Có file đổi -> bỏ nhớ danh sách lượt (không biết lượt nào nên bỏ hết)
     Object.keys(_shootCache).forEach(k => delete _shootCache[k]);
-    Object.keys(_folderThumb).forEach(k => delete _folderThumb[k]);
+    hitFolders.forEach(f => delete _folderThumb[f]);
+    // Không lần được thư mục (Drive không trả parents) -> đành bỏ hết cho chắc
+    if (!hitFolders.size) Object.keys(_folderThumb).forEach(k => delete _folderThumb[k]);
+    saveCache({ shoots: {}, thumbs: _folderThumb });
 
     if (document.getElementById('album-modal').style.display === 'flex') {
         if (_albumShoot) refreshAlbumKeepPicks();
@@ -191,9 +228,13 @@ async function checkDriveChanges() {
         }
     }
 
-    // Ảnh mẫu: chỉ nạp ô nào chưa có ảnh, ô đang hiện giữ nguyên
-    document.querySelectorAll('.link-thumb.empty[data-fid]').forEach(el => {
-        el.innerHTML = ''; el.classList.remove('empty');
+    // Ảnh mẫu: vẽ lại cả ô đang hiện ảnh, không chỉ ô trống. Ảnh ghép hay được
+    // thêm vào sau khi ô đã hiện ảnh chụp thường -> chỉ nạp ô trống thì nhân
+    // viên nhìn vào mãi thấy ảnh chưa ghép dù đã trả rồi.
+    document.querySelectorAll('.link-thumb[data-fid]').forEach(el => {
+        const fid = el.getAttribute('data-fid');
+        if (fid in _folderThumb) return;   // thư mục này không đổi, giữ nguyên khỏi nháy
+        el.innerHTML = ''; el.classList.remove('empty'); el.removeAttribute('title');
     });
     loadLinkThumbs();
 }
@@ -1449,6 +1490,7 @@ function load() {
                 filterData();   // gọi renderTodayBar() ở cuối
                 loadLinkThumbs();  // dùng lại ảnh mẫu đã nhớ nên hiện ngay
                 checkDriveOnce();  // rồi lặng lẽ hỏi Drive xem có gì đổi không
+                startBgWatch();    // và canh tiếp: ảnh ghép thêm sau vẫn hiện đúng
             }, err => {
                 // Không có nhánh lỗi thì mất quyền đọc chỉ hiện danh sách trống, không ai biết vì sao
                 document.querySelector('.empty-text').innerText = 'Không tải được dữ liệu: ' + err.message;
@@ -1886,6 +1928,7 @@ function load() {
             // nhìn vào vẫn tưởng chưa ghép
             if (ok) {
                 delete _folderThumb[folderId];
+                saveCache({ thumbs: _folderThumb });   // không lưu thì tải lại trang ảnh cũ quay về
                 document.querySelectorAll(`.link-thumb[data-fid="${folderId}"]`).forEach(el => {
                     el.innerHTML = ''; el.classList.remove('empty'); el.removeAttribute('title');
                 });
