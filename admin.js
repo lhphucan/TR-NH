@@ -984,11 +984,11 @@ function load() {
                                     <input type="file" id="addfolder_input_${client.id}" multiple accept="image/*" style="display:none;"
                                            onchange="addToClientFolder('${client.id}', this)">
                                 </div>` : ''}
-                                ${(dbPath === 'data/' && !client.links) ? `
+                                ${(dbPath === 'data/') ? `
                                 <div class="shoot-picker" id="shoots_${client.id}" data-ts="${client.ts}">
                                     <button type="button" class="shoot-load" onclick="loadShootPicker('${client.id}')">
                                         <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                        XEM ẢNH VỪA CHỤP
+                                        ${client.links ? 'GỬI THÊM LƯỢT CHỤP' : 'XEM ẢNH VỪA CHỤP'}
                                     </button>
                                 </div>` : ''}
                             </div>
@@ -1367,11 +1367,20 @@ function load() {
             const box = document.getElementById('shoots_' + clientId);
             if (!box) return;
 
-            // Lượt đã gán cho khách khác thì không cho chọn lại, tránh hai khách chung một thư mục
+            // Lượt đã gán cho khách khác thì đánh dấu, tránh hai khách chung một thư mục.
+            // Bỏ qua chính khách đang xem: gửi thêm lượt nữa cho họ là chuyện bình thường.
             const taken = {};
+            const mine = {};
             Object.keys(currentData || {}).forEach(cid => {
                 const c = currentData[cid];
                 if (!c.links) return;
+                if (cid === clientId) {
+                    Object.values(c.links).forEach(l => {
+                        const m = String(l.url || '').match(/folders\/([\w-]+)/);
+                        if (m) mine[m[1]] = true;
+                    });
+                    return;
+                }
                 Object.values(c.links).forEach(l => {
                     const m = String(l.url || '').match(/folders\/([\w-]+)/);
                     if (m) taken[m[1]] = c.name || 'khách khác';
@@ -1398,17 +1407,19 @@ function load() {
                 const gap = abs >= 90 ? `${Math.round(abs / 60)} giờ` : `${abs} phút`;
                 const diffText = diff === 0 ? 'cùng lúc' : (diff > 0 ? `sau ${gap}` : `trước ${gap}`);
                 const who = taken[s.id];
-                html += `<div class="shoot-card${who ? ' taken' : ''}">
+                const isMine = mine[s.id];
+                html += `<div class="shoot-card${who ? ' taken' : ''}${isMine ? ' mine' : ''}">
                     <div class="shoot-thumb"${s.thumbs && s.thumbs.length ? ` onclick="zoomShoot('${escapeHTML(s.thumbs[0])}', '${s.time}')"` : ''}>${s.thumbs && s.thumbs.length
                         ? `<img src="${escapeHTML(s.thumbs[0])}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('empty'); this.remove();">` : '<span>—</span>'}</div>
                     <div class="shoot-time">${s.time}</div>
                     <div class="shoot-diff">${diffText}</div>
                     <div class="shoot-count">${s.count || 0} ảnh</div>
-                    ${who ? `<div class="shoot-taken">Đã trả cho ${escapeHTML(who)}</div>` : ''}
-                    <button type="button" class="shoot-pick${who ? ' again' : ''}"
+                    ${isMine ? `<div class="shoot-mine">✓ Đã gửi khách này</div>`
+                             : (who ? `<div class="shoot-taken">Đã trả cho ${escapeHTML(who)}</div>` : '')}
+                    ${isMine ? '' : `<button type="button" class="shoot-pick${who ? ' again' : ''}"
                             onclick="pickShoot('${clientId}', '${escapeHTML(s.url)}', ${who ? `'${escapeHTML(who)}'` : 'null'})">
                         ${who ? 'CHỌN LẠI' : 'CHỌN'}
-                    </button>
+                    </button>`}
                 </div>`;
             });
             html += '</div>';
@@ -1506,9 +1517,12 @@ function load() {
         function closeShootPicker(clientId) {
             const box = document.getElementById('shoots_' + clientId);
             if (!box) return;
+            // Khách đã có link thì lần bấm sau là để gửi thêm lượt nữa
+            const c = currentData && currentData[clientId];
+            const label = (c && c.links) ? 'GỬI THÊM LƯỢT CHỤP' : 'XEM ẢNH VỪA CHỤP';
             box.innerHTML = `<button type="button" class="shoot-load" onclick="loadShootPicker('${clientId}')">
                 <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                XEM ẢNH VỪA CHỤP
+                ${label}
             </button>`;
         }
 
