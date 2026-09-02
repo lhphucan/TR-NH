@@ -66,5 +66,21 @@
     </div>
 
     <script src="./app.js" defer></script>
+    <!-- Album ảnh: khách xem và lưu ngay, không phải mở tab Drive -->
+    <div id="alb-modal" class="alb-modal">
+        <div class="alb-head">
+            <span id="alb-count">0 ảnh</span>
+            <button type="button" class="alb-close" onclick="closeAlbum()" aria-label="Đóng">&times;</button>
+        </div>
+        <div id="alb-grid" class="alb-grid"></div>
+        <p class="alb-hint">Chạm vào ảnh để xem lớn và lưu về máy</p>
+    </div>
+
+    <div id="alb-zoom" class="alb-zoom">
+        <button type="button" class="alb-close alb-zoom-close" onclick="albZoomClose()" aria-label="Đóng">&times;</button>
+        <img id="alb-zoom-img" alt="">
+        <button type="button" id="alb-save" class="alb-save" data-i="0" onclick="albSave()">LƯU ẢNH</button>
+    </div>
+
 </body>
 </html>

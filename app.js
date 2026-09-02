@@ -422,7 +422,7 @@ function renderHistory(history, branch) {
         if (links.length) {
             links.forEach((lid, i) => {
                 const l = d.links[lid] || {};
-                inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><a href="${safeUrlAttr(l.url)}" target="_blank" rel="noopener noreferrer" class="view-btn" onclick="askRating('${escapeHTML(h.branch)}')">Lưu ảnh</a></div>`;
+                inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${escapeHTML(h.branch)}')">Xem &amp; lưu ảnh</button></div>`;
             });
         } else {
             inner = `<div class="hist-empty">Tiệm chưa gửi ảnh cho lượt này</div>`;
@@ -552,7 +552,7 @@ function renderData(data, branch) {
     if (data.links && Object.keys(data.links).length > 0) {
         Object.keys(data.links).forEach((linkId, index) => {
             const l = data.links[linkId] || {};
-            html += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${index+1}</span><a href="${safeUrlAttr(l.url)}" target="_blank" rel="noopener noreferrer" class="view-btn" onclick="askRating('${safeBranch}')">Lưu ảnh</a></div>`;
+            html += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${index+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${safeBranch}')">Xem &amp; lưu ảnh</button></div>`;
         });
     } else {
         html += `<div style="font-size:12px; color:#888; text-align:center; padding:15px; background:#fff; border:1px dashed #d4d4d8; border-radius:8px; margin-top:10px;">
@@ -586,7 +586,7 @@ function renderData(data, branch) {
             if (lids.length) {
                 lids.forEach((lid, i) => {
                     const l = d.links[lid] || {};
-                    inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><a href="${safeUrlAttr(l.url)}" target="_blank" rel="noopener noreferrer" class="view-btn" onclick="askRating('${escapeHTML(h.branch)}')">Lưu ảnh</a></div>`;
+                    inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${escapeHTML(h.branch)}')">Xem &amp; lưu ảnh</button></div>`;
                 });
             } else {
                 inner = `<div class="hist-empty">Lượt này chưa có ảnh</div>`;
@@ -743,4 +743,112 @@ function askRating(br) {
             }).then(r => { if(r.isConfirmed) { localStorage.setItem('pn_rated', '1'); const m = safeUrl(BRANCHES_CACHE[br] && BRANCHES_CACHE[br].social && BRANCHES_CACHE[br].social.map); if (m !== '#') window.open(m, '_blank', 'noopener'); }});
         }
     }, 2000);
+}
+
+// ===== Album ảnh: khách xem và lưu ngay trong web, không phải mở tab Drive =====
+// Trang khách không đăng nhập Google được nên nhờ Apps Script đọc hộ danh sách
+// ảnh; còn ảnh xem trước và bản gốc thì lấy thẳng từ Google bằng id cho nhanh.
+
+let _alb = [];        // ảnh của thư mục đang mở
+let _albBranch = '';  // cơ sở, để hỏi đánh giá sau khi khách lưu ảnh
+
+// Ảnh xem trước: đủ nhìn rõ mặt, không cần nét vì chạm vào là xem bản to
+function albThumb(id) { return 'https://lh3.googleusercontent.com/d/' + id + '=s400'; }
+
+// Bản gốc: =s0 trả đúng từng byte như file trên Drive, không nén
+function albFull(id) { return 'https://lh3.googleusercontent.com/d/' + id + '=s0'; }
+
+async function openAlbum(url, branch) {
+    const fid = (String(url || '').match(/folders\/([\w-]+)/) || [])[1];
+    if (!fid) { window.open(url, '_blank', 'noopener'); return; }   // link lạ -> mở Drive như cũ
+
+    _albBranch = branch || '';
+    Swal.fire({ title: 'Đang mở ảnh...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+    try {
+        const d = await gsCall({ action: 'album', folder: fid });
+        _alb = d.images || [];
+    } catch (e) {
+        Swal.close();
+        // Không đọc được thì vẫn cho khách vào Drive, đừng để khách tay trắng
+        return Swal.fire({
+            title: 'Chưa mở được album', text: 'Bạn vẫn xem ảnh trên Google Drive được.',
+            icon: 'warning', confirmButtonText: 'Mở Google Drive', confirmButtonColor: '#111'
+        }).then(r => { if (r.isConfirmed) window.open(url, '_blank', 'noopener'); });
+    }
+
+    Swal.close();
+    if (!_alb.length) {
+        return Swal.fire({ title: 'Chưa có ảnh', text: 'Thư mục này chưa có ảnh nào.', icon: 'info', confirmButtonColor: '#111' });
+    }
+
+    document.getElementById('alb-count').innerText = _alb.length + ' ảnh';
+    document.getElementById('alb-grid').innerHTML = _alb.map((x, i) => `
+        <button type="button" class="alb-item" onclick="albZoom(${i})">
+            <img src="${escapeHTML(albThumb(x.id))}" alt="" loading="lazy" decoding="async">
+        </button>`).join('');
+    document.getElementById('alb-modal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAlbum() {
+    document.getElementById('alb-modal').style.display = 'none';
+    document.getElementById('alb-zoom').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+// Xem ảnh to: khách nhìn kỹ rồi mới quyết định lưu
+function albZoom(i) {
+    const x = _alb[i];
+    if (!x) return;
+    document.getElementById('alb-zoom-img').src = albFull(x.id);
+    document.getElementById('alb-save').setAttribute('data-i', i);
+    document.getElementById('alb-zoom').style.display = 'flex';
+}
+
+function albZoomClose() {
+    document.getElementById('alb-zoom').style.display = 'none';
+    document.getElementById('alb-zoom-img').src = '';
+}
+
+// Lưu ảnh: gọi bảng chia sẻ sẵn có của điện thoại (Lưu ảnh / Zalo / Messenger)
+// -> ảnh vào thẳng thư viện ảnh, khách khỏi lục thư mục Tải về.
+// Máy tính không có bảng đó nên tải file như bình thường.
+async function albSave() {
+    const btn = document.getElementById('alb-save');
+    const i = parseInt(btn.getAttribute('data-i'));
+    const x = _alb[i];
+    if (!x) return;
+
+    const old = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Đang tải ảnh gốc...';
+
+    try {
+        const res = await fetch(albFull(x.id));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const blob = await res.blob();
+        const file = new File([blob], x.name, { type: blob.type || 'image/jpeg' });
+
+        // Điện thoại: bảng chia sẻ có mục Lưu ảnh
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file] });
+        } else {
+            // Máy tính hoặc máy không hỗ trợ: tải về như file
+            const u = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = u; a.download = x.name;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(u), 10000);
+        }
+        if (_albBranch) askRating(_albBranch);
+    } catch (e) {
+        // Khách bấm Huỷ trên bảng chia sẻ cũng rơi vào đây -> đừng báo lỗi
+        if (e && e.name !== 'AbortError') {
+            Swal.fire({ title: 'Chưa lưu được', text: 'Thử lại giúp mình nhé.', icon: 'error', confirmButtonColor: '#111' });
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = old;
+    }
 }
