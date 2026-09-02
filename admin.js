@@ -95,32 +95,86 @@ async function checkDriveChanges() {
 
     if (document.getElementById('album-modal').style.display === 'flex') {
         if (_albumShoot) refreshAlbumKeepPicks();
-        else albumBack();
+        else refreshShootListKeepView();
     }
 
+    // Khung chọn lượt: chỉ vẽ lại khi số lượt đổi, sửa ảnh trong lượt cũ
+    // không cần dựng lại cả hàng
     const openPicker = document.querySelector('.shoot-picker .shoot-row');
     if (openPicker) {
         const id = openPicker.closest('.shoot-picker').id.replace('shoots_', '');
-        loadShootPicker(id);
+        const shown = openPicker.querySelectorAll('.shoot-card').length;
+        const box = document.getElementById('shoots_' + id);
+        const ts = box ? parseInt(box.getAttribute('data-ts')) : 0;
+        if (ts) {
+            const d = new Date(ts);
+            const ymd = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+            listShoots(br, ymd).then(list => {
+                if (list.filter(s => s.id).length !== shown) loadShootPicker(id);
+            }).catch(() => {});
+        }
     }
 
-    document.querySelectorAll('.link-thumb[data-fid]').forEach(el => {
+    // Ảnh mẫu: chỉ nạp ô nào chưa có ảnh, ô đang hiện giữ nguyên
+    document.querySelectorAll('.link-thumb.empty[data-fid]').forEach(el => {
         el.innerHTML = ''; el.classList.remove('empty');
     });
     loadLinkThumbs();
 }
 
-// Vẽ lại album nhưng giữ nguyên ảnh khách đã tích chọn
+// Màn chọn lượt: chỉ vẽ lại khi số lượt thay đổi, tránh nháy cả màn
+async function refreshShootListKeepView() {
+    const wrap = document.querySelector('.album-shoots');
+    if (!wrap) return;
+    const now = new Date();
+    const ymd = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+    try {
+        const list = (await listShoots(br, ymd)).filter(s => s.id);
+        if (list.length !== wrap.children.length) albumBack();
+    } catch (e) { /* lỗi mạng -> giữ nguyên màn đang xem */ }
+}
+
+// Chỉ chèn thêm ảnh mới vào lưới, không dựng lại cả album — vẽ lại làm
+// toàn bộ ảnh nháy một lượt, nhìn như trang tự tải lại.
 async function refreshAlbumKeepPicks() {
-    const keep = Object.assign({}, _albumPicked);
-    const title = document.getElementById('album-title').innerText.replace('Lượt ', '');
-    await openAlbum(_albumShoot, title);
-    Object.keys(keep).forEach(id => {
-        if (document.getElementById('ai_' + id)) {
-            _albumPicked[id] = keep[id];
-            document.getElementById('ai_' + id).classList.add('picked');
-        }
+    const grid = document.querySelector('.album-grid');
+    if (!grid) return;
+
+    let imgs;
+    try {
+        imgs = await driveQuery(
+            `'${_albumShoot}' in parents and mimeType contains 'image/' and trashed=false`,
+            'files(id,name,size,thumbnailLink)'
+        );
+    } catch (e) { return; }
+
+    const have = {};
+    grid.querySelectorAll('.album-item').forEach(el => { have[el.id.slice(3)] = el; });
+
+    // Ảnh bị xoá khỏi Drive -> bỏ khỏi lưới và khỏi danh sách đã chọn
+    const nowIds = {};
+    imgs.forEach(x => { nowIds[x.id] = 1; });
+    Object.keys(have).forEach(id => {
+        if (!nowIds[id]) { have[id].remove(); delete _albumPicked[id]; }
     });
+
+    // Ảnh mới -> chèn đúng vị trí theo tên, ảnh cũ giữ nguyên không nháy
+    imgs.sort((a, b) => a.name.localeCompare(b.name));
+    imgs.forEach((x, i) => {
+        if (have[x.id]) return;
+        const el = document.createElement('div');
+        el.className = 'album-item';
+        el.id = 'ai_' + x.id;
+        el.innerHTML = `<div class="album-img" onclick="zoomShoot('${escapeHTML(x.thumbnailLink || '')}', '${escapeHTML(x.name)}')">
+                ${x.thumbnailLink
+                    ? `<img src="${escapeHTML(thumbAt(x.thumbnailLink, gridThumbSize()))}" alt="" loading="lazy" decoding="async">`
+                    : '<span>—</span>'}
+            </div>
+            <button type="button" class="album-tick" onclick="toggleAlbumPick('${x.id}', '${escapeHTML(x.name)}')" aria-label="Chọn ảnh"></button>`;
+        const at = grid.children[i];
+        if (at) grid.insertBefore(el, at); else grid.appendChild(el);
+    });
+
     updateAlbumCount();
 }
 
