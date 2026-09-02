@@ -750,6 +750,7 @@ function askRating(br) {
 // ảnh; còn ảnh xem trước và bản gốc thì lấy thẳng từ Google bằng id cho nhanh.
 
 let _alb = [];        // ảnh của thư mục đang mở
+let _albLabels = [];  // tên hiển thị, dùng lại khi đặt tên file lưu về máy
 let _albBranch = '';  // cơ sở, để hỏi đánh giá sau khi khách lưu ảnh
 
 // Ảnh xem trước: hai cột trên điện thoại nên mỗi ô rộng khoảng 178 điểm,
@@ -794,11 +795,11 @@ async function openAlbum(url, branch) {
     }
 
     document.getElementById('alb-count').innerText = _alb.length + ' ảnh';
-    const ten = albLabels(_alb);
+    _albLabels = albLabels(_alb);
     grid.innerHTML = _alb.map((x, i) => `
         <button type="button" class="alb-item" onclick="albZoom(${i})">
             <span class="alb-thumb"><img src="${escapeHTML(albThumb(x.id))}" alt="" loading="lazy" decoding="async"></span>
-            <span class="alb-name">${escapeHTML(ten[i])}</span>
+            <span class="alb-name">${escapeHTML(_albLabels[i])}</span>
         </button>`).join('');
 }
 
@@ -837,6 +838,18 @@ function albZoomClose() {
     document.getElementById('alb-zoom-img').src = '';
 }
 
+// Tên file không dấu: máy tính đời cũ và một số ứng dụng chat làm hỏng tên
+// tiếng Việt có dấu, thành ra khách lưu về mở không ra.
+function boDau(s) {
+    return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+}
+
+// Máy cảm ứng không có chuột: điện thoại và máy tính bảng. Máy tính dù có
+// bảng chia sẻ vẫn nên tải thẳng cho nhanh.
+function laDienThoai() {
+    return window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+}
+
 // Lưu ảnh: gọi bảng chia sẻ sẵn có của điện thoại (Lưu ảnh / Zalo / Messenger)
 // -> ảnh vào thẳng thư viện ảnh, khách khỏi lục thư mục Tải về.
 // Máy tính không có bảng đó nên tải file như bình thường.
@@ -854,16 +867,22 @@ async function albSave() {
         const res = await fetch(albFull(x.id));
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const blob = await res.blob();
-        const file = new File([blob], x.name, { type: blob.type || 'image/jpeg' });
+        // Tên máy chụp đặt toàn mã máy, lưu về máy khách nhìn không hiểu gì
+        // -> đặt lại theo số thứ tự đang hiện trên album
+        const duoi = (x.name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0];
+        const ten = 'PHOTONOIR ' + boDau(_albLabels[i] || 'Anh') + duoi;
+        const file = new File([blob], ten, { type: blob.type || 'image/jpeg' });
 
-        // Điện thoại: bảng chia sẻ có mục Lưu ảnh
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        if (laDienThoai() && navigator.canShare && navigator.canShare({ files: [file] })) {
+            // Điện thoại: bảng chia sẻ có mục Lưu ảnh, ảnh vào thẳng thư viện
             await navigator.share({ files: [file] });
         } else {
-            // Máy tính hoặc máy không hỗ trợ: tải về như file
+            // Máy tính: tải thẳng vào thư mục Tải về, không hỏi han gì thêm.
+            // Chrome trên máy tính cũng có bảng chia sẻ nhưng ở đó nó chỉ tổ
+            // thêm một bước cho người dùng.
             const u = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = u; a.download = x.name;
+            a.href = u; a.download = ten;
             document.body.appendChild(a); a.click(); a.remove();
             setTimeout(() => URL.revokeObjectURL(u), 10000);
         }
