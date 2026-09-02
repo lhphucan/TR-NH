@@ -794,10 +794,27 @@ async function openAlbum(url, branch) {
     }
 
     document.getElementById('alb-count').innerText = _alb.length + ' ảnh';
-    document.getElementById('alb-grid').innerHTML = _alb.map((x, i) => `
+    const ten = albLabels(_alb);
+    grid.innerHTML = _alb.map((x, i) => `
         <button type="button" class="alb-item" onclick="albZoom(${i})">
-            <img src="${escapeHTML(albThumb(x.id))}" alt="" loading="lazy" decoding="async">
+            <span class="alb-thumb"><img src="${escapeHTML(albThumb(x.id))}" alt="" loading="lazy" decoding="async"></span>
+            <span class="alb-name">${escapeHTML(ten[i])}</span>
         </button>`).join('');
+}
+
+// Tên file máy chụp đặt rất dài và toàn mã máy, ví dụ
+// "203350(H006黑白单女生)(H002-18)[实时精修].jpg" — khách đọc không hiểu gì.
+// Đánh số thứ tự cho dễ gọi nhau, riêng bản ghép khung thì ghi rõ.
+// Tính sẵn một lượt để số đếm liền mạch dù bản ghép nằm xen giữa.
+function albLabels(list) {
+    const NANG = 5 * 1024 * 1024;   // ảnh chụp thường đo được 2-3 MB, bản ghép 10-27 MB
+    const coAnhThuong = list.some(x => parseInt(x.size || 0) < NANG);
+    let n = 0;
+    return list.map(x => {
+        if (coAnhThuong && parseInt(x.size || 0) >= NANG) return 'Ảnh ghép';
+        n++;
+        return 'Ảnh ' + n;
+    });
 }
 
 function closeAlbum() {

@@ -57,17 +57,23 @@ button.primary-btn:disabled { opacity: 0.7; cursor: not-allowed; }
 /* Cùng cỡ chữ và cách giãn với tiêu đề trên trang chính */
 .alb-head span { font-size: 13px; font-weight: 700; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; }
 .alb-close { background: none; border: none; font-size: 26px; line-height: 1; color: var(--text-muted); cursor: pointer; padding: 4px 12px; font-family: 'Inter', sans-serif; }
-/* Ảnh chụp đo được đều ngang 3:2 (3984x2656), ảnh ghép 1.42 cũng ngang.
-   Khung phải theo đúng tỷ lệ đó, không thì cắt mất đầu và cằm. Hai cột trên
-   điện thoại vì ảnh ngang xếp ba cột thì mặt người quá nhỏ. */
-.alb-grid { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 12px; align-content: start; }
-/* display:block bắt buộc: nút mặc định là inline-block, khi đó aspect-ratio
-   không có tác dụng nên ảnh tràn ra ngoài và đè lên ảnh dưới. */
-.alb-item { display: block; width: 100%; border: 1px solid #e5e5e5; padding: 0; background: var(--bg-main); border-radius: 12px; overflow: hidden; aspect-ratio: 3/2; cursor: pointer; content-visibility: auto; contain-intrinsic-size: auto 120px; transition: 0.2s; }
-.alb-item:active { border-color: var(--text-main); }
-/* contain thay vì cover: thà chừa viền còn hơn cắt mất mặt, vì ảnh ghép
-   khung có tỷ lệ khác ảnh chụp thường */
-.alb-item img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* Xếp như thư mục ảnh trên máy tính: mỗi ảnh một ô riêng, ảnh nằm gọn giữa
+   ô, tên ảnh bên dưới. Ảnh chụp đo được đều ngang 3:2 (3984x2656), ảnh ghép
+   1.42 cũng ngang. Hai cột trên điện thoại vì ảnh ngang xếp ba cột thì mặt
+   người quá nhỏ. */
+.alb-grid { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 12px; align-content: start; }
+
+/* Không dùng content-visibility ở đây: nó cho phép trình duyệt bỏ qua việc
+   dựng ô chưa nhìn thấy, Safari tính nhầm chiều cao rồi các ô chồng lên nhau. */
+.alb-item { display: flex; flex-direction: column; width: 100%; border: 1px solid #e5e5e5; padding: 8px; background: var(--card-bg); border-radius: 12px; cursor: pointer; font-family: 'Inter', sans-serif; box-sizing: border-box; transition: 0.2s; }
+.alb-item:active { border-color: var(--text-main); background: var(--bg-main); }
+
+/* Khung ảnh cố định tỷ lệ, ảnh vừa khung chứ không cắt */
+.alb-thumb { width: 100%; aspect-ratio: 3/2; background: var(--bg-main); border-radius: 8px; overflow: hidden; flex: none; }
+.alb-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+/* Tên ảnh: một dòng, dài quá thì cắt bằng dấu ba chấm như trên máy tính */
+.alb-name { margin-top: 6px; font-size: 11px; color: var(--text-muted); font-weight: 500; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Màn rộng hơn thì thêm cột, ảnh vẫn đủ to để nhìn rõ mặt */
 @media (min-width: 560px) { .alb-grid { grid-template-columns: repeat(3, 1fr); } }
