@@ -12,15 +12,48 @@ const BOOTH_BY_BRANCH = { phucyen: 'SelfboothPY', vinhyen: 'SelfboothVY', xuanho
 const PHOTO_ROOT = '用户照片文件';   // thư mục chứa các lượt chụp
 const EDITED_NAME = '实时精修';      // thư mục ảnh đã tinh chỉnh, gửi cho khách
 
-let _driveToken = '';        // token dùng lại trong 50 phút, đỡ gọi Apps Script mỗi lần
+// Giữ qua F5: xin token mất 2-6 giây, hỏi danh sách lượt mất 2 giây — tải lại
+// trang mà phải chờ từ đầu thì rất chậm. Thay đổi mới vẫn được phát hiện qua
+// Changes API nên dữ liệu không bị cũ.
+const CACHE_KEY = 'pn_drive_cache';
+
+function loadCache() {
+    try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); }
+    catch (e) { return {}; }
+}
+
+function saveCache(patch) {
+    try {
+        const c = Object.assign(loadCache(), patch);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(c));
+    } catch (e) { /* hết chỗ hoặc bị chặn -> chạy không cache */ }
+}
+
+const _cached = loadCache();
+let _driveToken = '';
 let _driveTokenAt = 0;
 const _shootCache = {};      // { 'phucyen|20260902': { at, list } }
+
+// Khôi phục từ lần tải trang trước
+if (_cached.token && Date.now() - (_cached.tokenAt || 0) < 50 * 60 * 1000) {
+    _driveToken = _cached.token;
+    _driveTokenAt = _cached.tokenAt;
+}
+// Chỉ giữ lượt chụp trong ngày: hôm sau dữ liệu cũ không còn dùng
+if (_cached.shoots) {
+    const todayKey = (() => { const d = new Date();
+        return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0'); })();
+    Object.keys(_cached.shoots).forEach(k => {
+        if (k.endsWith('|' + todayKey)) _shootCache[k] = _cached.shoots[k];
+    });
+}
 
 async function driveToken() {
     if (_driveToken && Date.now() - _driveTokenAt < 50 * 60 * 1000) return _driveToken;
     const d = await gsCall({ action: 'token' });
     _driveToken = d.token;
     _driveTokenAt = Date.now();
+    saveCache({ token: _driveToken, tokenAt: _driveTokenAt });
     return _driveToken;
 }
 
@@ -48,6 +81,31 @@ function thumbAt(url, size) {
 let _watchTimer = null;
 let _watchToken = null;
 const WATCH_EVERY = 20000;
+
+// Tải trang xong: dùng ngay dữ liệu đã nhớ, rồi hỏi Drive một lần xem có gì đổi.
+// Chỉ chạy một lần mỗi lần tải trang, không lặp lại như startDriveWatch.
+let _checkedOnce = false;
+async function checkDriveOnce() {
+    if (_checkedOnce || !GS_URL) return;
+    _checkedOnce = true;
+    try {
+        const token = await driveToken();
+        const r = await fetch('https://www.googleapis.com/drive/v3/changes/startPageToken', { headers: { Authorization: 'Bearer ' + token } });
+        const start = (await r.json()).startPageToken;
+        const since = _cached.lastToken;
+        saveCache({ lastToken: start });
+        if (!since || since === start) return;   // không có gì đổi từ lần trước
+
+        // Có thay đổi -> bỏ nhớ để nạp lại bản mới
+        Object.keys(_shootCache).forEach(k => delete _shootCache[k]);
+        Object.keys(_folderThumb).forEach(k => delete _folderThumb[k]);
+        saveCache({ shoots: {}, thumbs: {} });
+        document.querySelectorAll('.link-thumb[data-fid]').forEach(el => {
+            el.innerHTML = ''; el.classList.remove('empty');
+        });
+        loadLinkThumbs();
+    } catch (e) { /* mất mạng -> giữ dữ liệu đã nhớ */ }
+}
 
 async function startDriveWatch() {
     if (_watchTimer || !GS_URL) return;
@@ -369,7 +427,9 @@ function findFramed(imgs) {
 
 // Ảnh mẫu của thư mục đã gửi khách — nhìn là biết đã trả đúng ảnh chưa,
 // khỏi phải mở Drive kiểm tra.
-const _folderThumb = {};   // { folderId: url | null }
+// Khôi phục từ lần trước: link ảnh mẫu Drive sống lâu nên dùng lại được ngay,
+// ảnh nào đã đổi thì Changes API phát hiện và nạp lại
+const _folderThumb = _cached.thumbs || {};   // { folderId: url | null }
 
 async function loadLinkThumbs() {
     if (!GS_URL) return;
@@ -410,6 +470,7 @@ async function loadLinkThumbs() {
             const pick = findFramed(imgs) || imgs[Math.floor(imgs.length / 2)];
             // Ô rộng 44px, không cần ảnh 220px
             _folderThumb[fid] = (pick && thumbAt(pick.thumbnailLink, 100)) || null;
+            saveCache({ thumbs: _folderThumb });
         } catch (e) {
             _folderThumb[fid] = null;
         }
@@ -470,6 +531,7 @@ async function listShoots(branchId, ymd) {
 
     list.sort((a, b) => b.folderName.localeCompare(a.folderName));
     _shootCache[key] = { at: Date.now(), list };
+    saveCache({ shoots: _shootCache });
     return list;
 }
 
@@ -1335,7 +1397,8 @@ function load() {
                 _restoreDrafts = {};
 
                 filterData();   // gọi renderTodayBar() ở cuối
-                loadLinkThumbs();  // nạp ảnh mẫu ngầm, không chặn hiển thị danh sách
+                loadLinkThumbs();  // dùng lại ảnh mẫu đã nhớ nên hiện ngay
+                checkDriveOnce();  // rồi lặng lẽ hỏi Drive xem có gì đổi không
             }, err => {
                 // Không có nhánh lỗi thì mất quyền đọc chỉ hiện danh sách trống, không ai biết vì sao
                 document.querySelector('.empty-text').innerText = 'Không tải được dữ liệu: ' + err.message;
