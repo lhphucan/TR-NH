@@ -408,7 +408,14 @@ function renderHistory(history, branch) {
     resetSubmitBtn();
 
     const bName = (BRANCHES_CACHE[branch] && BRANCHES_CACHE[branch].name) || branch;
-    let html = '';
+
+    // Nút tạo lượt mới để trên cùng: khách chụp nhiều lần thì danh sách ảnh cũ
+    // dài, nút nằm dưới bị chìm và khách tưởng không tạo được lượt hôm nay.
+    let html = `<div class="new-session new-session-top">
+        <p>Bạn vừa chụp tại <b>${escapeHTML(bName)}</b> hôm nay?</p>
+        <button onclick="startNewSession()" class="primary-btn" style="padding:13px; font-size:13px;">TẠO LƯỢT CHỤP MỚI</button>
+    </div>
+    <p class="hist-title" style="margin-top:22px;">Ảnh các lần chụp trước</p>`;
 
     history.forEach((h, idx) => {
         const d = h.data;
@@ -439,11 +446,6 @@ function renderHistory(history, branch) {
             <div id="hist-body-${idx}" class="hist-body" style="display:${open ? 'block' : 'none'};">${inner}</div>
         </div>`;
     });
-
-    html += `<div class="new-session">
-        <p>Bạn vừa chụp tại <b>${escapeHTML(bName)}</b> hôm nay?</p>
-        <button onclick="startNewSession()" class="primary-btn" style="padding:13px; font-size:13px;">TẠO LƯỢT CHỤP MỚI</button>
-    </div>`;
 
     document.getElementById('album-list').innerHTML = html;
 }
