@@ -1779,12 +1779,25 @@ function load() {
             return openPriceModal(clientId, paySel ? paySel.value : 'Tiền mặt');
         }
 
+        // Khách nào đang được trả ảnh: chặn bấm hai lần trong lúc còn đang chạy.
+        // Bấm nút hai nhịp, hoặc chạm trên màn cảm ứng nhận hai lần, đều làm
+        // hàm chạy song song rồi ghi hai bản ghi cùng một link.
+        // Khai báo ở đây vì cả hai hàm dưới đều dùng; let/const không được
+        // hoisting nên để dưới là lỗi.
+        const _dangLuuLink = {};
+
         async function uploadPhotosToImgBB(clientId) {
+            // Cùng lý do như addLink: nút chỉ khoá sau khi hỏi tiền xong, mà lúc
+            // đang chờ nhập tiền vẫn bấm tiếp được nên ảnh lên hai lần.
+            if (_dangLuuLink[clientId]) return;
+
             // Giữ file TRƯỚC khi hỏi tiền: ghi giá -> listener realtime vẽ lại DOM -> input bị reset
             const fileInput = document.getElementById('file_' + clientId);
             const files = Array.from(fileInput ? fileInput.files : []);
             if (files.length === 0) return Swal.fire({title: 'Lỗi', text: 'Chưa chọn ảnh nào!', icon: 'warning', confirmButtonColor: '#111'});
 
+            _dangLuuLink[clientId] = true;
+            try {
             if (!(await requirePrice(clientId))) return;
 
             // DOM có thể đã vẽ lại -> lấy lại nút theo id
@@ -1844,9 +1857,14 @@ function load() {
                     b.disabled = false;
                 }
             }
+            } finally {
+                _dangLuuLink[clientId] = false;
+            }
         }
 
         async function addLink(clientId) {
+            if (_dangLuuLink[clientId]) return;
+
             // Đọc link TRƯỚC khi hỏi tiền: ghi giá -> listener realtime vẽ lại DOM -> textarea bị xoá trắng
             const ta = document.getElementById('new_' + clientId);
             const text = ta ? ta.value.trim() : '';
@@ -1854,18 +1872,41 @@ function load() {
             const urls = text.split(/\n/).map(u => u.trim()).filter(u => u !== "");
             if(urls.length === 0) return;
 
-            if (!(await requirePrice(clientId))) return;
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + now.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
-            
-            urls.forEach((url, index) => {
-                const linkId = "L_" + Date.now() + "_" + index; 
-                db.ref(dbPath + br + '/' + clientId + '/links/' + linkId).set({ url: url, addedAt: timeStr });
-            });
-            db.ref(dbPath + br + '/' + clientId).update({ status: "completed" });
-            const taAfter = document.getElementById('new_' + clientId);
-            if (taAfter) taAfter.value = "";
-            Toast.fire({ icon: 'success', title: 'Đã lưu link' });
+            _dangLuuLink[clientId] = true;
+            try {
+                if (!(await requirePrice(clientId))) return;
+
+                // Link đã gửi rồi thì bỏ qua: nhân viên hay bấm lại vì tưởng
+                // lần trước chưa ăn, hoặc chọn nhầm đúng lượt vừa gửi.
+                const snap = await db.ref(dbPath + br + '/' + clientId + '/links').once('value');
+                const daCo = {};
+                snap.forEach(c => { const u = (c.val() || {}).url; if (u) daCo[String(u).trim()] = 1; });
+
+                const moi = urls.filter(u => !daCo[u]);
+                if (!moi.length) {
+                    const taSame = document.getElementById('new_' + clientId);
+                    if (taSame) taSame.value = "";
+                    return Toast.fire({ icon: 'info', title: 'Link này đã gửi khách rồi' });
+                }
+
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' ' + now.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
+
+                const ghi = {};
+                moi.forEach((url, index) => {
+                    ghi["L_" + Date.now() + "_" + index] = { url: url, addedAt: timeStr };
+                });
+                // Ghi một lượt: từng link ghi riêng thì listener vẽ lại nhiều lần
+                await db.ref(dbPath + br + '/' + clientId + '/links').update(ghi);
+                await db.ref(dbPath + br + '/' + clientId).update({ status: "completed" });
+
+                const taAfter = document.getElementById('new_' + clientId);
+                if (taAfter) taAfter.value = "";
+                const boQua = urls.length - moi.length;
+                Toast.fire({ icon: 'success', title: boQua ? `Đã lưu ${moi.length} link (bỏ ${boQua} link trùng)` : 'Đã lưu link' });
+            } finally {
+                _dangLuuLink[clientId] = false;
+            }
         }
 
         // Hiện các lượt chụp cùng ngày để chọn thẳng, không phải mở Drive copy link
