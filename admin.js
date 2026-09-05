@@ -2036,27 +2036,15 @@ function load() {
             try {
                 const token = await driveToken();
 
-                // File cùng tên đã có trong thư mục thì bỏ qua: gửi lại lần hai
-                // (bấm nhầm, hoặc tưởng lần trước chưa xong) không nên thành hai
-                // bản giống hệt nhau trong thư mục khách.
-                const daCo = {};
-                try {
-                    const cu = await driveQuery(`'${folderId}' in parents and trashed=false`, 'files(id,name)');
-                    cu.forEach(x => { daCo[x.name] = 1; });
-                } catch (e) { /* không đọc được thì cứ gửi, thà trùng còn hơn mất */ }
-
-                let boQua = 0;
+                // Không chặn ảnh trùng tên ở đây: nhân viên còn gửi bù ảnh thiếu
+                // hay gửi lại bản ghép đã sửa, tên thường vẫn giữ nguyên.
                 for (let i = 0; i < files.length; i++) {
-                    if (daCo[files[i].name]) { boQua++; ok++; }
-                    else {
-                        try {
-                            await driveUploadAdmin(files[i], token, folderId);
-                            ok++;
-                        } catch (e) { lastErr = e.message; }
-                    }
+                    try {
+                        await driveUploadAdmin(files[i], token, folderId);
+                        ok++;
+                    } catch (e) { lastErr = e.message; }
                     if (btn) btn.innerHTML = `ĐANG GỬI ${i + 1}/${files.length}`;
                 }
-                if (boQua) Toast.fire({ icon: 'info', title: `${boQua} ảnh đã có sẵn, không gửi lại` });
             } catch (e) {
                 lastErr = e.message;
             } finally {
