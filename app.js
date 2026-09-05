@@ -172,10 +172,28 @@ async function driveUpload(file, token, folderId) {
 
 // Mạng chập chờn hay Google trục trặc vài giây thì thử lại, đừng bắt khách
 // gửi lại cả lượt vì một ảnh hỏng tạm thời.
+// Tìm file đã có trong thư mục theo tên. Dùng trước khi gửi lại: mạng chậm
+// làm phản hồi của Drive không về tới nơi dù nó đã nhận xong ảnh, gửi lại lúc
+// đó là thành hai bản giống hệt nhau trong thư mục khách.
+async function driveTimFile(name, token, folderId) {
+    const q = `'${folderId}' in parents and name='${String(name).replace(/'/g, "\\'")}' and trashed=false`;
+    const res = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q)
+                          + '&fields=files(id,name)&pageSize=1',
+                          { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) return null;
+    const d = await res.json();
+    return (d.files && d.files[0]) || null;
+}
+
 async function driveUploadRetry(file, token, folderId, tries) {
     let last;
     for (let i = 0; i < (tries || 3); i++) {
         try {
+            // Lần gửi lại: có thể lần trước đã lên rồi mà mình không biết
+            if (i > 0) {
+                const daCo = await driveTimFile(file.name, token, folderId).catch(() => null);
+                if (daCo) return daCo;
+            }
             return await driveUpload(file, token, folderId);
         } catch (e) {
             last = e;
