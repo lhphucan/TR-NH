@@ -95,6 +95,14 @@ async function driveQuery(q, fields) {
 
 // Drive mặc định trả ảnh cỡ 220px (~46 KB) dù ô chỉ rộng 44-150px.
 // Xin đúng cỡ cần: ô ảnh mẫu 44px chỉ tốn 12 KB, nhẹ gấp gần 4 lần.
+// Giờ khách bấm gửi. Trước lấy nhầm phần sau dấu cách nên ra ngày tháng, mọi
+// đợt đều hiện "5/9/2026" — khách gửi mười đợt thì không phân biệt nổi đợt nào
+// là đợt nào. Ngày chụp đã có sẵn ở đầu thẻ khách.
+function gioGui(t) {
+    const gio = String(t || '').trim().split(/\s+/)[0];
+    return /^\d{1,2}:\d{2}/.test(gio) ? gio : '';
+}
+
 function thumbAt(url, size) {
     return String(url || '').replace(/=s\d+(-c)?$/, '=s' + size);
 }
@@ -1443,7 +1451,7 @@ function load() {
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:10px;">
                                     <span style="font-size:12px; font-weight:700; color:#111; display:flex; align-items:center; gap:6px; text-transform:uppercase;">
                                         <svg class="icon-sm" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
-                                        Yêu cầu in (${up.time.split(' ')[1] || ''})
+                                        Yêu cầu in ${gioGui(up.time)}
                                     </span>
                                     <div style="display:flex; gap:8px;">
                                         ${up.folder ? `<a href="${escapeHTML(up.folder)}" target="_blank" rel="noopener" class="up-btn ghost">MỞ THƯ MỤC</a>` : ''}
@@ -1523,7 +1531,7 @@ function load() {
                                         <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                                         THÊM ẢNH GHÉP VÀO THƯ MỤC KHÁCH
                                     </label>
-                                    <input type="file" id="addfolder_input_${client.id}" multiple accept="image/*" style="display:none;"
+                                    <input type="file" id="addfolder_input_${client.id}" multiple accept=".jpg,.jpeg,.png,.heic,.heif,.webp,image/jpeg,image/png,image/heic,image/heif,image/webp" style="display:none;"
                                            onchange="addToClientFolder('${client.id}', this)">
                                 </div>` : ''}
                             </div>
@@ -1533,7 +1541,7 @@ function load() {
                                 <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
                                     <div style="flex-grow:1; display:flex; gap:10px; background:#fafafa; border:1px dashed #d4d4d8; padding:8px 12px; border-radius:8px; align-items:center;">
                                         <label for="file_${client.id}" style="cursor:pointer; background:#111; color:#fff; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:600; white-space:nowrap; transition:0.2s;">Chọn file</label>
-                                        <input type="file" id="file_${client.id}" multiple accept="image/*" style="display: none;" onchange="document.getElementById('fname_${client.id}').innerText = this.files.length > 0 ? this.files.length + ' tệp đã chọn' : 'Chưa có tệp'">
+                                        <input type="file" id="file_${client.id}" multiple accept=".jpg,.jpeg,.png,.heic,.heif,.webp,image/jpeg,image/png,image/heic,image/heif,image/webp" style="display: none;" onchange="document.getElementById('fname_${client.id}').innerText = this.files.length > 0 ? this.files.length + ' tệp đã chọn' : 'Chưa có tệp'">
                                         <span id="fname_${client.id}" style="font-size: 11px; color: #666; font-weight:500;">Chưa có tệp</span>
                                     </div>
                                     <button id="btn_up_${client.id}" onclick="uploadPhotosToImgBB('${client.id}')" class="btn btn-add"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN</button>
