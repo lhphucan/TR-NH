@@ -43,6 +43,55 @@ function fkPhotos() {
     return list.filter(x => !ghep.has(x.id) && !laAnhLoc(x.name));
 }
 
+// ---------- Tải trước bản gốc ----------
+// Khách mất một hai phút kéo chỉnh; trong lúc đó tải sẵn frame gốc và ảnh gốc ở
+// nền, bấm "Ghép xong" là gần như không còn phải chờ mạng. Hai luồng một lúc để
+// không giành hết mạng của ảnh xem trước.
+const FK_ORIG = {};   // mã file -> { p: Promise<địa chỉ blob>, got, total, done }
+let fkQ = [], fkQRun = 0;
+function fkQueue(job) { return new Promise((ok, no) => { fkQ.push({ job, ok, no }); fkQNext(); }); }
+function fkQNext() {
+    while (fkQRun < 2 && fkQ.length) {
+        const x = fkQ.shift();
+        fkQRun++;
+        x.job().then(x.ok, x.no).finally(() => { fkQRun--; fkQNext(); });
+    }
+}
+
+function fkPrefetch(id) {
+    if (FK_ORIG[id]) return FK_ORIG[id].p;
+    const o = FK_ORIG[id] = { got: 0, total: 0, done: false };
+    o.p = fkQueue(async () => {
+        const res = await fetch(FR.gUrl(id));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        o.total = +res.headers.get('content-length') || 0;
+        let blob;
+        if (res.body && res.body.getReader) {
+            // Đọc từng phần để biết đã tải được bao nhiêu, hiện cho khách
+            const rd = res.body.getReader(), parts = [];
+            for (;;) {
+                const { done, value } = await rd.read();
+                if (done) break;
+                parts.push(value);
+                o.got += value.length;
+            }
+            blob = new Blob(parts, { type: res.headers.get('content-type') || 'image/jpeg' });
+        } else { blob = await res.blob(); o.got = blob.size; }
+        if (!o.total) o.total = o.got;
+        o.done = true;
+        return URL.createObjectURL(blob);
+    });
+    o.p.catch(() => { delete FK_ORIG[id]; });   // lỗi thì lần sau tải lại
+    return o.p;
+}
+
+// Bản gốc để ghép: lấy bản đã tải sẵn, tải sẵn hỏng thì đọc thẳng từ Google
+async function fkOrigUrl(id) {
+    try { return await fkPrefetch(id); } catch (e) { return FR.gUrl(id); }
+}
+
+const fkMB = n => (n / 1048576).toLocaleString('vi-VN', { maximumFractionDigits: 1, minimumFractionDigits: n < 10485760 ? 1 : 0 });
+
 // Bộ lọc màu gán cho frame (config/filters/<mã>). Không có hoặc đọc lỗi thì ghép ảnh màu gốc.
 async function fkFilterFor(f) {
     if (!f || !f.filter) return null;
@@ -198,6 +247,7 @@ async function fkOpenFrame(id) {
     FK_ED = -1;
     document.getElementById('fk-ed').classList.remove('on');
     FKB = await fkFilterFor(FKF);
+    fkPrefetch(FKF.file).catch(() => {});
     fkStep('comp');
     fkRestoring = true;
     fkRender();
@@ -387,6 +437,7 @@ async function fkSetPhoto(i, id, keep) {
         FR.clamp(FKF.slots[i], FKP[i]);
         return;
     }
+    fkPrefetch(id).catch(() => {});   // tải sẵn bản gốc trong lúc khách chỉnh
     let url = fkPrev(id), iw, ih;
     if (FKB) ({ url, iw, ih } = await fkPreviewFiltered(id, url));
     else { const im = await FR.loadImg(url); iw = im.naturalWidth; ih = im.naturalHeight; }
@@ -618,8 +669,26 @@ async function fkExport() {
         const cv = FR.canvasFor(FKF.w, FKF.h);
         if (!cv) throw new Error('Máy này không đủ bộ nhớ để ghép ảnh cỡ in.');
         const n = FKP.filter(Boolean).length;
+        // Bản gốc chưa tải xong thì chờ, nút ghi rõ đã tải bao nhiêu MB để khách
+        // biết web đang chạy chứ không treo
+        const need = [FKF.file, ...new Set(FKP.filter(p => p && !p.local).map(p => p.id))];
+        need.forEach(id => fkPrefetch(id).catch(() => {}));
+        // Ảnh chưa bắt đầu tải thì lấy dung lượng có sẵn trong danh sách album
+        const coSan = id => +(((_alb || []).find(x => x.id === id) || {}).size || 0);
+        const tick = () => {
+            const os = need.map(id => FK_ORIG[id]);
+            if (!os.some(o => o && !o.done)) return;
+            const got = os.reduce((a, o) => a + (o ? o.got : 0), 0);
+            const sizes = need.map((id, j) => (os[j] && os[j].total) || coSan(id));
+            btn.innerText = sizes.every(Boolean) ? `Đang tải ảnh gốc ${fkMB(got)}/${fkMB(sizes.reduce((a, b) => a + b, 0))} MB`
+                                                 : `Đang tải ảnh gốc ${fkMB(got)} MB...`;
+        };
+        tick();
+        const iv = setInterval(tick, 300);
+        const goc = {};
+        try { for (const id of need) goc[id] = await fkOrigUrl(id); } finally { clearInterval(iv); }
         // Ghép từ bản gốc của frame và của từng ảnh chụp
-        await FR.compose(cv.x, cv.s, FKF, FR.gUrl(FKF.file), FKP, p => p.local ? p.full : FR.gUrl(p.id),
+        await FR.compose(cv.x, cv.s, FKF, goc[FKF.file], FKP, p => p.local ? p.full : goc[p.id],
                          i => { btn.innerText = `Đang ghép ảnh ${FKP.slice(0, i + 1).filter(Boolean).length}/${n}...`; },
                          FKB && FKB.baked);
         btn.innerText = 'Đang xuất ảnh...';
@@ -660,7 +729,8 @@ async function fkSend() {
     if (!ok.isConfirmed) return;
 
     const btn = document.getElementById('fk-send'), bar = document.getElementById('fk-bar');
-    const set = v => { bar.firstElementChild.style.width = Math.round(v * 100) + '%'; btn.innerText = `Đang gửi ${Math.round(v * 100)}%`; };
+    const size = FK_RES.blob.size;
+    const set = v => { bar.firstElementChild.style.width = Math.round(v * 100) + '%'; btn.innerText = `Đang gửi ${fkMB(v * size)}/${fkMB(size)} MB`; };
     btn.disabled = true;
     bar.classList.remove('fr-hidden');
     set(0);
@@ -721,14 +791,14 @@ async function fkSendSingles(w, btn, bar) {
     let ok = 0, err = 0;
     for (let k = 0; k < list.length; k++) {
         const p = list[k];
-        btn.innerText = `Đang lưu ảnh lẻ màu ${FKB.name} ${k + 1}/${list.length}`;
+        btn.innerText = `Đang lưu ảnh lẻ ${k + 1}/${list.length}`;
         bar.firstElementChild.style.width = Math.round(k / list.length * 100) + '%';
         const goc = p.local ? ((FK_LOCAL.find(x => x.id === p.id) || {}).file || {}).name || 'anh.jpg'
                             : ((_alb || []).find(x => x.id === p.id) || {}).name || 'anh.jpg';
         const name = `PN-${ten}_${goc.replace(/\.[a-z0-9]+$/i, '')}.jpg`;
         if (daCo.has(name)) { ok++; continue; }   // lần gửi trước đã lưu rồi
         try {
-            const im = await FR.loadImg(p.local ? p.full : FR.gUrl(p.id));
+            const im = await FR.loadImg(p.local ? p.full : await fkOrigUrl(p.id));
             const cv = FR.canvasFor(im.naturalWidth, im.naturalHeight);
             if (!cv) throw new Error('Máy không đủ bộ nhớ');
             cv.x.drawImage(im, 0, 0, cv.c.width, cv.c.height);

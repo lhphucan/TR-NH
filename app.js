@@ -716,10 +716,16 @@ async function sendToShop() {
     // Căn giữa bằng flex: .spinner có margin:0 auto nên nếu để display:block
     // nó đẩy chữ lệch hẳn sang một bên.
     const hint = document.getElementById('send-hint');
-    const setBtnLoading = (done, total) => {
+    // Ghi cả số MB đã gửi: ảnh nặng trên 4G yếu mất cả phút, chỉ đếm số ảnh thì
+    // khách thấy "0/3" đứng yên rất lâu, tưởng web treo rồi đóng trang
+    const sizes = Array.from(files).map(f => f.size || 0);
+    const tong = sizes.reduce((a, b) => a + b, 0);
+    const mb = n => (n / 1048576).toLocaleString('vi-VN', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+    const setBtnLoading = (done, total, sent) => {
+        const daGui = sent != null ? sent : sizes.slice(0, done).reduce((a, b) => a + b, 0);
         btn.innerHTML = `<span style="display:flex; align-items:center; justify-content:center; gap:8px;">
             <span class="spinner" style="display:block; flex:none; margin:0; border-top-color:#111; border-color: rgba(0,0,0,0.15);"></span>
-            <span>ĐANG TẢI ${done}/${total} ẢNH</span>
+            <span>ĐANG GỬI ${mb(daGui)}/${mb(tong)} MB</span>
         </span>`;
         // Ảnh lớn có thể lâu -> nói rõ để khách không tưởng treo mà đóng trang
         if (hint) {
@@ -763,7 +769,8 @@ async function sendToShop() {
             });
 
             const sent = await guiLenDrive(renamed, { branch: bName, day, client: `${cName} - ${maKh}` },
-                                           (i, v) => { if (v >= 1) setBtnLoading(i + 1, files.length); });
+                                           (i, v) => setBtnLoading(v >= 1 ? i + 1 : i, files.length,
+                                                                   sizes.slice(0, i).reduce((a, b) => a + b, 0) + v * sizes[i]));
             folderUrl = sent.folderUrl;
             sent.files.forEach(r => { if (r.id) driveFiles.push({ id: r.id, name: r.name }); else lastErr = r.err; });
         } else {
