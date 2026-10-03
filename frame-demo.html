@@ -41,21 +41,40 @@ label.f { font-size: 11px; font-weight: 600; color: var(--muted); display: block
          background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0/20px 20px; border-radius: 8px; overflow: hidden; }
 .stage img.frame { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 
-/* Ô bên quản lý */
-.eslot { position: absolute; border: 2px dashed #2563eb; background: rgba(37,99,235,.15); cursor: move; }
-.eslot.sel { border-style: solid; background: rgba(37,99,235,.25); }
+/* Ô bên quản lý. Ba lớp: ảnh giả (để thấy frame nằm trên hay dưới ảnh),
+   frame, rồi khung điều khiển luôn ở trên cùng để kéo được. */
+.efill { position: absolute; background: repeating-linear-gradient(45deg, #94a3b8 0 14px, #cbd5e1 14px 28px); }
+.eslot { position: absolute; border: 2px dashed #2563eb; cursor: move; --hs: 16px; }
+/* Ô đang chọn nổi lên trên: ô to ra chạm ô bên cạnh thì chấm kéo không bị che */
+.eslot.sel { border-style: solid; z-index: 2; }
 .eslot .num { position: absolute; left: 4px; top: 4px; background: #2563eb; color: #fff; font: 700 11px 'Inter', sans-serif; padding: 2px 6px; border-radius: 6px; }
-.h { position: absolute; width: 22px; height: 22px; background: #fff; border: 2px solid #2563eb; border-radius: 50%; }
-.h.rs { right: -11px; bottom: -11px; cursor: nwse-resize; }
-.h.rt { left: 50%; top: -34px; margin-left: -11px; cursor: grab; }
-.h.rt::after { content: ''; position: absolute; left: 8px; top: 20px; width: 2px; height: 12px; background: #2563eb; }
+/* Chấm kéo như Canva: 4 góc đổi cả hai chiều, 4 cạnh chỉ đổi một chiều */
+.h { position: absolute; width: var(--hs); height: var(--hs); background: #fff; border: 2px solid #2563eb; border-radius: 50%;
+     margin: calc(var(--hs) / -2) 0 0 calc(var(--hs) / -2); touch-action: none; }
+.h.side { border-radius: 4px; }
+.h.n, .h.s { width: calc(var(--hs) * 1.6); margin-left: calc(var(--hs) * -0.8); }
+.h.e, .h.w { height: calc(var(--hs) * 1.6); margin-top: calc(var(--hs) * -0.8); }
+.h.rt { cursor: grab; background: #2563eb; }
+.h.rt::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 2px; height: 14px; margin-left: -1px; background: #2563eb; }
+
+/* Hộp hỏi và thông báo tự làm: hộp có sẵn của trình duyệt bị Zalo, Messenger
+   chặn im lặng, bấm xoá xong không có gì xảy ra */
+.dlg { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+.dlg-box { background: #fff; border-radius: 16px; padding: 20px; width: 100%; max-width: 340px; }
+.dlg-box p { margin: 0 0 16px; font-size: 14px; line-height: 1.5; }
+.dlg-box .row .btn { flex: 1; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #111; color: #fff; font: 600 13px 'Inter', sans-serif;
+         padding: 12px 16px; border-radius: 12px; z-index: 101; max-width: calc(100% - 32px); text-align: center; transition: opacity .3s; }
+.fwrap { position: relative; }
+.fdel { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid #fecaca; background: #fff;
+        color: #dc2626; font: 700 16px 'Inter', sans-serif; cursor: pointer; line-height: 1; }
 
 /* Ô bên khách */
 .cslot { position: absolute; overflow: hidden; background: #e5e5e5; }
 .cslot img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; }
 .cmark { position: absolute; pointer-events: none; border: 2px dashed rgba(17,17,17,.5); display: flex; align-items: center; justify-content: center; }
 .cmark.sel { border: 3px solid #2563eb; }
-.cmark .plus { background: rgba(17,17,17,.75); color: #fff; font: 700 12px 'Inter', sans-serif; padding: 6px 10px; border-radius: 20px; white-space: nowrap; }
+.cmark .plus { background: rgba(17,17,17,.75); color: #fff; font: 600 22px/1 'Inter', sans-serif; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
 .tool { display: none; margin-top: 12px; }
 .tool.on { display: block; }
@@ -67,9 +86,7 @@ input[type=range] { width: 100%; }
 @media (hover: none) and (pointer: coarse) {
     .btn, .tab { min-height: 44px; }
     input[type=text], input[type=number] { font-size: 16px; }
-    .h { width: 30px; height: 30px; }
-    .h.rs { right: -15px; bottom: -15px; }
-    .h.rt { margin-left: -15px; top: -42px; }
+    .eslot { --hs: 26px; }
 }
 @media (max-width: 560px) { .grid5 { grid-template-columns: repeat(3, 1fr); } }
 </style>
@@ -113,10 +130,11 @@ input[type=range] { width: 100%; }
                 </div>
             </div>
             <p class="hint" style="margin:0 0 10px;">
-                <b>Trên ảnh</b>: frame đục lỗ đè lên, viền che mép ảnh. <b>Dưới ảnh</b>: frame làm nền, ảnh đè lên.<br>
-                Kéo trên chỗ trống để vẽ ô mới. Kéo ô để dời, kéo chấm góc để đổi cỡ, chấm phía trên để xoay.
+                <b>Trên ảnh</b>: frame đục lỗ đè lên, viền che mép ảnh. <b>Dưới ảnh</b>: frame làm nền, ảnh đè lên.
+                Vùng sọc xám là chỗ ảnh khách sẽ nằm.<br>
+                Kéo trên chỗ trống để vẽ ô mới. Kéo ô để dời. Chấm ở góc đổi cả rộng lẫn cao, chấm ở cạnh chỉ kéo một chiều, chấm xanh phía dưới để xoay.
             </p>
-            <div id="ad-stage" class="stage"><img class="frame" id="ad-img" alt=""><div id="ad-slots"></div></div>
+            <div id="ad-stage" class="stage"><div id="ad-fill"></div><img class="frame" id="ad-img" alt=""><div id="ad-slots"></div></div>
 
             <div id="ad-slotpanel" class="tool" style="margin-top:12px;">
                 <div class="grid5">
@@ -185,6 +203,17 @@ input[type=range] { width: 100%; }
     </section>
 </div>
 
+<div id="dlg" class="dlg hidden">
+    <div class="dlg-box">
+        <p id="dlg-msg"></p>
+        <div class="row">
+            <button class="btn" id="dlg-no">Huỷ</button>
+            <button class="btn solid" id="dlg-ok">Đồng ý</button>
+        </div>
+    </div>
+</div>
+<div id="toast" class="toast hidden"></div>
+
 <script>
 // ================= Lưu frame trong trình duyệt =================
 // IndexedDB chứ không phải localStorage: một frame PNG cỡ in nặng 10-20 MB,
@@ -214,6 +243,31 @@ const idb = {
     del(id) { return this.run('readwrite', s => s.delete(id)); }
 };
 
+// Hộp hỏi và thông báo tự làm thay cho confirm/alert của trình duyệt
+function ask(msg, okText) {
+    return new Promise(done => {
+        const d = document.getElementById('dlg');
+        document.getElementById('dlg-msg').innerText = msg;
+        const ok = document.getElementById('dlg-ok'), no = document.getElementById('dlg-no');
+        ok.innerText = okText || 'Đồng ý';
+        const close = v => { d.classList.add('hidden'); ok.onclick = no.onclick = d.onclick = null; done(v); };
+        ok.onclick = () => close(true);
+        no.onclick = () => close(false);
+        d.onclick = e => { if (e.target === d) close(false); };
+        d.classList.remove('hidden');
+    });
+}
+
+let _toastT = 0;
+function toast(msg, ms) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.classList.remove('hidden');
+    t.style.opacity = '1';
+    clearTimeout(_toastT);
+    _toastT = setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.classList.add('hidden'), 300); }, ms || 2600);
+}
+
 let FRAMES = [];
 const urlCache = {};
 function previewUrl(f) {
@@ -223,23 +277,27 @@ function previewUrl(f) {
 
 async function loadFrames() {
     try { FRAMES = await idb.all(); }
-    catch (e) { FRAMES = FRAMES || []; alert('Trình duyệt này không lưu được frame, chỉ dùng tạm trong phiên.'); }
+    catch (e) { FRAMES = FRAMES || []; toast('Trình duyệt này không lưu được frame, chỉ dùng tạm trong phiên.', 4000); }
     FRAMES.sort((a, b) => b.id.localeCompare(a.id));
     renderLists();
 }
 
 function renderLists() {
-    const html = FRAMES.map(f => `
-        <button class="fitem" data-id="${f.id}">
-            <img src="${previewUrl(f)}" alt="">
-            <b>${esc(f.name)}</b>
-            <span>${f.slots.length} ô · ${f.w}×${f.h} · frame ${f.front ? 'trên' : 'dưới'}</span>
-        </button>`).join('') || '<p class="hint">Chưa có frame nào.</p>';
+    const item = (f, del) => `
+        <div class="fwrap">
+            <button class="fitem" data-id="${f.id}" style="width:100%;">
+                <img src="${previewUrl(f)}" alt="">
+                <b>${esc(f.name)}</b>
+                <span>${f.slots.length} ô · ${f.w}×${f.h} · frame ${f.front ? 'trên' : 'dưới'} ảnh</span>
+            </button>
+            ${del ? `<button class="fdel" data-del="${f.id}" aria-label="Xoá frame">✕</button>` : ''}
+        </div>`;
     const adList = document.getElementById('ad-list');
     const khList = document.getElementById('kh-list');
-    adList.innerHTML = html;
-    khList.innerHTML = html.replace(/Chưa có frame nào\./, 'Chưa có frame nào. Sang tab Quản lý để thêm.');
+    adList.innerHTML = FRAMES.map(f => item(f, true)).join('') || '<p class="hint">Chưa có frame nào.</p>';
+    khList.innerHTML = FRAMES.map(f => item(f, false)).join('') || '<p class="hint">Chưa có frame nào. Sang tab Quản lý để thêm.</p>';
     adList.querySelectorAll('.fitem').forEach(b => b.onclick = () => adOpen(b.dataset.id));
+    adList.querySelectorAll('.fdel').forEach(b => b.onclick = () => adDelete(b.dataset.del));
     khList.querySelectorAll('.fitem').forEach(b => b.onclick = () => khOpen(b.dataset.id));
 }
 
@@ -312,7 +370,7 @@ async function adUpload(inp) {
                front: true, slots: [], blob: file, prev: p.blob };
         SEL = -1;
         adShow();
-    } catch (e) { alert('Không đọc được file frame: ' + e.message); }
+    } catch (e) { toast('Không đọc được file frame: ' + e.message, 4000); }
 }
 
 function adOpen(id) {
@@ -337,6 +395,7 @@ function setFront(v) {
     ED.front = v;
     document.getElementById('ad-front').classList.toggle('solid', v);
     document.getElementById('ad-back').classList.toggle('solid', !v);
+    adRender();
 }
 
 function adK() {
@@ -345,14 +404,34 @@ function adK() {
     return st.clientWidth / ED.w;
 }
 
+// 8 chấm kéo như Canva: hx, hy là phía của chấm (-1 trái/trên, 1 phải/dưới,
+// 0 là không đổi chiều đó). Góc đổi cả hai chiều, cạnh chỉ đổi một chiều.
+const HANDLES = [
+    ['nw', -1, -1, '0%', '0%', 'nwse'], ['n', 0, -1, '50%', '0%', 'ns'], ['ne', 1, -1, '100%', '0%', 'nesw'],
+    ['e', 1, 0, '100%', '50%', 'ew'], ['se', 1, 1, '100%', '100%', 'nwse'], ['s', 0, 1, '50%', '100%', 'ns'],
+    ['sw', -1, 1, '0%', '100%', 'nesw'], ['w', -1, 0, '0%', '50%', 'ew']
+];
+
 function adRender() {
     const k = adK();
-    const box = document.getElementById('ad-slots');
-    box.innerHTML = ED.slots.map((s, i) => `
-        <div class="eslot${i === SEL ? ' sel' : ''}" data-i="${i}"
-             style="left:${(s.cx - s.w / 2) * k}px; top:${(s.cy - s.h / 2) * k}px; width:${s.w * k}px; height:${s.h * k}px; transform:rotate(${s.rot}deg);">
+    const box = (s) => `left:${(s.cx - s.w / 2) * k}px; top:${(s.cy - s.h / 2) * k}px; width:${s.w * k}px; height:${s.h * k}px; transform:rotate(${s.rot}deg);`;
+
+    // Lớp ảnh giả: frame trên ảnh thì nó nằm dưới frame, viền frame che mép;
+    // frame dưới ảnh thì nó nằm trên frame
+    const fill = document.getElementById('ad-fill');
+    fill.style.cssText = `position:absolute; inset:0; z-index:${ED.front ? 1 : 3};`;
+    fill.innerHTML = ED.slots.map(s => `<div class="efill" style="${box(s)}"></div>`).join('');
+    document.getElementById('ad-img').style.zIndex = 2;
+    const ctl = document.getElementById('ad-slots');
+    ctl.style.cssText = 'position:absolute; inset:0; z-index:4;';
+
+    const handles = HANDLES.map(([n, hx, hy, l, t, c]) =>
+        `<span class="h ${n}${hx && hy ? '' : ' side'}" data-act="rs" data-hx="${hx}" data-hy="${hy}" style="left:${l}; top:${t}; cursor:${c}-resize;"></span>`).join('')
+        + '<span class="h rt" data-act="rt" style="left:50%; top:calc(100% + 28px);"></span>';
+    ctl.innerHTML = ED.slots.map((s, i) => `
+        <div class="eslot${i === SEL ? ' sel' : ''}" data-i="${i}" style="${box(s)}">
             <span class="num">${i + 1}</span>
-            ${i === SEL ? '<span class="h rs" data-act="rs"></span><span class="h rt" data-act="rt"></span>' : ''}
+            ${i === SEL ? handles : ''}
         </div>`).join('');
     document.getElementById('ad-count').innerText = ED.slots.length + ' ô ảnh';
     const pn = document.getElementById('ad-slotpanel');
@@ -400,8 +479,11 @@ function slotOp(op) {
         const p = pt(e);
         const h = e.target.closest('[data-act]');
         const sl = e.target.closest('.eslot');
-        if (h && SEL >= 0) act = { kind: h.dataset.act };
-        else if (sl) {
+        if (h && SEL >= 0) {
+            // Nhớ trạng thái lúc bắt đầu kéo: tính từ đó cho khỏi trôi dần
+            const s = ED.slots[SEL];
+            act = { kind: h.dataset.act, hx: +h.dataset.hx || 0, hy: +h.dataset.hy || 0, cx: s.cx, cy: s.cy, w: s.w, h: s.h, px: p.x, py: p.y };
+        } else if (sl) {
             SEL = +sl.dataset.i;
             const s = ED.slots[SEL];
             act = { kind: 'mv', px: p.x, py: p.y, cx: s.cx, cy: s.cy };
@@ -432,13 +514,23 @@ function slotOp(op) {
                 s.cx = act.cx + (p.x - act.px);
                 s.cy = act.cy + (p.y - act.py);
             } else if (act.kind === 'rs') {
-                // Giữ nguyên tâm; đo khoảng cách theo trục của chính ô (ô có thể đang xoay)
-                const a = -s.rot * Math.PI / 180, dx = p.x - s.cx, dy = p.y - s.cy;
-                const lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
-                s.w = Math.max(min, Math.abs(lx) * 2);
-                s.h = Math.max(min, Math.abs(ly) * 2);
+                // Như Canva: cạnh đối diện đứng yên, chỉ cạnh đang kéo chạy theo tay.
+                // Tính theo quãng tay đã kéo chứ không theo vị trí tay: chấm nằm
+                // lệch vào trong vài điểm, tính theo vị trí thì vừa chạm ô đã giật.
+                // Đổi quãng kéo sang trục của chính ô vì ô có thể đang xoay.
+                const a = s.rot * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+                const dx = p.x - act.px, dy = p.y - act.py;
+                const lx = dx * cos + dy * sin, ly = -dx * sin + dy * cos;
+                const w = act.hx ? Math.max(min, act.w + act.hx * lx) : act.w;
+                const h = act.hy ? Math.max(min, act.h + act.hy * ly) : act.h;
+                // Tâm dời nửa phần thay đổi về phía cạnh đang kéo
+                const mx = act.hx * (w - act.w) / 2, my = act.hy * (h - act.h) / 2;
+                s.w = w; s.h = h;
+                s.cx = act.cx + mx * cos - my * sin;
+                s.cy = act.cy + mx * sin + my * cos;
             } else if (act.kind === 'rt') {
-                let d = Math.atan2(p.y - s.cy, p.x - s.cx) * 180 / Math.PI + 90;
+                // Chấm xoay nằm dưới ô
+                let d = Math.atan2(p.y - s.cy, p.x - s.cx) * 180 / Math.PI - 90;
                 d = ((d % 360) + 360) % 360;
                 // Hít vào góc vuông khi lệch dưới 4 độ: ô thẳng hay dùng nhất
                 for (const q of [0, 90, 180, 270, 360]) if (Math.abs(d - q) < 4) d = q % 360;
@@ -456,30 +548,33 @@ function slotOp(op) {
 async function adSave() {
     if (!ED) return;
     ED.name = document.getElementById('ad-name').value.trim() || 'Frame';
-    if (!ED.slots.length) return alert('Frame chưa có ô ảnh nào. Kéo trên frame để vẽ ô.');
+    if (!ED.slots.length) return toast('Frame chưa có ô ảnh nào. Kéo trên frame để vẽ ô.', 3500);
     const rec = { id: ED.id, name: ED.name, w: ED.w, h: ED.h, front: ED.front,
                   slots: ED.slots.map(s => ({ cx: Math.round(s.cx), cy: Math.round(s.cy), w: Math.round(s.w), h: Math.round(s.h), rot: s.rot })),
                   blob: ED.blob, prev: ED.prev };
     try { await idb.put(rec); }
     catch (e) { FRAMES = FRAMES.filter(x => x.id !== rec.id).concat(rec); }
     await loadFrames();
-    alert('Đã lưu frame "' + rec.name + '" với ' + rec.slots.length + ' ô.');
+    toast('Đã lưu frame "' + rec.name + '" với ' + rec.slots.length + ' ô');
 }
 
-async function adDelete() {
-    if (!ED || !confirm('Xoá frame này?')) return;
-    try { await idb.del(ED.id); } catch (e) {}
-    FRAMES = FRAMES.filter(x => x.id !== ED.id);
-    ED = null;
-    document.getElementById('ad-edit').classList.add('hidden');
+async function adDelete(id) {
+    id = id || (ED && ED.id);
+    const f = FRAMES.find(x => x.id === id);
+    if (!id || !(await ask('Xoá frame "' + (f ? f.name : (ED && ED.name) || '') + '"? Không lấy lại được.', 'Xoá'))) return;
+    try { await idb.del(id); } catch (e) {}
+    FRAMES = FRAMES.filter(x => x.id !== id);
+    if (urlCache[id]) { URL.revokeObjectURL(urlCache[id]); delete urlCache[id]; }
+    if (ED && ED.id === id) { ED = null; document.getElementById('ad-edit').classList.add('hidden'); }
     await loadFrames();
+    toast('Đã xoá frame');
 }
 
 // Frame mẫu cùng cỡ frame Canva thật (6250×4405) để thử ngay trên điện thoại
 async function genSample() {
     const W = 6250, H = 4405;
     const cv = canvasFor(W, H);
-    if (!cv) return alert('Máy này không tạo nổi khung vẽ để làm frame mẫu.');
+    if (!cv) return toast('Máy này không tạo nổi khung vẽ để làm frame mẫu.', 4000);
     const { c, x, s } = cv;
     x.scale(s, s);
     x.fillStyle = '#f3ede4'; x.fillRect(0, 0, W, H);
@@ -502,7 +597,7 @@ async function genSample() {
 
     const full = await new Promise(r => c.toBlob(r, 'image/png'));
     c.width = c.height = 0;
-    if (!full) return alert('Không xuất được frame mẫu trên máy này.');
+    if (!full) return toast('Không xuất được frame mẫu trên máy này.', 4000);
     const p = await shrink(full, 1600, 'image/png');
     // Ô to hơn lỗ 20 điểm mỗi bên: viền frame che mép ảnh, không lộ khe trắng
     const B = 20;
@@ -579,7 +674,7 @@ function khRender() {
     }).join('');
     const marks = CF.slots.map((s, i) => `
         <div class="cmark${i === CSEL ? ' sel' : ''}" style="${slotBox(s, k)} z-index:4;${PH[i] && i !== CSEL ? 'border-color:transparent;' : ''}">
-            ${PH[i] ? '' : `<span class="plus" style="transform:rotate(${-s.rot}deg)">${Math.min(s.w, s.h) * k < 110 ? '+ ' + (i + 1) : '+ Ảnh ' + (i + 1)}</span>`}
+            ${PH[i] ? '' : `<span class="plus" style="transform:rotate(${-s.rot}deg)">+</span>`}
         </div>`).join('');
     document.getElementById('kh-stage').innerHTML = fr + slots + marks;
 
@@ -682,7 +777,7 @@ async function khFile(inp) {
         if (PH[i]) URL.revokeObjectURL(PH[i].url);
         PH[i] = { file, url: URL.createObjectURL(p.blob), iw: p.nw, ih: p.nh, s: 1, ox: 0, oy: 0, r: 0 };
         CSEL = i;
-    } catch (e) { alert('Không mở được ảnh này: ' + e.message); }
+    } catch (e) { toast('Không mở được ảnh này: ' + e.message, 4000); }
     khRender();
 }
 
@@ -742,7 +837,7 @@ let RESULT = null;
 
 async function khExport() {
     const empty = PH.filter(x => !x).length;
-    if (empty && !confirm(`Còn ${empty} ô chưa có ảnh. Vẫn ghép?`)) return;
+    if (empty && !(await ask(`Còn ${empty} ô chưa có ảnh. Vẫn ghép?`, 'Vẫn ghép'))) return;
 
     const btn = document.getElementById('kh-done');
     btn.disabled = true;
@@ -784,7 +879,7 @@ async function khExport() {
         document.getElementById('kh-comp').classList.add('hidden');
         document.getElementById('kh-res').classList.remove('hidden');
     } catch (e) {
-        alert('Chưa ghép được: ' + e.message);
+        toast('Chưa ghép được: ' + e.message, 5000);
     } finally {
         btn.disabled = false;
         btn.innerText = 'GHÉP XONG';
