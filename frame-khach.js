@@ -33,21 +33,11 @@ function fkFramesFor(br) {
 }
 
 // Ảnh để ghép: ảnh chụp trong lượt, bỏ các bản ghép khung có sẵn của máy chụp
-// (ảnh chụp thường 2-3 MB, bản ghép 10-27 MB)
+// (cách nhận bản ghép ở banGhepIds trong app.js)
 function fkPhotos() {
-    const NANG = 5 * 1024 * 1024;
     const list = _alb || [];
-    return list.some(x => +x.size < NANG) ? list.filter(x => +x.size < NANG) : list;
-}
-
-// Album mở xong: có frame cho cơ sở này thì hiện nút Ghép frame
-async function frAlbumReady() {
-    const btn = document.getElementById('alb-frame-btn');
-    if (!btn) return;
-    btn.style.display = 'none';
-    if (!window._albCtx || !_albCtx.clientId || !fkPhotos().length) return;
-    await fkLoadFrames();
-    if (fkFramesFor(_albCtx.branch).length) btn.style.display = '';
+    const ghep = banGhepIds(list);
+    return list.filter(x => !ghep.has(x.id));
 }
 
 function fkFramedRef() {

@@ -794,8 +794,7 @@ async function openAlbum(url, branch, clientId) {
     _albBranch = branch || '';
     // Lượt chụp đang xem: ghép frame cần biết gửi ảnh ghép vào phiên nào, lượt nào
     window._albCtx = { fid, branch: branch || '', clientId: clientId || '', url };
-    const fb = document.getElementById('alb-frame-btn');
-    if (fb) fb.style.display = 'none';
+
 
     // Mở khung rồi mới đọc: khách thấy album hiện ra ngay, chỗ ảnh báo đang
     // tải. Hộp thoại chờ của thư viện có màu và cỡ chữ riêng, nhìn rời hẳn
@@ -831,20 +830,29 @@ async function openAlbum(url, branch, clientId) {
             <span class="alb-thumb"><img src="${escapeHTML(albThumb(x.id))}" alt="" loading="lazy" decoding="async"></span>
             <span class="alb-name">${escapeHTML(_albLabels[i])}</span>
         </button>`).join('');
-    // Có frame cho cơ sở này thì hiện nút ghép frame
-    if (typeof frAlbumReady === 'function') frAlbumReady();
 }
 
 // Tên file máy chụp đặt rất dài và toàn mã máy, ví dụ
 // "203350(H006黑白单女生)(H002-18)[实时精修].jpg" — khách đọc không hiểu gì.
 // Đánh số thứ tự cho dễ gọi nhau, riêng bản ghép khung thì ghi rõ.
 // Tính sẵn một lượt để số đếm liền mạch dù bản ghép nằm xen giữa.
+// Bản ghép khung có sẵn của máy chụp trong một lượt. Không dùng ngưỡng cứng:
+// ảnh chụp thường lúc 2-3 MB, có hôm 5,2 MB (Phúc Yên 5/9), còn bản ghép
+// 10-27 MB. So trong chính lượt đó: nặng gấp 3 lần ảnh thường mới là bản ghép.
+// Mốc lấy ở một phần tư nhẹ nhất để vài bản ghép không kéo mốc lên.
+function banGhepIds(list) {
+    const sized = list.filter(x => parseInt(x.size || 0) > 0);
+    if (sized.length < 3) return new Set();
+    const asc = sized.map(x => parseInt(x.size)).sort((a, b) => a - b);
+    const base = asc[Math.floor(asc.length / 4)];
+    return new Set(sized.filter(x => parseInt(x.size) >= base * 3).map(x => x.id));
+}
+
 function albLabels(list) {
-    const NANG = 5 * 1024 * 1024;   // ảnh chụp thường đo được 2-3 MB, bản ghép 10-27 MB
-    const coAnhThuong = list.some(x => parseInt(x.size || 0) < NANG);
+    const ghep = banGhepIds(list);
     let n = 0;
     return list.map(x => {
-        if (coAnhThuong && parseInt(x.size || 0) >= NANG) return 'Ảnh ghép';
+        if (ghep.has(x.id)) return 'Ảnh ghép';
         n++;
         return 'Ảnh ' + n;
     });
