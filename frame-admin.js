@@ -56,7 +56,12 @@ async function openFrameManager() {
                         </div>
                     </div>
                     <label class="fr-label">Cơ sở dùng frame này</label>
-                    <div class="fr-row" id="fa-branches" style="margin-bottom:10px;"></div>
+                    <div class="fr-row">
+                        <button class="fr-btn" id="fa-all" onclick="faSetAll(true)">Mọi cơ sở</button>
+                        <button class="fr-btn" id="fa-some" onclick="faSetAll(false)">Chọn cơ sở</button>
+                    </div>
+                    <div class="fr-row" id="fa-branches" style="margin-top:8px;"></div>
+                    <p class="fr-hint" id="fa-all-hint" style="margin:6px 0 10px;"></p>
                     <p class="fr-hint" style="margin:0 0 10px;">
                         <b>Trên ảnh</b>: frame đục lỗ đè lên, viền che mép ảnh. <b>Dưới ảnh</b>: frame làm nền, ảnh đè lên.
                         Vùng sọc xám là chỗ ảnh khách sẽ nằm.<br>
@@ -117,7 +122,7 @@ function faRenderList() {
     const box = document.getElementById('fa-list');
     box.innerHTML = ids.map(id => {
         const f = FA_LIST[id];
-        const cs = Object.keys(f.branches || {}).filter(b => f.branches[b]).map(b => (branchesCache[b] && branchesCache[b].name) || b);
+        const cs = f.all ? ['Mọi cơ sở'] : Object.keys(f.branches || {}).filter(b => f.branches[b]).map(b => (branchesCache[b] && branchesCache[b].name) || b);
         return `<div class="fr-fwrap">
             <button class="fr-fitem${f.on === false ? ' off' : ''}" onclick="faOpen('${faEsc(id)}')">
                 <span class="fr-fimg"><img src="${FR.gUrl(f.prev)}" alt="" loading="lazy"></span>
@@ -137,10 +142,8 @@ async function faUpload(inp) {
     if (!file) return;
     try {
         const p = await FR.shrink(file, 1600, 'image/png');
-        const branches = {};
-        Object.keys(branchesCache).forEach(b => { branches[b] = true; });
         FA = { id: 'F_' + Date.now(), isNew: true, name: file.name.replace(/\.png$/i, ''), w: p.nw, h: p.nh,
-               front: true, on: true, branches, slots: [], blob: file, prevBlob: p.blob };
+               front: true, on: true, all: true, branches: {}, slots: [], blob: file, prevBlob: p.blob };
         FA.slots = await FR.detectHoles(FA.prevBlob, FA.w, FA.h);
         FA_SEL = -1;
         faShow(URL.createObjectURL(FA.prevBlob));
@@ -154,6 +157,7 @@ function faOpen(id) {
     FA = JSON.parse(JSON.stringify(Object.assign({ branches: {}, slots: [] }, f)));
     FA.id = id;
     FA.on = f.on !== false;
+    FA.all = f.all === true;
     FA_SEL = -1;
     faShow(FR.gUrl(f.prev));
 }
@@ -162,9 +166,7 @@ function faShow(src) {
     document.getElementById('fa-edit').classList.remove('fr-hidden');
     document.getElementById('fa-name').value = FA.name;
     document.getElementById('fa-img').src = src;
-    document.getElementById('fa-branches').innerHTML = Object.keys(branchesCache).map(b => `
-        <label class="fr-check"><input type="checkbox" data-b="${faEsc(b)}" ${FA.branches[b] ? 'checked' : ''}
-               onchange="FA.branches[this.dataset.b] = this.checked"> ${faEsc(branchesCache[b].name || b)}</label>`).join('');
+    faSetAll(FA.all !== false);
     faSetOn(FA.on !== false);
     faSetFront(FA.front !== false);
     document.getElementById('fa-edit').scrollIntoView({ behavior: 'smooth' });
@@ -175,6 +177,28 @@ function faSetFront(v) {
     document.getElementById('fa-front').classList.toggle('solid', v);
     document.getElementById('fa-back').classList.toggle('solid', !v);
     faRender();
+}
+
+// Mặc định mọi cơ sở, kể cả cơ sở mở sau này: khỏi phải nhớ quay lại tích thêm.
+// Chỉ khi cần giới hạn mới chọn cơ sở, chạm tên để bật/tắt.
+function faSetAll(v) {
+    FA.all = v;
+    document.getElementById('fa-all').classList.toggle('solid', v);
+    document.getElementById('fa-some').classList.toggle('solid', !v);
+    const box = document.getElementById('fa-branches');
+    box.classList.toggle('fr-hidden', v);
+    box.innerHTML = Object.keys(branchesCache).map(b => `
+        <button type="button" class="fr-btn fr-chip${FA.branches[b] ? ' on' : ''}" data-b="${faEsc(b)}"
+                onclick="faToggleBranch(this)">${faEsc(branchesCache[b].name || b)}</button>`).join('');
+    document.getElementById('fa-all-hint').innerText = v
+        ? 'Khách ở mọi cơ sở đều thấy frame này, kể cả cơ sở mở sau.'
+        : 'Chạm tên cơ sở để bật hoặc tắt.';
+}
+
+function faToggleBranch(el) {
+    const b = el.dataset.b;
+    FA.branches[b] = !FA.branches[b];
+    el.classList.toggle('on', !!FA.branches[b]);
 }
 
 // Ẩn thay vì xoá: frame theo mùa, hết đợt thì ẩn, đợt sau bật lại
@@ -362,12 +386,15 @@ async function faSave() {
     if (!FA) return;
     FA.name = document.getElementById('fa-name').value.trim() || 'Frame';
     if (!FA.slots.length) return Toast.fire({ icon: 'warning', title: 'Frame chưa có ô ảnh nào' });
-    if (!Object.values(FA.branches).some(Boolean)) return Toast.fire({ icon: 'warning', title: 'Chọn ít nhất một cơ sở dùng frame' });
+    if (!FA.all && !Object.values(FA.branches).some(Boolean)) return Toast.fire({ icon: 'warning', title: 'Chọn ít nhất một cơ sở dùng frame' });
+    // Chỉ giữ cơ sở đang bật cho gọn dữ liệu
+    const branches = {};
+    if (!FA.all) Object.keys(FA.branches).forEach(b => { if (FA.branches[b]) branches[b] = true; });
 
     const btn = document.getElementById('fa-save'), bar = document.getElementById('fa-bar');
     btn.disabled = true;
     const rec = {
-        name: FA.name.slice(0, 60), w: FA.w, h: FA.h, front: !!FA.front, on: FA.on !== false, branches: FA.branches,
+        name: FA.name.slice(0, 60), w: FA.w, h: FA.h, front: !!FA.front, on: FA.on !== false, all: FA.all !== false, branches,
         slots: FA.slots.map(s => ({ cx: Math.round(s.cx), cy: Math.round(s.cy), w: Math.round(s.w), h: Math.round(s.h), rot: +s.rot || 0 })),
         file: FA.file || '', prev: FA.prev || '', at: Date.now()
     };

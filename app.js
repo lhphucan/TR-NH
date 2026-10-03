@@ -631,6 +631,8 @@ function renderData(data, branch) {
 
     document.getElementById('album-list').innerHTML = html;
     resetSubmitBtn();
+    // Có frame cho cơ sở này thì hiện nút ghép ảnh vào frame ở chỗ yêu cầu in
+    if (typeof frSessionReady === 'function') frSessionReady(data, branch);
 }
 
 async function sendToShop() {

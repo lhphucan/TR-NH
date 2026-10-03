@@ -23,8 +23,12 @@
 .fr-card input[type=text], .fr-card input[type=number] { padding: 9px 10px; border: 1px solid #e5e5e5; border-radius: 8px; font: 13px 'Inter', sans-serif; width: 100%; box-sizing: border-box; }
 .fr-label { font-size: 11px; font-weight: 600; color: #666; display: block; margin-bottom: 4px; }
 .fr-grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.fr-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 10px; cursor: pointer; }
-.fr-check input { width: 16px; height: 16px; accent-color: #111; }
+/* Nút bật/tắt cơ sở: dùng nút thay ô tích vì trang khách có kiểu chung cho mọi
+   ô nhập (đệm 14px, cách dưới 15px), ô tích dính kiểu đó là lệch hẳn */
+.fr-chip.on { background: #111; color: #fff; border-color: #111; }
+.fr-chip.on::before { content: '✓ '; }
+/* Gỡ kiểu ô nhập chung của trang khách khỏi thanh phóng to */
+.fr-modal input[type=range] { padding: 0; margin: 0; border: none; box-shadow: none; height: auto; background: none; }
 
 /* Danh sách frame */
 .fr-flist { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
@@ -95,6 +99,12 @@
               background: rgba(0,0,0,.25); color: #fff; font: 700 12px/22px 'Inter', sans-serif; text-align: center; }
 .fr-pk-item.on .fr-pk-tick { background: #111; }
 .fr-pk-used { position: absolute; left: 6px; bottom: 6px; background: #111; color: #fff; font: 700 11px 'Inter', sans-serif; padding: 3px 8px; border-radius: 10px; }
+/* Hai nguồn ảnh: lượt chụp và ảnh trong máy */
+.fr-tabs { display: flex; gap: 8px; padding: 10px 12px 0; flex: none; }
+.fr-tab { flex: 1; padding: 10px; border: 1px solid #e5e5e5; border-radius: 10px; background: #fff; font: 600 12px 'Inter', sans-serif; color: #111; cursor: pointer; min-height: 44px; }
+.fr-tab.on { background: #111; color: #fff; border-color: #111; }
+.fr-pk-add { border: 2px dashed #d4d4d8; cursor: pointer; }
+.fr-pk-add .fr-pk-ph { display: flex; align-items: center; justify-content: center; font: 600 13px 'Inter', sans-serif; color: #111; }
 .fr-pk-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid #e5e5e5; }
 .fr-pk-foot span { flex: 1; font-size: 13px; color: #666; }
 

@@ -9,6 +9,9 @@ let FKP = [];           // ảnh của từng ô: { id, url, iw, ih, s, ox, oy, 
 let FK_SEL = -1;        // ô vừa chỉnh: thanh phóng to và nút xoay tác động vào ô này
 let FK_PK = null;       // bảng chọn ảnh đang mở
 let FK_RES = null;      // ảnh ghép xong: { blob, view, w, h }
+let FK_LOCAL = [];      // ảnh khách chọn từ máy (đã tải về chỉnh xong): { id, file, url, full, iw, ih }
+let FK_TAB = 'album';   // bảng chọn ảnh đang ở thẻ nào: album | may
+let FK_SESSION = null;  // lượt chụp mới nhất của phiên đang mở, cho nút ghép ở ngoài album
 
 const fkEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fkPrev = id => FR.gUrl(id, 1600);   // để xem và kéo
@@ -25,7 +28,7 @@ async function fkLoadFrames() {
 // Khách chỉ thấy frame đang dùng của đúng cơ sở mình chụp
 function fkFramesFor(br) {
     return Object.keys(FK_FRAMES || {}).map(id => Object.assign({ id }, FK_FRAMES[id]))
-        .filter(f => f.on !== false && f.branches && f.branches[br] && f.file && f.prev && (f.slots || []).length)
+        .filter(f => f.on !== false && (f.all || (f.branches && f.branches[br])) && f.file && f.prev && (f.slots || []).length)
         .sort((a, b) => b.id.localeCompare(a.id));
 }
 
@@ -138,6 +141,12 @@ function fkBuild() {
             <button class="fr-x" onclick="fkPkClose()" aria-label="Đóng">&times;</button>
         </div>
         <div id="fk-mini" class="fr-mini"></div>
+        <div class="fr-tabs">
+            <button type="button" class="fr-tab" id="fk-tab-album" onclick="fkTab('album')">Ảnh lượt chụp</button>
+            <button type="button" class="fr-tab" id="fk-tab-may" onclick="fkTab('may')">Ảnh trong máy</button>
+        </div>
+        <input type="file" id="fk-file" class="fr-hidden" multiple
+               accept=".jpg,.jpeg,.png,.heic,.heif,.webp,image/jpeg,image/png,image/heic,image/heif,image/webp" onchange="fkAddLocal(this)">
         <div id="fk-pk-grid" class="fr-pk-grid"></div>
         <div class="fr-pk-foot" id="fk-pk-foot">
             <span id="fk-pk-count"></span>
@@ -260,6 +269,12 @@ function fkBindStage() {
 
 // Đặt ảnh vào ô. Cỡ ảnh lấy từ bản 1600 (cùng tỷ lệ với bản gốc nên phép tính không đổi)
 async function fkSetPhoto(i, id, keep) {
+    const loc = FK_LOCAL.find(x => x.id === id);
+    if (loc) {
+        FKP[i] = Object.assign({ id, url: loc.url, full: loc.full, local: true, iw: loc.iw, ih: loc.ih, s: 1, ox: 0, oy: 0, r: 0 }, keep || {});
+        FR.clamp(FKF.slots[i], FKP[i]);
+        return;
+    }
     const url = fkPrev(id);
     const im = await FR.loadImg(url);
     FKP[i] = Object.assign({ id, url, iw: im.naturalWidth, ih: im.naturalHeight, s: 1, ox: 0, oy: 0, r: 0 }, keep || {});
@@ -291,21 +306,80 @@ function fkPkOpen(slot, mode) {
         for (let j = 1; j < n; j++) { const t = (slot + j) % n; if (!FKP[t]) targets.push(t); }
     }
     FK_PK = { mode, slot, targets, picked: [] };
-    // Ảnh nào đang nằm ở ô nào
-    const at = {};
-    FKP.forEach((p, i) => { if (p) (at[p.id] = at[p.id] || []).push(i + 1); });
     document.getElementById('fk-pk-title').innerText = mode === 'replace' ? `Chọn ảnh thay cho ô ${slot + 1}` : 'Chọn ảnh';
     document.getElementById('fk-pk-foot').classList.toggle('fr-hidden', mode === 'replace');
-    document.getElementById('fk-pk-grid').innerHTML = fkPhotos().map(x => `
-        <button type="button" class="fr-pk-item" data-id="${fkEsc(x.id)}">
-            <span class="fr-pk-ph"><img src="${fkThumb(x.id)}" alt="" loading="lazy" decoding="async"></span>
-            ${mode === 'fill' ? '<span class="fr-pk-tick"></span>' : ''}
-            ${at[x.id] ? `<span class="fr-pk-used">${at[x.id].join(', ')}</span>` : ''}
-        </button>`).join('');
-    document.getElementById('fk-pk-grid').querySelectorAll('.fr-pk-item').forEach(b => b.onclick = () => fkPkTap(b));
+    // Lượt chụp không có ảnh nào thì mở thẳng thẻ ảnh trong máy
+    if (!fkPhotos().length) FK_TAB = 'may';
     // Mở bảng trước rồi mới vẽ frame thu nhỏ: bảng còn ẩn thì đo bề rộng ra 0,
     // các số ô dồn hết vào một góc
     document.getElementById('fk-pk').style.display = 'flex';
+    fkTab(FK_TAB);
+    fkMini();
+    fkPkCount();
+}
+
+// Hai nguồn ảnh: ảnh của lượt chụp trên Drive, và ảnh trong máy khách (thường
+// là ảnh đã tải về chỉnh màu, chỉnh da xong mới muốn ghép)
+function fkTab(t) {
+    FK_TAB = t;
+    document.getElementById('fk-tab-album').classList.toggle('on', t === 'album');
+    document.getElementById('fk-tab-may').classList.toggle('on', t === 'may');
+    fkPkGrid();
+}
+
+function fkPkGrid() {
+    if (!FK_PK) return;
+    const mode = FK_PK.mode;
+    // Ảnh nào đang nằm ở ô nào: ghi đúng số ô
+    const at = {};
+    FKP.forEach((p, i) => { if (p) (at[p.id] = at[p.id] || []).push(i + 1); });
+    const list = FK_TAB === 'album'
+        ? fkPhotos().map(x => ({ id: x.id, src: fkThumb(x.id) }))
+        : FK_LOCAL.map(x => ({ id: x.id, src: x.url }));
+    const item = x => {
+        const j = FK_PK.picked.indexOf(x.id);
+        return `<button type="button" class="fr-pk-item${j >= 0 ? ' on' : ''}" data-id="${fkEsc(x.id)}">
+            <span class="fr-pk-ph"><img src="${x.src}" alt="" loading="lazy" decoding="async"></span>
+            ${mode === 'fill' ? `<span class="fr-pk-tick">${j >= 0 ? FK_PK.targets[j] + 1 : ''}</span>` : ''}
+            ${at[x.id] ? `<span class="fr-pk-used">${at[x.id].join(', ')}</span>` : ''}
+        </button>`;
+    };
+    const add = FK_TAB === 'may'
+        ? `<label for="fk-file" class="fr-pk-item fr-pk-add"><span class="fr-pk-ph"><span>+ Chọn ảnh trong máy</span></span></label>` : '';
+    const grid = document.getElementById('fk-pk-grid');
+    grid.innerHTML = add + list.map(item).join('')
+        + (FK_TAB === 'album' && !list.length ? '<p class="fr-hint" style="grid-column:1/-1;">Lượt chụp chưa có ảnh nào.</p>' : '');
+    grid.querySelectorAll('.fr-pk-item[data-id]').forEach(b => b.onclick = () => fkPkTap(b));
+}
+
+// Ảnh khách chọn từ máy: giữ nguyên file gốc để ghép, chỉ làm bản nhỏ để xem
+async function fkAddLocal(inp) {
+    const files = Array.from(inp.files || []);
+    inp.value = '';
+    if (!files.length) return;
+    const added = [];
+    let bad = 0;
+    for (const file of files) {
+        try {
+            const p = await FR.shrink(file, 1600, 'image/jpeg');
+            const x = { id: 'L' + Date.now() + '_' + FK_LOCAL.length, file, url: URL.createObjectURL(p.blob), full: URL.createObjectURL(file), iw: p.nw, ih: p.nh };
+            FK_LOCAL.push(x);
+            added.push(x.id);
+        } catch (e) { bad++; }
+    }
+    if (bad) Swal.fire({ toast: true, position: 'bottom', timer: 2600, showConfirmButton: false, icon: 'warning', title: `${bad} ảnh không mở được trên máy này` });
+    if (!FK_PK) return;
+    // Đổi ảnh một ô mà chọn đúng một ảnh -> đặt luôn, khỏi chạm thêm lần nữa
+    if (FK_PK.mode === 'replace' && added.length === 1) {
+        const i = FK_PK.slot;
+        fkPkClose();
+        await fkSetPhoto(i, added[0]);
+        FK_SEL = i;
+        return fkRender();
+    }
+    // Điền ô trống: tự tick luôn các ảnh vừa chọn, còn bao nhiêu ô thì tick bấy nhiêu
+    if (FK_PK.mode === 'fill') added.forEach(id => { if (FK_PK.picked.length < FK_PK.targets.length) FK_PK.picked.push(id); });
+    fkPkGrid();
     fkMini();
     fkPkCount();
 }
@@ -344,7 +418,7 @@ async function fkPkTap(b) {
     else if (FK_PK.picked.length < FK_PK.targets.length) FK_PK.picked.push(id);
     else return Swal.fire({ toast: true, position: 'bottom', timer: 2000, showConfirmButton: false, icon: 'info', title: `Chỉ còn ${FK_PK.targets.length} ô trống` });
     // Dấu tick ghi số ô mà ảnh sẽ vào
-    document.querySelectorAll('#fk-pk-grid .fr-pk-item').forEach(el => {
+    document.querySelectorAll('#fk-pk-grid .fr-pk-item[data-id]').forEach(el => {
         const j = FK_PK.picked.indexOf(el.dataset.id);
         el.classList.toggle('on', j >= 0);
         const t = el.querySelector('.fr-pk-tick');
@@ -385,7 +459,8 @@ function fkDraftLater() {
         if (!FKF) return;
         try {
             if (!FKP.some(Boolean)) return localStorage.removeItem(fkDraftKey());
-            localStorage.setItem(fkDraftKey(), JSON.stringify({ at: Date.now(), photos: FKP.map(p => p && { id: p.id, s: p.s, ox: p.ox, oy: p.oy, r: p.r }) }));
+            // Ảnh trong máy chỉ sống trong trang, tải lại là mất: ghi dấu để báo khách chọn lại
+            localStorage.setItem(fkDraftKey(), JSON.stringify({ at: Date.now(), photos: FKP.map(p => p && (p.local ? { local: true } : { id: p.id, s: p.s, ox: p.ox, oy: p.oy, r: p.r })) }));
         } catch (e) { /* máy chặn lưu thì thôi */ }
     }, 400);
 }
@@ -397,7 +472,9 @@ async function fkDraftRestore() {
     if (Date.now() - d.at > 7 * 24 * 3600 * 1000) return;
     const ok = new Set(fkPhotos().map(x => x.id));
     await Promise.all(d.photos.map((p, i) => p && ok.has(p.id) ? fkSetPhoto(i, p.id, { s: p.s, ox: p.ox, oy: p.oy, r: p.r }).catch(() => null) : null));
-    if (FKP.some(Boolean)) Swal.fire({ toast: true, position: 'bottom', timer: 2200, showConfirmButton: false, icon: 'info', title: 'Đã mở lại bản đang ghép dở' });
+    const mat = d.photos.filter(p => p && p.local).length;
+    if (FKP.some(Boolean) || mat) Swal.fire({ toast: true, position: 'bottom', timer: 3500, showConfirmButton: false, icon: 'info',
+        title: 'Đã mở lại bản đang ghép dở' + (mat ? ` — ${mat} ảnh từ máy cần chọn lại` : '') });
 }
 
 // ---------- Ghép, gửi, lưu ----------
@@ -416,7 +493,7 @@ async function fkExport() {
         if (!cv) throw new Error('Máy này không đủ bộ nhớ để ghép ảnh cỡ in.');
         const n = FKP.filter(Boolean).length;
         // Ghép từ bản gốc của frame và của từng ảnh chụp
-        await FR.compose(cv.x, cv.s, FKF, FR.gUrl(FKF.file), FKP, p => FR.gUrl(p.id),
+        await FR.compose(cv.x, cv.s, FKF, FR.gUrl(FKF.file), FKP, p => p.local ? p.full : FR.gUrl(p.id),
                          i => { btn.innerText = `Đang ghép ảnh ${FKP.slice(0, i + 1).filter(Boolean).length}/${n}...`; });
         btn.innerText = 'Đang xuất ảnh...';
         let blob = await new Promise(r => cv.c.toBlob(r, 'image/png'));
@@ -510,6 +587,40 @@ async function fkSave() {
     a.href = u; a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(u), 10000);
+}
+
+// ---------- Nút ghép ngay ở trang phiên, ngoài album ----------
+// Khách tải ảnh về chỉnh xong rồi mới muốn ghép: quay lại trang là thấy nút ở chỗ
+// Yêu cầu in ảnh, khỏi phải mở album. Ghép cho lượt chụp mới nhất của phiên.
+async function frSessionReady(data, branch) {
+    const btn = document.getElementById('fk-entry');
+    if (!btn) return;
+    btn.style.display = 'none';
+    const links = Object.values((data && data.links) || {}).map(l => String((l && l.url) || ''));
+    const last = links.reverse().map(u => (u.match(/folders\/([\w-]+)/) || [])[1]).find(Boolean);
+    FK_SESSION = last ? { fid: last, branch, clientId: data.id } : null;
+    if (!FK_SESSION) return;
+    await fkLoadFrames();
+    if (fkFramesFor(branch).length) btn.style.display = '';
+}
+
+async function frOpenSession() {
+    if (!FK_SESSION) return;
+    const btn = document.getElementById('fk-entry');
+    const old = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = 'ĐANG MỞ...';
+    try {
+        window._albCtx = { fid: FK_SESSION.fid, branch: FK_SESSION.branch, clientId: FK_SESSION.clientId, url: '' };
+        _alb = (await gsCall({ action: 'album', folder: FK_SESSION.fid })).images || [];
+        _albBranch = FK_SESSION.branch;
+        await frOpen();
+    } catch (e) {
+        Swal.fire({ title: 'Chưa mở được', text: 'Kiểm tra mạng rồi thử lại giúp mình nhé.', icon: 'error', confirmButtonColor: '#111' });
+    } finally {
+        btn.disabled = false;
+        btn.innerText = old;
+    }
 }
 
 // ---------- Ảnh ghép trong album khách ----------
