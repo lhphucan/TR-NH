@@ -72,15 +72,13 @@ label.f { font-size: 11px; font-weight: 600; color: var(--muted); display: block
 /* Ô bên khách */
 .cslot { position: absolute; overflow: hidden; background: #e5e5e5; }
 .cslot img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; }
-/* Khách không cần thấy viền ô: ô trống đã có nền xám và dấu cộng. Chỉ ô đang
-   chỉnh mới có viền xanh để biết mình đang kéo ảnh nào. */
+/* Khách không cần thấy viền ô nào: ô trống đã có nền xám và dấu cộng */
 .cmark { position: absolute; pointer-events: none; display: flex; align-items: center; justify-content: center; }
-.cmark.sel { border: 3px solid #2563eb; }
 .cmark .plus { background: rgba(17,17,17,.75); color: #fff; font: 600 22px/1 'Inter', sans-serif; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
 .tool { display: none; margin-top: 12px; }
 .tool.on { display: block; }
-input[type=range] { width: 100%; }
+input[type=range] { width: 100%; accent-color: #111; }
 .res img { width: 100%; border-radius: 8px; border: 1px solid var(--line); display: block; }
 .stat { font: 12px/1.7 ui-monospace, Menlo, monospace; background: #f4f4f5; padding: 10px 12px; border-radius: 8px; margin-top: 10px; white-space: pre-wrap; }
 .hidden { display: none !important; }
