@@ -40,24 +40,13 @@ function fkPhotos() {
     return list.filter(x => !ghep.has(x.id));
 }
 
+// Mỗi lần gửi một bản ghi riêng, chỉ tạo mới chứ không sửa xoá được
 function fkFramedRef() {
-    return db.ref('data/' + _albCtx.branch + '/' + _albCtx.clientId + '/framed/' + _albCtx.fid);
+    return db.ref('data/' + _albCtx.branch + '/' + _albCtx.clientId + '/framed/' + _albCtx.fid + '/G_' + Date.now());
 }
 
 async function frOpen() {
     if (!window._albCtx || !_albCtx.clientId) return;
-    // Mỗi lượt chụp một ảnh ghép
-    try {
-        const done = (await fkFramedRef().once('value')).val();
-        if (done) {
-            const r = await Swal.fire({ title: 'Lượt này đã gửi ảnh ghép', text: 'Mỗi lượt chụp gửi được một ảnh ghép. Cần ghép lại thì nhờ nhân viên giúp nhé.',
-                                        icon: 'info', showCancelButton: true, confirmButtonText: 'Xem ảnh ghép', cancelButtonText: '<span style="color:#111">Đóng</span>',
-                                        confirmButtonColor: '#111', cancelButtonColor: '#fff' });
-            if (r.isConfirmed && done.id) frView(done.id, _albCtx.branch);
-            return;
-        }
-    } catch (e) { /* mất mạng: cho ghép, lúc gửi sẽ kiểm lại */ }
-
     fkBuild();
     const frames = fkFramesFor(_albCtx.branch);
     document.getElementById('fk-modal').style.display = 'flex';
@@ -506,7 +495,7 @@ async function fkExport() {
         document.getElementById('fk-res-img').src = FK_RES.view;
         document.getElementById('fk-res-info').innerText = cv.s < 1
             ? `Máy bạn giới hạn bộ nhớ nên ảnh ghép cỡ ${W} × ${H} (${Math.round(cv.s * 100)}% cỡ frame), vẫn đủ nét để in.`
-            : 'Mỗi lượt chụp gửi được một ảnh ghép, bạn xem kỹ rồi hãy gửi nhé.';
+            : 'Bạn xem kỹ rồi hãy gửi nhé.';
         fkStep('res');
     } catch (e) {
         Swal.fire({ title: 'Chưa ghép được', text: e.message, icon: 'error', confirmButtonColor: '#111' });
@@ -518,7 +507,7 @@ async function fkExport() {
 
 async function fkSend() {
     if (!FK_RES) return;
-    const ok = await Swal.fire({ title: 'Gửi ảnh ghép cho tiệm?', text: 'Mỗi lượt chụp chỉ gửi được một lần.', icon: 'question', showCancelButton: true,
+    const ok = await Swal.fire({ title: 'Gửi ảnh ghép cho tiệm?', text: 'Tiệm sẽ in đúng ảnh này.', icon: 'question', showCancelButton: true,
                                  confirmButtonText: 'Gửi', cancelButtonText: '<span style="color:#111">Xem lại</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff' });
     if (!ok.isConfirmed) return;
 
@@ -529,27 +518,28 @@ async function fkSend() {
     set(0);
     const { branch, clientId, fid } = _albCtx;
     try {
-        // Kiểm lại lúc gửi: có thể đã gửi từ máy khác
-        if ((await fkFramedRef().once('value')).exists()) throw new Error('Lượt chụp này đã gửi ảnh ghép rồi.');
-
         const data = (await db.ref('data/' + branch + '/' + clientId).once('value')).val() || {};
         const bName = (BRANCHES_CACHE[branch] && BRANCHES_CACHE[branch].name) || branch;
         const maKh = String(clientId).split('_')[1].slice(-4);
         const cName = String(data.name || 'Khach').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40) || 'Khach';
-        // Cùng thư mục với ảnh khách gửi in, nhân viên tìm một chỗ là thấy
-        const info = await gsCall({ action: 'folder', branch: bName, day: getDStr(new Date()).replace(/\//g, '-'), client: `${cName} - ${maKh}` });
         const now = new Date();
         const hhmmss = [now.getHours(), now.getMinutes(), now.getSeconds()].map(x => String(x).padStart(2, '0')).join('');
         const duoi = FK_RES.blob.type === 'image/png' ? '.png' : '.jpg';
-        const up = await FR.upload(FK_RES.blob, `${cName}_${maKh}_GHEP FRAME_${hhmmss}${duoi}`, info.token, info.folderId, v => set(v * 0.95));
+        const file = new File([FK_RES.blob], `${cName}_${maKh}_GHEP FRAME_${hhmmss}${duoi}`, { type: FK_RES.blob.type || 'image/png' });
+        // Cùng thư mục với ảnh khách gửi in, nhân viên tìm một chỗ là thấy
+        const sent = await guiLenDrive([file], { branch: bName, day: getDStr(now).replace(/\//g, '-'), client: `${cName} - ${maKh}` }, (i, v) => set(v * 0.95));
+        const up = sent.files[0];
+        if (!up || !up.id) throw new Error((up && up.err) || 'Không gửi được ảnh');
+        const info = { folderUrl: sent.folderUrl };
         // Cho xem công khai để ảnh ghép hiện được trong album của khách
-        await FR.makePublic(up.id, info.token).catch(() => {});
+        if (sent.token) await FR.makePublic(up.id, sent.token).catch(() => {});
+        else await gsCall({ action: 'publish', id: up.id }).catch(() => {});
 
         const time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + now.toLocaleDateString('vi-VN');
         // Yêu cầu in: bên nhân viên hiện như ảnh khách gửi, có giờ và nút tải bản gốc
         await db.ref('data/' + branch + '/' + clientId + '/client_uploads/U_' + Date.now())
                 .set({ time, drive: [{ id: up.id, name: up.name }], folder: info.folderUrl, kind: 'frame' });
-        // Đánh dấu lượt này đã gửi; ghi sau cùng để lỡ hỏng thì tiệm vẫn nhận được ảnh
+        // Ghi để ảnh ghép hiện trong album khách; ghi sau cùng để lỡ hỏng thì tiệm vẫn nhận được ảnh
         await fkFramedRef().set({ time, id: up.id, frame: FKF.id }).catch(() => {});
         set(1);
         try { localStorage.removeItem(fkDraftKey()); } catch (e) {}
@@ -616,10 +606,15 @@ async function frOpenSession() {
 // ---------- Ảnh ghép trong album khách ----------
 // Dòng "Ảnh ghép frame" cho mỗi lượt đã gửi, bấm là xem lớn và lưu về máy
 function frRows(d, branch) {
-    const f = (d && d.framed) || {};
-    return Object.keys(f).filter(k => f[k] && f[k].id).map(k => `
-        <div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh ghép frame</span>
-        <button type="button" class="view-btn" onclick="frView('${fkEsc(f[k].id)}', '${fkEsc(branch)}')">Xem &amp; lưu ảnh</button></div>`).join('');
+    const items = [];
+    Object.values((d && d.framed) || {}).forEach(v => {
+        if (!v) return;
+        if (typeof v.id === 'string') items.push(v);   // kiểu cũ: một lượt một bản
+        else Object.values(v).forEach(x => { if (x && typeof x.id === 'string') items.push(x); });
+    });
+    return items.map(x => `
+        <div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh ghép frame${x.time ? ' · ' + fkEsc(String(x.time).split(' ')[0]) : ''}</span>
+        <button type="button" class="view-btn" onclick="frView('${fkEsc(x.id)}', '${fkEsc(branch)}')">Xem &amp; lưu ảnh</button></div>`).join('');
 }
 
 function frView(id, branch) {

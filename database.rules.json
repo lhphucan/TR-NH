@@ -81,18 +81,21 @@
             }
           },
 
-          // Ảnh ghép frame: mỗi lượt chụp (khoá là mã thư mục lượt chụp trên Drive)
-          // khách chỉ ghi được một lần, ghi rồi không sửa hay xoá được. Nhân viên
-          // xoá được để cho khách ghép lại khi cần.
+          // Ảnh ghép frame: khách gửi bao nhiêu lần cũng được, mỗi lần một bản ghi
+          // riêng (khoá G_<giờ>) dưới mã thư mục lượt chụp. Khách chỉ được tạo mới,
+          // không sửa hay xoá bản đã gửi. Nhân viên toàn quyền.
           "framed": {
             ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer')))",
             "$lot": {
-              ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))) || (auth == null && !data.exists() && newData.exists())",
-              ".validate": "auth != null || ($lot.matches(/^[A-Za-z0-9_-]{10,80}$/) && newData.hasChildren(['time','id']))",
-              "time":  { ".validate": "auth != null || (newData.isString() && newData.val().length <= 30)" },
-              "id":    { ".validate": "auth != null || (newData.isString() && newData.val().length <= 80)" },
-              "frame": { ".validate": "auth != null || (newData.isString() && newData.val().length <= 40)" },
-              "$other": { ".validate": "auth != null" }
+              ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer')))",
+              "$k": {
+                ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))) || (auth == null && !data.exists() && newData.exists())",
+                ".validate": "auth != null || ($lot.matches(/^[A-Za-z0-9_-]{10,80}$/) && $k.matches(/^G_[0-9]{10,16}$/) && newData.hasChildren(['time','id']))",
+                "time":  { ".validate": "auth != null || (newData.isString() && newData.val().length <= 30)" },
+                "id":    { ".validate": "auth != null || (newData.isString() && newData.val().length <= 80)" },
+                "frame": { ".validate": "auth != null || (newData.isString() && newData.val().length <= 40)" },
+                "$other": { ".validate": "auth != null" }
+              }
             }
           },
 

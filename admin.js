@@ -59,8 +59,15 @@ if (_cached.shoots) {
 // - Còn 5 phút nữa hết hạn thì lặng lẽ xin mới trong nền, vẫn trả token cũ ngay.
 let _tokenWait = null;
 
+// Apps Script chỉ đưa chìa khoá Drive khi kèm mã đăng nhập Firebase của nhân
+// viên hoặc admin: mã dùng chung nằm trong code trang khách, ai cũng đọc được.
+async function gsTokenCall() {
+    const idt = (auth && auth.currentUser) ? await auth.currentUser.getIdToken() : '';
+    return gsCall({ action: 'token', idt });
+}
+
 async function fetchToken() {
-    const d = await gsCall({ action: 'token' });
+    const d = await gsTokenCall();
     _driveToken = d.token;
     _driveTokenAt = Date.now();
     saveCache({ token: _driveToken, tokenAt: _driveTokenAt });
@@ -2247,7 +2254,7 @@ function load() {
             if (driveItems.length) {
                 if (btn) btn.innerHTML = 'ĐANG CHUẨN BỊ...';
                 try {
-                    token = (await gsCall({ action: 'token' })).token;
+                    token = (await gsTokenCall()).token;
                 } catch (e) {
                     if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
                     return Swal.fire({ title: 'Không tải được', text: 'Không lấy được quyền đọc ảnh: ' + e.message, icon: 'error', confirmButtonColor: '#111' });
@@ -2490,7 +2497,7 @@ async function checkDriveUrl() {
     const saved = GS_URL;
     try {
         GS_URL = url;
-        await gsCall({ action: 'token' });
+        await gsTokenCall();
         Swal.fire({ title: 'Kết nối được', text: 'Đã lấy được quyền ghi vào Drive. Bấm Lưu để áp dụng.', icon: 'success', confirmButtonColor: '#111' });
     } catch (e) {
         Swal.fire({ title: 'Không kết nối được', text: e.message + '. Kiểm tra lại quyền truy cập của bản triển khai (phải là "Bất kỳ ai").', icon: 'error', confirmButtonColor: '#111' });

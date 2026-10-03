@@ -205,6 +205,62 @@ async function driveUploadRetry(file, token, folderId, tries) {
     throw last;
 }
 
+// Gửi file của khách lên Drive mà khách không cầm chìa khoá Drive.
+// Apps Script tạo thư mục và mở sẵn đường gửi cho từng file; mỗi đường chỉ gửi
+// được đúng một file vào đúng thư mục đó, không đọc hay xoá được gì khác.
+// Hai đường lùi để khách không bao giờ bị kẹt:
+// - Apps Script còn bản cũ (chưa có action upload): dùng cách cũ.
+// - Trình duyệt không đẩy được vào đường gửi: gửi qua Apps Script (chậm hơn).
+// where: { branch, day, client }. Trả về { folderUrl, files: [{id, name} | {err}], token? }
+async function guiLenDrive(files, where, onFile) {
+    let info = null;
+    try {
+        info = await gsCall(Object.assign({ action: 'upload',
+            files: JSON.stringify(files.map(f => ({ name: f.name, type: f.type || 'image/jpeg', size: f.size }))) }, where));
+    } catch (e) {
+        if (!/Thieu id/.test(e.message)) throw e;   // bản cũ không biết action upload
+    }
+
+    const out = [];
+    if (!info) {
+        const old = await gsCall(Object.assign({ action: 'folder' }, where));
+        for (let i = 0; i < files.length; i++) {
+            try { const r = await driveUploadRetry(files[i], old.token, old.folderId); out.push({ id: r.id, name: r.name }); }
+            catch (e) { out.push({ err: e.message }); }
+            if (onFile) onFile(i, 1);
+        }
+        return { folderUrl: old.folderUrl || '', files: out, token: old.token };
+    }
+
+    for (let i = 0; i < files.length; i++) {
+        try {
+            const r = await FR.uploadTo(info.sessions[i], files[i], v => onFile && onFile(i, v));
+            out.push({ id: r.id, name: r.name });
+        } catch (e) {
+            // Đẩy thẳng không được -> nhờ Apps Script cất hộ
+            try { out.push(await guiQuaScript(files[i], where)); if (onFile) onFile(i, 1); }
+            catch (e2) { out.push({ err: e2.message }); }
+        }
+    }
+    return { folderUrl: info.folderUrl || '', files: out };
+}
+
+// Gửi một file qua Apps Script: chậm (ảnh phải đổi sang chữ, nặng thêm 1/3)
+// nhưng chạy được ở mọi trình duyệt
+async function guiQuaScript(file, where) {
+    const b64 = await new Promise((ok, fail) => {
+        const r = new FileReader();
+        r.onload = () => ok(String(r.result).split(',')[1]);
+        r.onerror = () => fail(new Error('Không đọc được ảnh'));
+        r.readAsDataURL(file);
+    });
+    // Gửi dạng chữ thường để trình duyệt khỏi hỏi trước, Apps Script vẫn đọc được JSON
+    const res = await fetch(GS_URL, { method: 'POST', body: JSON.stringify(Object.assign({ k: GS_KEY, image: b64, mime: file.type || 'image/jpeg', name: file.name }, where)) });
+    const d = JSON.parse(await res.text());
+    if (!d.ok) throw new Error(d.error || 'Không gửi được');
+    return { id: d.id, name: d.name };
+}
+
 // Đầu số di động Việt Nam đang lưu hành (sau chuyển đổi 11 số về 10 số)
 const VN_PREFIX = /^0(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-9])\d{7}$/;
 
@@ -680,26 +736,20 @@ async function sendToShop() {
             // của lượt tra cứu trước nên dễ ghi nhầm sang khách khác.
             const cName = (currentClientName || 'Khach')
                             .replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40) || 'Khach';
-            const info = await gsCall({ action: 'folder', branch: bName, day, client: `${cName} - ${maKh}` });
-            folderUrl = info.folderUrl || '';
-
             // Khách gửi nhiều đợt vào cùng thư mục: thêm giờ gửi để tên không trùng,
             // Drive không ghi đè mà tạo file thứ hai cùng tên.
             const now = new Date();
             const hhmmss = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0')
                        + String(now.getSeconds()).padStart(2, '0');
+            const renamed = Array.from(files).map((f, i) => {
+                const ext = (f.name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0];
+                return new File([f], `${cName}_${maKh}_${hhmmss}_${String(i + 1).padStart(2, '0')}${ext}`, { type: f.type || 'image/jpeg' });
+            });
 
-            for (let i = 0; i < files.length; i++) {
-                try {
-                    const ext = (files[i].name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0];
-                    const renamed = new File([files[i]], `${cName}_${maKh}_${hhmmss}_${String(i + 1).padStart(2, '0')}${ext}`, { type: files[i].type });
-                    const r = await driveUploadRetry(renamed, info.token, info.folderId);
-                    driveFiles.push({ id: r.id, name: r.name });
-                } catch (e) {
-                    lastErr = e.message;
-                }
-                setBtnLoading(i + 1, files.length);
-            }
+            const sent = await guiLenDrive(renamed, { branch: bName, day, client: `${cName} - ${maKh}` },
+                                           (i, v) => { if (v >= 1) setBtnLoading(i + 1, files.length); });
+            folderUrl = sent.folderUrl;
+            sent.files.forEach(r => { if (r.id) driveFiles.push({ id: r.id, name: r.name }); else lastErr = r.err; });
         } else {
             // Chưa cấu hình Drive -> dùng imgbb như trước
             for (let i = 0; i < files.length; i++) {

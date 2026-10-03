@@ -217,7 +217,14 @@ const FR = (() => {
         if (!init.ok) throw new Error('Drive từ chối (HTTP ' + init.status + ')');
         const loc = init.headers.get('Location');
         if (!loc) throw new Error('Không mở được phiên tải lên');
+        return uploadTo(loc, blob, onProgress);
+    }
 
+    // Đẩy file vào một đường gửi đã mở sẵn. Trang khách dùng đường do Apps Script
+    // mở trên máy chủ: không cần chìa khoá Drive, đường đó chỉ gửi được đúng
+    // một file vào đúng một thư mục, không đọc hay xoá được gì.
+    async function uploadTo(loc, blob, onProgress) {
+        const total = blob.size;
         const CH = 2 * 1024 * 1024;   // phải là bội của 256 KB
         const doneAt = r => { const rg = r.headers.get('Range'); return rg ? parseInt(rg.split('-')[1], 10) + 1 : 0; };
         let off = 0, fails = 0;
@@ -252,5 +259,5 @@ const FR = (() => {
         if (!r.ok) throw new Error('Không mở quyền xem được (HTTP ' + r.status + ')');
     }
 
-    return { gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, upload, makePublic };
+    return { gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, upload, uploadTo, makePublic };
 })();
