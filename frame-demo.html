@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ghép Frame - Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root { --bg: #fafafa; --card: #fff; --text: #111; --muted: #666; --line: #e5e5e5; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+.wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 16px; letter-spacing: 1px; margin: 4px 0 4px; text-transform: uppercase; }
+.sub { font-size: 12px; color: var(--muted); margin: 0 0 14px; line-height: 1.5; }
+
+.tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.tab { flex: 1; padding: 12px; border: 1px solid var(--line); background: #fff; border-radius: 12px; font: 600 13px 'Inter', sans-serif; cursor: pointer; }
+.tab.on { background: var(--text); color: #fff; border-color: var(--text); }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; margin: 0 0 12px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font: 600 12px 'Inter', sans-serif; cursor: pointer; color: var(--text); white-space: nowrap; }
+.btn.solid { background: var(--text); color: #fff; border-color: var(--text); }
+.btn.danger { color: #dc2626; border-color: #fecaca; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.hint { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 8px 0 0; }
+input[type=text], input[type=number] { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: 13px 'Inter', sans-serif; width: 100%; }
+label.f { font-size: 11px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 4px; }
+.grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+
+/* Danh sách frame */
+.flist { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.fitem { border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: #fff; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; }
+.fitem img { width: 100%; aspect-ratio: 3/2; object-fit: contain; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0/16px 16px; border-radius: 8px; display: block; }
+.fitem b { display: block; font-size: 12px; margin-top: 6px; }
+.fitem span { font-size: 11px; color: var(--muted); }
+
+/* Khung làm việc: chặn cuộn trang khi kéo trên khung */
+.stage { position: relative; width: 100%; touch-action: none; user-select: none; -webkit-user-select: none;
+         background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0/20px 20px; border-radius: 8px; overflow: hidden; }
+.stage img.frame { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+/* Ô bên quản lý */
+.eslot { position: absolute; border: 2px dashed #2563eb; background: rgba(37,99,235,.15); cursor: move; }
+.eslot.sel { border-style: solid; background: rgba(37,99,235,.25); }
+.eslot .num { position: absolute; left: 4px; top: 4px; background: #2563eb; color: #fff; font: 700 11px 'Inter', sans-serif; padding: 2px 6px; border-radius: 6px; }
+.h { position: absolute; width: 22px; height: 22px; background: #fff; border: 2px solid #2563eb; border-radius: 50%; }
+.h.rs { right: -11px; bottom: -11px; cursor: nwse-resize; }
+.h.rt { left: 50%; top: -34px; margin-left: -11px; cursor: grab; }
+.h.rt::after { content: ''; position: absolute; left: 8px; top: 20px; width: 2px; height: 12px; background: #2563eb; }
+
+/* Ô bên khách */
+.cslot { position: absolute; overflow: hidden; background: #e5e5e5; }
+.cslot img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; }
+.cmark { position: absolute; pointer-events: none; border: 2px dashed rgba(17,17,17,.5); display: flex; align-items: center; justify-content: center; }
+.cmark.sel { border: 3px solid #2563eb; }
+.cmark .plus { background: rgba(17,17,17,.75); color: #fff; font: 700 12px 'Inter', sans-serif; padding: 6px 10px; border-radius: 20px; white-space: nowrap; }
+
+.tool { display: none; margin-top: 12px; }
+.tool.on { display: block; }
+input[type=range] { width: 100%; }
+.res img { width: 100%; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.stat { font: 12px/1.7 ui-monospace, Menlo, monospace; background: #f4f4f5; padding: 10px 12px; border-radius: 8px; margin-top: 10px; white-space: pre-wrap; }
+.hidden { display: none !important; }
+
+@media (hover: none) and (pointer: coarse) {
+    .btn, .tab { min-height: 44px; }
+    input[type=text], input[type=number] { font-size: 16px; }
+    .h { width: 30px; height: 30px; }
+    .h.rs { right: -15px; bottom: -15px; }
+    .h.rt { margin-left: -15px; top: -42px; }
+}
+@media (max-width: 560px) { .grid5 { grid-template-columns: repeat(3, 1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <h1>Ghép frame — bản thử</h1>
+    <p class="sub">Bản thử chạy riêng, chưa nối Drive và chưa gửi tiệm. Frame lưu trong trình duyệt của máy đang dùng.</p>
+
+    <div class="tabs">
+        <button class="tab on" id="tab-ad" onclick="showTab('ad')">Quản lý: dựng frame</button>
+        <button class="tab" id="tab-kh" onclick="showTab('kh')">Khách: ghép ảnh</button>
+    </div>
+
+    <!-- ================= QUẢN LÝ ================= -->
+    <section id="pane-ad">
+        <div class="card">
+            <h2>Frame đã có</h2>
+            <div id="ad-list" class="flist"></div>
+            <div class="row" style="margin-top:12px;">
+                <label class="btn solid" for="ad-file">+ Thêm frame PNG</label>
+                <input type="file" id="ad-file" accept=".png,image/png" class="hidden" onchange="adUpload(this)">
+                <button class="btn" onclick="genSample()">Tạo frame mẫu để thử</button>
+            </div>
+            <p class="hint">Xuất frame từ Canva dạng PNG, bật <b>Nền trong suốt</b>, các lỗ đặt ảnh để trống.</p>
+        </div>
+
+        <div class="card hidden" id="ad-edit">
+            <h2>Dựng ô ảnh</h2>
+            <div class="row" style="margin-bottom:10px;">
+                <div style="flex:1; min-width:180px;">
+                    <label class="f">Tên frame</label>
+                    <input type="text" id="ad-name">
+                </div>
+                <div>
+                    <label class="f">Frame nằm</label>
+                    <div class="row">
+                        <button class="btn" id="ad-front" onclick="setFront(true)">Trên ảnh</button>
+                        <button class="btn" id="ad-back" onclick="setFront(false)">Dưới ảnh</button>
+                    </div>
+                </div>
+            </div>
+            <p class="hint" style="margin:0 0 10px;">
+                <b>Trên ảnh</b>: frame đục lỗ đè lên, viền che mép ảnh. <b>Dưới ảnh</b>: frame làm nền, ảnh đè lên.<br>
+                Kéo trên chỗ trống để vẽ ô mới. Kéo ô để dời, kéo chấm góc để đổi cỡ, chấm phía trên để xoay.
+            </p>
+            <div id="ad-stage" class="stage"><img class="frame" id="ad-img" alt=""><div id="ad-slots"></div></div>
+
+            <div id="ad-slotpanel" class="tool" style="margin-top:12px;">
+                <div class="grid5">
+                    <div><label class="f">Trái</label><input type="number" id="sx" oninput="slotInput()"></div>
+                    <div><label class="f">Trên</label><input type="number" id="sy" oninput="slotInput()"></div>
+                    <div><label class="f">Rộng</label><input type="number" id="sw" oninput="slotInput()"></div>
+                    <div><label class="f">Cao</label><input type="number" id="sh" oninput="slotInput()"></div>
+                    <div><label class="f">Góc (°)</label><input type="number" id="sr" oninput="slotInput()"></div>
+                </div>
+                <div class="row" style="margin-top:10px;">
+                    <button class="btn" onclick="slotOp('rot90')">Xoay 90°</button>
+                    <button class="btn" onclick="slotOp('swap')">Đổi dọc / ngang</button>
+                    <button class="btn" onclick="slotOp('dup')">Nhân bản ô</button>
+                    <button class="btn danger" onclick="slotOp('del')">Xoá ô</button>
+                </div>
+            </div>
+
+            <div class="row" style="margin-top:14px;">
+                <span id="ad-count" class="hint" style="margin:0; flex:1;"></span>
+                <button class="btn danger" onclick="adDelete()">Xoá frame</button>
+                <button class="btn solid" onclick="adSave()">Lưu frame</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= KHÁCH ================= -->
+    <section id="pane-kh" class="hidden">
+        <div class="card" id="kh-pick">
+            <h2>Chọn frame</h2>
+            <div id="kh-list" class="flist"></div>
+        </div>
+
+        <div class="card hidden" id="kh-comp">
+            <div class="row" style="margin-bottom:10px;">
+                <button class="btn" onclick="khBack()">‹ Chọn frame khác</button>
+                <span id="kh-prog" class="hint" style="margin:0;"></span>
+            </div>
+            <div id="kh-stage" class="stage"></div>
+            <p class="hint">Chạm ô trống để chọn ảnh. Chạm ô đã có ảnh rồi kéo để dời, chụm hai ngón để phóng to.</p>
+
+            <div id="kh-tool" class="tool">
+                <label class="f">Phóng to</label>
+                <input type="range" id="kh-zoom" min="1" max="4" step="0.01" value="1" oninput="khZoom(this.value)">
+                <div class="row" style="margin-top:8px;">
+                    <button class="btn" onclick="khOp('change')">Đổi ảnh</button>
+                    <button class="btn" onclick="khOp('rot')">Xoay ảnh 90°</button>
+                    <button class="btn danger" onclick="khOp('del')">Bỏ ảnh</button>
+                </div>
+            </div>
+
+            <div class="row" style="margin-top:14px;">
+                <button class="btn solid" id="kh-done" onclick="khExport()" disabled style="flex:1;">GHÉP XONG</button>
+            </div>
+            <input type="file" id="kh-file" class="hidden" accept=".jpg,.jpeg,.png,.heic,.heif,.webp,image/jpeg,image/png,image/heic,image/heif,image/webp" onchange="khFile(this)">
+        </div>
+
+        <div class="card hidden res" id="kh-res">
+            <h2>Ảnh ghép</h2>
+            <img id="kh-res-img" alt="">
+            <div class="stat" id="kh-stat"></div>
+            <div class="row" style="margin-top:12px;">
+                <button class="btn" onclick="khResBack()">‹ Sửa tiếp</button>
+                <button class="btn solid" style="flex:1;" onclick="khSave()">LƯU ẢNH GHÉP</button>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+// ================= Lưu frame trong trình duyệt =================
+// IndexedDB chứ không phải localStorage: một frame PNG cỡ in nặng 10-20 MB,
+// localStorage chỉ chứa được khoảng 5 MB.
+const idb = {
+    db: null,
+    open() {
+        if (this.db) return Promise.resolve(this.db);
+        return new Promise((ok, fail) => {
+            const r = indexedDB.open('pn_frames', 1);
+            r.onupgradeneeded = () => r.result.createObjectStore('frames', { keyPath: 'id' });
+            r.onsuccess = () => { this.db = r.result; ok(this.db); };
+            r.onerror = () => fail(r.error);
+        });
+    },
+    async run(mode, fn) {
+        const db = await this.open();
+        return new Promise((ok, fail) => {
+            const tx = db.transaction('frames', mode);
+            const req = fn(tx.objectStore('frames'));
+            tx.oncomplete = () => ok(req && req.result);
+            tx.onerror = () => fail(tx.error);
+        });
+    },
+    all() { return this.run('readonly', s => s.getAll()); },
+    put(rec) { return this.run('readwrite', s => s.put(rec)); },
+    del(id) { return this.run('readwrite', s => s.delete(id)); }
+};
+
+let FRAMES = [];
+const urlCache = {};
+function previewUrl(f) {
+    if (!urlCache[f.id]) urlCache[f.id] = URL.createObjectURL(f.prev);
+    return urlCache[f.id];
+}
+
+async function loadFrames() {
+    try { FRAMES = await idb.all(); }
+    catch (e) { FRAMES = FRAMES || []; alert('Trình duyệt này không lưu được frame, chỉ dùng tạm trong phiên.'); }
+    FRAMES.sort((a, b) => b.id.localeCompare(a.id));
+    renderLists();
+}
+
+function renderLists() {
+    const html = FRAMES.map(f => `
+        <button class="fitem" data-id="${f.id}">
+            <img src="${previewUrl(f)}" alt="">
+            <b>${esc(f.name)}</b>
+            <span>${f.slots.length} ô · ${f.w}×${f.h} · frame ${f.front ? 'trên' : 'dưới'}</span>
+        </button>`).join('') || '<p class="hint">Chưa có frame nào.</p>';
+    const adList = document.getElementById('ad-list');
+    const khList = document.getElementById('kh-list');
+    adList.innerHTML = html;
+    khList.innerHTML = html.replace(/Chưa có frame nào\./, 'Chưa có frame nào. Sang tab Quản lý để thêm.');
+    adList.querySelectorAll('.fitem').forEach(b => b.onclick = () => adOpen(b.dataset.id));
+    khList.querySelectorAll('.fitem').forEach(b => b.onclick = () => khOpen(b.dataset.id));
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+function showTab(t) {
+    document.getElementById('tab-ad').classList.toggle('on', t === 'ad');
+    document.getElementById('tab-kh').classList.toggle('on', t === 'kh');
+    document.getElementById('pane-ad').classList.toggle('hidden', t !== 'ad');
+    document.getElementById('pane-kh').classList.toggle('hidden', t !== 'kh');
+}
+
+// ================= Ảnh =================
+function loadImg(src) {
+    return new Promise((ok, fail) => {
+        const im = new Image();
+        im.onload = () => ok(im);
+        im.onerror = () => fail(new Error('Không đọc được ảnh'));
+        im.src = src;
+    });
+}
+
+// Bản nhỏ để xem và kéo cho mượt; bản gốc chỉ mở lúc ghép thật
+async function shrink(blob, maxSide, type) {
+    const u = URL.createObjectURL(blob);
+    try {
+        const im = await loadImg(u);
+        const nw = im.naturalWidth, nh = im.naturalHeight;
+        const k = Math.min(1, maxSide / Math.max(nw, nh));
+        const c = document.createElement('canvas');
+        c.width = Math.round(nw * k); c.height = Math.round(nh * k);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        const out = await new Promise(r => c.toBlob(r, type, 0.88));
+        c.width = c.height = 0;
+        return { blob: out, nw, nh };
+    } finally { URL.revokeObjectURL(u); }
+}
+
+// Máy yếu có giới hạn cỡ khung vẽ (iPhone khoảng 16,7 triệu điểm ảnh), vượt
+// thì không báo lỗi mà ra ảnh trắng. Thử thật trên máy đang dùng rồi mới vẽ.
+function canvasFor(W, H) {
+    for (const s of [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3]) {
+        const w = Math.round(W * s), h = Math.round(H * s);
+        try {
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            const x = c.getContext('2d');
+            if (!x) continue;
+            x.fillStyle = '#ff0000';
+            x.fillRect(w - 1, h - 1, 1, 1);
+            const d = x.getImageData(w - 1, h - 1, 1, 1).data;
+            if (d[0] === 255 && d[3] === 255) { x.clearRect(w - 1, h - 1, 1, 1); return { c, x, s }; }
+            c.width = c.height = 0;
+        } catch (e) { /* thử cỡ nhỏ hơn */ }
+    }
+    return null;
+}
+
+// ================= QUẢN LÝ: dựng frame =================
+let ED = null;      // frame đang sửa
+let SEL = -1;       // ô đang chọn
+
+async function adUpload(inp) {
+    const file = inp.files[0];
+    inp.value = '';
+    if (!file) return;
+    try {
+        const p = await shrink(file, 1600, 'image/png');
+        ED = { id: 'F_' + Date.now(), name: file.name.replace(/\.png$/i, ''), w: p.nw, h: p.nh,
+               front: true, slots: [], blob: file, prev: p.blob };
+        SEL = -1;
+        adShow();
+    } catch (e) { alert('Không đọc được file frame: ' + e.message); }
+}
+
+function adOpen(id) {
+    const f = FRAMES.find(x => x.id === id);
+    if (!f) return;
+    ED = JSON.parse(JSON.stringify({ id: f.id, name: f.name, w: f.w, h: f.h, front: f.front, slots: f.slots }));
+    ED.blob = f.blob; ED.prev = f.prev;
+    SEL = -1;
+    adShow();
+}
+
+function adShow() {
+    document.getElementById('ad-edit').classList.remove('hidden');
+    document.getElementById('ad-name').value = ED.name;
+    document.getElementById('ad-img').src = urlCache[ED.id] || (urlCache[ED.id] = URL.createObjectURL(ED.prev));
+    setFront(ED.front);
+    adRender();
+    document.getElementById('ad-edit').scrollIntoView({ behavior: 'smooth' });
+}
+
+function setFront(v) {
+    ED.front = v;
+    document.getElementById('ad-front').classList.toggle('solid', v);
+    document.getElementById('ad-back').classList.toggle('solid', !v);
+}
+
+function adK() {
+    const st = document.getElementById('ad-stage');
+    st.style.height = (st.clientWidth * ED.h / ED.w) + 'px';
+    return st.clientWidth / ED.w;
+}
+
+function adRender() {
+    const k = adK();
+    const box = document.getElementById('ad-slots');
+    box.innerHTML = ED.slots.map((s, i) => `
+        <div class="eslot${i === SEL ? ' sel' : ''}" data-i="${i}"
+             style="left:${(s.cx - s.w / 2) * k}px; top:${(s.cy - s.h / 2) * k}px; width:${s.w * k}px; height:${s.h * k}px; transform:rotate(${s.rot}deg);">
+            <span class="num">${i + 1}</span>
+            ${i === SEL ? '<span class="h rs" data-act="rs"></span><span class="h rt" data-act="rt"></span>' : ''}
+        </div>`).join('');
+    document.getElementById('ad-count').innerText = ED.slots.length + ' ô ảnh';
+    const pn = document.getElementById('ad-slotpanel');
+    pn.classList.toggle('on', SEL >= 0);
+    if (SEL >= 0) {
+        const s = ED.slots[SEL];
+        const put = (id, v) => { const el = document.getElementById(id); if (el !== document.activeElement) el.value = Math.round(v); };
+        put('sx', s.cx - s.w / 2); put('sy', s.cy - s.h / 2); put('sw', s.w); put('sh', s.h); put('sr', s.rot);
+    }
+}
+
+function slotInput() {
+    if (SEL < 0) return;
+    const s = ED.slots[SEL];
+    const n = id => parseFloat(document.getElementById(id).value);
+    const w = n('sw'), h = n('sh'), x = n('sx'), y = n('sy'), r = n('sr');
+    if (w > 10) s.w = w;
+    if (h > 10) s.h = h;
+    if (!isNaN(x)) s.cx = x + s.w / 2;
+    if (!isNaN(y)) s.cy = y + s.h / 2;
+    if (!isNaN(r)) s.rot = ((r % 360) + 360) % 360;
+    adRender();
+}
+
+function slotOp(op) {
+    if (SEL < 0) return;
+    const s = ED.slots[SEL];
+    if (op === 'rot90') s.rot = (s.rot + 90) % 360;
+    if (op === 'swap') { const t = s.w; s.w = s.h; s.h = t; }
+    if (op === 'dup') { ED.slots.push(Object.assign({}, s, { cx: s.cx + ED.w * 0.03, cy: s.cy + ED.h * 0.03 })); SEL = ED.slots.length - 1; }
+    if (op === 'del') { ED.slots.splice(SEL, 1); SEL = -1; }
+    adRender();
+}
+
+// Kéo trên khung: vẽ ô mới, dời ô, đổi cỡ, xoay
+(function () {
+    const st = document.getElementById('ad-stage');
+    let act = null;
+
+    const pt = e => { const r = st.getBoundingClientRect(), k = st.clientWidth / ED.w;
+                      return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k, k }; };
+
+    st.addEventListener('pointerdown', e => {
+        if (!ED) return;
+        const p = pt(e);
+        const h = e.target.closest('[data-act]');
+        const sl = e.target.closest('.eslot');
+        if (h && SEL >= 0) act = { kind: h.dataset.act };
+        else if (sl) {
+            SEL = +sl.dataset.i;
+            const s = ED.slots[SEL];
+            act = { kind: 'mv', px: p.x, py: p.y, cx: s.cx, cy: s.cy };
+        } else act = { kind: 'new', x0: p.x, y0: p.y, made: false };
+        st.setPointerCapture(e.pointerId);
+        adRender();
+    });
+
+    st.addEventListener('pointermove', e => {
+        if (!act) return;
+        const p = pt(e);
+        const min = 30 / p.k;   // không cho ô nhỏ hơn khoảng 30 điểm trên màn
+        if (act.kind === 'new') {
+            const w = Math.abs(p.x - act.x0), h = Math.abs(p.y - act.y0);
+            if (!act.made) {
+                if (w < min && h < min) return;
+                ED.slots.push({ cx: 0, cy: 0, w: 1, h: 1, rot: 0 });
+                SEL = ED.slots.length - 1;
+                act.made = true;
+            }
+            const s = ED.slots[SEL];
+            s.w = Math.max(min, w); s.h = Math.max(min, h);
+            s.cx = Math.min(p.x, act.x0) + s.w / 2; s.cy = Math.min(p.y, act.y0) + s.h / 2;
+        } else {
+            const s = ED.slots[SEL];
+            if (!s) return;
+            if (act.kind === 'mv') {
+                s.cx = act.cx + (p.x - act.px);
+                s.cy = act.cy + (p.y - act.py);
+            } else if (act.kind === 'rs') {
+                // Giữ nguyên tâm; đo khoảng cách theo trục của chính ô (ô có thể đang xoay)
+                const a = -s.rot * Math.PI / 180, dx = p.x - s.cx, dy = p.y - s.cy;
+                const lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+                s.w = Math.max(min, Math.abs(lx) * 2);
+                s.h = Math.max(min, Math.abs(ly) * 2);
+            } else if (act.kind === 'rt') {
+                let d = Math.atan2(p.y - s.cy, p.x - s.cx) * 180 / Math.PI + 90;
+                d = ((d % 360) + 360) % 360;
+                // Hít vào góc vuông khi lệch dưới 4 độ: ô thẳng hay dùng nhất
+                for (const q of [0, 90, 180, 270, 360]) if (Math.abs(d - q) < 4) d = q % 360;
+                s.rot = Math.round(d);
+            }
+        }
+        adRender();
+    });
+
+    const end = () => { act = null; };
+    st.addEventListener('pointerup', end);
+    st.addEventListener('pointercancel', end);
+})();
+
+async function adSave() {
+    if (!ED) return;
+    ED.name = document.getElementById('ad-name').value.trim() || 'Frame';
+    if (!ED.slots.length) return alert('Frame chưa có ô ảnh nào. Kéo trên frame để vẽ ô.');
+    const rec = { id: ED.id, name: ED.name, w: ED.w, h: ED.h, front: ED.front,
+                  slots: ED.slots.map(s => ({ cx: Math.round(s.cx), cy: Math.round(s.cy), w: Math.round(s.w), h: Math.round(s.h), rot: s.rot })),
+                  blob: ED.blob, prev: ED.prev };
+    try { await idb.put(rec); }
+    catch (e) { FRAMES = FRAMES.filter(x => x.id !== rec.id).concat(rec); }
+    await loadFrames();
+    alert('Đã lưu frame "' + rec.name + '" với ' + rec.slots.length + ' ô.');
+}
+
+async function adDelete() {
+    if (!ED || !confirm('Xoá frame này?')) return;
+    try { await idb.del(ED.id); } catch (e) {}
+    FRAMES = FRAMES.filter(x => x.id !== ED.id);
+    ED = null;
+    document.getElementById('ad-edit').classList.add('hidden');
+    await loadFrames();
+}
+
+// Frame mẫu cùng cỡ frame Canva thật (6250×4405) để thử ngay trên điện thoại
+async function genSample() {
+    const W = 6250, H = 4405;
+    const cv = canvasFor(W, H);
+    if (!cv) return alert('Máy này không tạo nổi khung vẽ để làm frame mẫu.');
+    const { c, x, s } = cv;
+    x.scale(s, s);
+    x.fillStyle = '#f3ede4'; x.fillRect(0, 0, W, H);
+    x.strokeStyle = '#4a3428'; x.lineWidth = 60; x.strokeRect(30, 30, W - 60, H - 60);
+    x.fillStyle = '#4a3428';
+    x.font = '700 260px Inter, sans-serif'; x.textAlign = 'center';
+    x.fillText('PHOTO NOIR', 1650, 520);
+    x.font = '500 120px Inter, sans-serif';
+    x.fillText('khung mẫu', 4700, 520);
+
+    // Lỗ đục: 4 ô vuông bên trái, 2 ô dọc bên phải
+    const holes = [
+        { x: 250, y: 750, w: 1550, h: 1550 }, { x: 1950, y: 750, w: 1550, h: 1550 },
+        { x: 250, y: 2450, w: 1550, h: 1550 }, { x: 1950, y: 2450, w: 1550, h: 1550 },
+        { x: 3750, y: 750, w: 1050, h: 1500 }, { x: 4950, y: 750, w: 1050, h: 1500 }
+    ];
+    holes.forEach(h => x.clearRect(h.x, h.y, h.w, h.h));
+    x.font = '600 110px Inter, sans-serif';
+    x.fillText('Bản thử ghép frame', 4875, 3300);
+
+    const full = await new Promise(r => c.toBlob(r, 'image/png'));
+    c.width = c.height = 0;
+    if (!full) return alert('Không xuất được frame mẫu trên máy này.');
+    const p = await shrink(full, 1600, 'image/png');
+    // Ô to hơn lỗ 20 điểm mỗi bên: viền frame che mép ảnh, không lộ khe trắng
+    const B = 20;
+    const rec = { id: 'F_' + Date.now(), name: 'Khung mẫu 6 ô', w: W, h: H, front: true,
+                  slots: holes.map(h => ({ cx: h.x + h.w / 2, cy: h.y + h.h / 2, w: h.w + B * 2, h: h.h + B * 2, rot: 0 })),
+                  blob: full, prev: p.blob };
+    try { await idb.put(rec); } catch (e) { FRAMES.push(rec); }
+    await loadFrames();
+}
+
+// ================= KHÁCH: ghép ảnh =================
+let CF = null;        // frame đang ghép
+let PH = [];          // ảnh của từng ô
+let CSEL = -1;        // ô đang chỉnh
+let pickFor = -1;     // ô đang chờ chọn ảnh
+
+function khOpen(id) {
+    CF = FRAMES.find(x => x.id === id);
+    if (!CF) return;
+    PH.forEach(p => p && URL.revokeObjectURL(p.url));
+    PH = CF.slots.map(() => null);
+    CSEL = -1;
+    document.getElementById('kh-pick').classList.add('hidden');
+    document.getElementById('kh-res').classList.add('hidden');
+    document.getElementById('kh-comp').classList.remove('hidden');
+    khRender();
+}
+
+function khBack() {
+    document.getElementById('kh-comp').classList.add('hidden');
+    document.getElementById('kh-pick').classList.remove('hidden');
+}
+
+function khK() {
+    const st = document.getElementById('kh-stage');
+    st.style.height = (st.clientWidth * CF.h / CF.w) + 'px';
+    return st.clientWidth / CF.w;
+}
+
+// Ảnh luôn phủ kín ô (như ảnh đại diện mạng xã hội): khỏi lộ khe trắng khi in
+function geom(slot, p) {
+    const odd = p.r % 180 !== 0;
+    const iw = odd ? p.ih : p.iw, ih = odd ? p.iw : p.ih;
+    const cover = Math.max(slot.w / iw, slot.h / ih);
+    const dw = iw * cover * p.s, dh = ih * cover * p.s;
+    return { cover, maxX: Math.max(0, (dw - slot.w) / 2), maxY: Math.max(0, (dh - slot.h) / 2) };
+}
+
+function clampPh(i) {
+    const p = PH[i], s = CF.slots[i];
+    if (!p) return;
+    p.s = Math.min(4, Math.max(1, p.s));
+    const g = geom(s, p);
+    p.ox = Math.max(-g.maxX / s.w, Math.min(g.maxX / s.w, p.ox));
+    p.oy = Math.max(-g.maxY / s.h, Math.min(g.maxY / s.h, p.oy));
+}
+
+function slotBox(s, k) {
+    return `left:${(s.cx - s.w / 2) * k}px; top:${(s.cy - s.h / 2) * k}px; width:${s.w * k}px; height:${s.h * k}px; transform:rotate(${s.rot}deg);`;
+}
+
+function khRender() {
+    const k = khK();
+    const fr = `<img class="frame" src="${previewUrl(CF)}" alt="" style="z-index:${CF.front ? 3 : 0}">`;
+    const slots = CF.slots.map((s, i) => {
+        const p = PH[i];
+        let img = '';
+        if (p) {
+            const g = geom(s, p);
+            img = `<img src="${p.url}" alt="" style="width:${p.iw * g.cover * p.s * k}px; height:${p.ih * g.cover * p.s * k}px;
+                   transform:translate(-50%,-50%) translate(${p.ox * s.w * k}px,${p.oy * s.h * k}px) rotate(${p.r}deg);">`;
+        }
+        return `<div class="cslot" style="${slotBox(s, k)} z-index:1;">${img}</div>`;
+    }).join('');
+    const marks = CF.slots.map((s, i) => `
+        <div class="cmark${i === CSEL ? ' sel' : ''}" style="${slotBox(s, k)} z-index:4;${PH[i] && i !== CSEL ? 'border-color:transparent;' : ''}">
+            ${PH[i] ? '' : `<span class="plus" style="transform:rotate(${-s.rot}deg)">${Math.min(s.w, s.h) * k < 110 ? '+ ' + (i + 1) : '+ Ảnh ' + (i + 1)}</span>`}
+        </div>`).join('');
+    document.getElementById('kh-stage').innerHTML = fr + slots + marks;
+
+    const n = PH.filter(Boolean).length;
+    document.getElementById('kh-prog').innerText = `${n}/${CF.slots.length} ô đã có ảnh`;
+    document.getElementById('kh-done').disabled = n === 0;
+    const tool = document.getElementById('kh-tool');
+    tool.classList.toggle('on', CSEL >= 0 && !!PH[CSEL]);
+    if (CSEL >= 0 && PH[CSEL]) document.getElementById('kh-zoom').value = PH[CSEL].s;
+}
+
+// Điểm chạm rơi vào ô nào (ô có thể đang xoay)
+function slotAt(fx, fy) {
+    for (let i = CF.slots.length - 1; i >= 0; i--) {
+        const s = CF.slots[i], a = -s.rot * Math.PI / 180;
+        const dx = fx - s.cx, dy = fy - s.cy;
+        const lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+        if (Math.abs(lx) <= s.w / 2 && Math.abs(ly) <= s.h / 2) return i;
+    }
+    return -1;
+}
+
+(function () {
+    const st = document.getElementById('kh-stage');
+    const pts = new Map();
+    let pan = null, pinch = null, tap = null;
+
+    const fpt = e => { const r = st.getBoundingClientRect(), k = st.clientWidth / CF.w;
+                       return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k, k }; };
+
+    st.addEventListener('pointerdown', e => {
+        if (!CF) return;
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        st.setPointerCapture(e.pointerId);
+        if (pts.size === 2 && CSEL >= 0 && PH[CSEL]) {
+            const [a, b] = [...pts.values()];
+            pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: PH[CSEL].s };
+            pan = null; tap = null;
+            return;
+        }
+        const p = fpt(e);
+        const i = slotAt(p.x, p.y);
+        tap = { i, x: e.clientX, y: e.clientY };
+        if (i >= 0 && PH[i]) {
+            if (CSEL !== i) { CSEL = i; khRender(); }
+            pan = { x: e.clientX, y: e.clientY, ox: PH[i].ox, oy: PH[i].oy };
+        }
+    });
+
+    st.addEventListener('pointermove', e => {
+        if (!pts.has(e.pointerId)) return;
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap = null;
+        if (pinch && pts.size >= 2) {
+            const [a, b] = [...pts.values()];
+            PH[CSEL].s = pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d;
+            clampPh(CSEL); khRender();
+        } else if (pan && CSEL >= 0 && PH[CSEL]) {
+            // Đổi độ dời trên màn sang trục của ô (ô có thể đang xoay)
+            const s = CF.slots[CSEL], k = st.clientWidth / CF.w, a = -s.rot * Math.PI / 180;
+            const dx = (e.clientX - pan.x) / k, dy = (e.clientY - pan.y) / k;
+            const lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+            PH[CSEL].ox = pan.ox + lx / s.w;
+            PH[CSEL].oy = pan.oy + ly / s.h;
+            clampPh(CSEL); khRender();
+        }
+    });
+
+    const up = e => {
+        pts.delete(e.pointerId);
+        if (pts.size < 2) pinch = null;
+        if (pts.size === 0) {
+            if (tap) {
+                if (tap.i < 0) { CSEL = -1; khRender(); }
+                else if (!PH[tap.i]) { pickFor = tap.i; document.getElementById('kh-file').click(); }
+            }
+            pan = null; tap = null;
+        }
+    };
+    st.addEventListener('pointerup', up);
+    st.addEventListener('pointercancel', up);
+
+    // Máy tính: lăn chuột để phóng to
+    st.addEventListener('wheel', e => {
+        if (CSEL < 0 || !PH[CSEL]) return;
+        e.preventDefault();
+        PH[CSEL].s *= e.deltaY < 0 ? 1.08 : 1 / 1.08;
+        clampPh(CSEL); khRender();
+    }, { passive: false });
+})();
+
+async function khFile(inp) {
+    const file = inp.files[0];
+    inp.value = '';
+    if (!file || pickFor < 0) return;
+    const i = pickFor; pickFor = -1;
+    document.getElementById('kh-prog').innerText = 'Đang mở ảnh...';
+    try {
+        const p = await shrink(file, 1600, 'image/jpeg');
+        if (PH[i]) URL.revokeObjectURL(PH[i].url);
+        PH[i] = { file, url: URL.createObjectURL(p.blob), iw: p.nw, ih: p.nh, s: 1, ox: 0, oy: 0, r: 0 };
+        CSEL = i;
+    } catch (e) { alert('Không mở được ảnh này: ' + e.message); }
+    khRender();
+}
+
+function khZoom(v) {
+    if (CSEL < 0 || !PH[CSEL]) return;
+    PH[CSEL].s = parseFloat(v);
+    clampPh(CSEL); khRender();
+}
+
+function khOp(op) {
+    if (CSEL < 0) return;
+    if (op === 'change') { pickFor = CSEL; document.getElementById('kh-file').click(); return; }
+    if (op === 'rot' && PH[CSEL]) { PH[CSEL].r = (PH[CSEL].r + 90) % 360; PH[CSEL].ox = PH[CSEL].oy = 0; clampPh(CSEL); }
+    if (op === 'del' && PH[CSEL]) { URL.revokeObjectURL(PH[CSEL].url); PH[CSEL] = null; CSEL = -1; }
+    khRender();
+}
+
+// Vẽ thành ảnh: cùng một phép tính với khung xem, chỉ khác tỷ lệ
+async function compose(ctx, sc, useFull, onStep) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, CF.w * sc, CF.h * sc);
+
+    const frameUrl = URL.createObjectURL(useFull ? CF.blob : CF.prev);
+    const frameImg = await loadImg(frameUrl);
+    if (!CF.front) ctx.drawImage(frameImg, 0, 0, CF.w * sc, CF.h * sc);
+
+    for (let i = 0; i < CF.slots.length; i++) {
+        const p = PH[i];
+        if (!p) continue;
+        if (onStep) onStep(i);
+        // Mở từng ảnh gốc một rồi bỏ ngay: sáu ảnh 12 MP mở cùng lúc là
+        // gần 300 MB, iPhone cũ đóng trang ngay.
+        const u = useFull ? URL.createObjectURL(p.file) : p.url;
+        const im = await loadImg(u);
+        const s = CF.slots[i], g = geom(s, p);
+        ctx.save();
+        ctx.translate(s.cx * sc, s.cy * sc);
+        ctx.rotate(s.rot * Math.PI / 180);
+        ctx.beginPath();
+        ctx.rect(-s.w / 2 * sc, -s.h / 2 * sc, s.w * sc, s.h * sc);
+        ctx.clip();
+        ctx.translate(p.ox * s.w * sc, p.oy * s.h * sc);
+        ctx.rotate(p.r * Math.PI / 180);
+        const dw = p.iw * g.cover * p.s * sc, dh = p.ih * g.cover * p.s * sc;
+        ctx.drawImage(im, -dw / 2, -dh / 2, dw, dh);
+        ctx.restore();
+        im.src = '';
+        if (useFull) URL.revokeObjectURL(u);
+    }
+
+    if (CF.front) ctx.drawImage(frameImg, 0, 0, CF.w * sc, CF.h * sc);
+    frameImg.src = '';
+    URL.revokeObjectURL(frameUrl);
+}
+
+let RESULT = null;
+
+async function khExport() {
+    const empty = PH.filter(x => !x).length;
+    if (empty && !confirm(`Còn ${empty} ô chưa có ảnh. Vẫn ghép?`)) return;
+
+    const btn = document.getElementById('kh-done');
+    btn.disabled = true;
+    const t0 = performance.now();
+    try {
+        btn.innerText = 'ĐANG KIỂM TRA MÁY...';
+        const cv = canvasFor(CF.w, CF.h);
+        if (!cv) throw new Error('Máy này không đủ bộ nhớ để ghép ảnh cỡ in.');
+        const W = cv.c.width, H = cv.c.height;
+
+        await compose(cv.x, cv.s, true, i => { btn.innerText = `ĐANG GHÉP Ô ${i + 1}...`; });
+        const t1 = performance.now();
+
+        btn.innerText = 'ĐANG XUẤT ẢNH...';
+        let type = 'image/png';
+        let blob = await new Promise(r => cv.c.toBlob(r, type));
+        // PNG cỡ in quá nặng với một số máy -> lùi về JPEG chất lượng tối đa
+        if (!blob) { type = 'image/jpeg'; blob = await new Promise(r => cv.c.toBlob(r, type, 1)); }
+        cv.c.width = cv.c.height = 0;
+        if (!blob) throw new Error('Máy không xuất được ảnh.');
+        const t2 = performance.now();
+
+        // Ảnh xem lại vẽ riêng bản nhỏ: hiện ảnh 27 triệu điểm trên màn sẽ treo máy cũ
+        const pv = document.createElement('canvas');
+        const ps = Math.min(1, 1400 / CF.w);
+        pv.width = Math.round(CF.w * ps); pv.height = Math.round(CF.h * ps);
+        await compose(pv.getContext('2d'), ps, false);
+        const pvBlob = await new Promise(r => pv.toBlob(r, 'image/jpeg', 0.9));
+        pv.width = pv.height = 0;
+
+        if (RESULT) URL.revokeObjectURL(RESULT.view);
+        RESULT = { blob, type, view: URL.createObjectURL(pvBlob) };
+        document.getElementById('kh-res-img').src = RESULT.view;
+        const pct = Math.round(cv.s * 100);
+        document.getElementById('kh-stat').innerText =
+            `Cỡ ảnh ghép : ${W} × ${H}${pct < 100 ? `  (máy giới hạn, bằng ${pct}% cỡ frame)` : '  (đúng cỡ frame)'}\n` +
+            `Định dạng   : ${type === 'image/png' ? 'PNG' : 'JPEG chất lượng tối đa'}, ${(blob.size / 1048576).toFixed(1)} MB\n` +
+            `Thời gian   : ghép ${((t1 - t0) / 1000).toFixed(1)} giây, xuất ${((t2 - t1) / 1000).toFixed(1)} giây`;
+        document.getElementById('kh-comp').classList.add('hidden');
+        document.getElementById('kh-res').classList.remove('hidden');
+    } catch (e) {
+        alert('Chưa ghép được: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'GHÉP XONG';
+    }
+}
+
+function khResBack() {
+    document.getElementById('kh-res').classList.add('hidden');
+    document.getElementById('kh-comp').classList.remove('hidden');
+    khRender();
+}
+
+async function khSave() {
+    if (!RESULT) return;
+    const name = 'PHOTONOIR ghep ' + Date.now() + (RESULT.type === 'image/png' ? '.png' : '.jpg');
+    const file = new File([RESULT.blob], name, { type: RESULT.type });
+    const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
+    try {
+        if (touch && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file] });
+            return;
+        }
+    } catch (e) { if (e.name === 'AbortError') return; }
+    const u = URL.createObjectURL(RESULT.blob);
+    const a = document.createElement('a');
+    a.href = u; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 10000);
+}
+
+window.addEventListener('resize', () => {
+    if (ED && !document.getElementById('ad-edit').classList.contains('hidden')) adRender();
+    if (CF && !document.getElementById('kh-comp').classList.contains('hidden')) khRender();
+});
+
+loadFrames();
+</script>
+</body>
+</html>
