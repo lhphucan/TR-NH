@@ -94,7 +94,7 @@
 .fr-pk-item { position: relative; display: block; width: 100%; padding: 0; border: 2px solid transparent; border-radius: 12px; background: #fafafa; cursor: pointer; }
 .fr-pk-ph { display: block; width: 100%; aspect-ratio: 3/2; border-radius: 10px; overflow: hidden; }
 .fr-pk-ph img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.fr-pk-item.on { border-color: #111; }
+/* Ảnh đã chọn: chỉ vòng số ô chuyển đen, không viền đen quanh ảnh */
 .fr-pk-tick { position: absolute; top: 6px; right: 6px; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 13px; border: 2px solid #fff; box-sizing: border-box;
               background: rgba(0,0,0,.25); color: #fff; font: 700 12px/22px 'Inter', sans-serif; text-align: center; }
 .fr-pk-item.on .fr-pk-tick { background: #111; }
@@ -134,7 +134,7 @@
 .fk-ed-view { flex: 1; position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: #e5e5e5; min-height: 200px; }
 .fk-ed-in { position: absolute; }
 .fk-ed-in .fr-frame { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.fk-ed-hole { position: absolute; z-index: 5; pointer-events: none; box-shadow: 0 0 0 9999px rgba(250, 250, 250, .62); outline: 2px solid #111; }
+.fk-ed-hole { position: absolute; z-index: 5; pointer-events: none; box-shadow: 0 0 0 9999px rgba(250, 250, 250, .62); }
 .fk-ed-tools { flex: none; background: #fff; border-top: 1px solid #e5e5e5; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
 .fk-ed-tools input[type=range] { width: 100%; accent-color: #111; }
 /* Xoay ngang: công cụ sang bên phải, ô ảnh chiếm phần còn lại */
