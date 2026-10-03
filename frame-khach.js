@@ -12,6 +12,9 @@ let FK_RES = null;      // ảnh ghép xong: { blob, view, w, h }
 let FK_LOCAL = [];      // ảnh khách chọn từ máy (đã tải về chỉnh xong): { id, file, url, full, iw, ih }
 let FK_TAB = 'album';   // bảng chọn ảnh đang ở thẻ nào: album | may
 let FK_SESSION = null;  // lượt chụp mới nhất của phiên đang mở, cho nút ghép ở ngoài album
+let FKB = null;         // bộ lọc màu của frame đang ghép: { id, name, baked } hoặc null
+const FK_FILT = {};     // bộ lọc đã nạp, theo mã
+const FK_PVF = {};      // ảnh xem trước đã lọc: '<mã lọc>|<mã ảnh>' -> { url }
 
 const fkEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fkPrev = id => FR.gUrl(id, 1600);   // để xem và kéo
@@ -37,7 +40,34 @@ function fkFramesFor(br) {
 function fkPhotos() {
     const list = _alb || [];
     const ghep = banGhepIds(list);
-    return list.filter(x => !ghep.has(x.id));
+    return list.filter(x => !ghep.has(x.id) && !laAnhLoc(x.name));
+}
+
+// Bộ lọc màu gán cho frame (config/filters/<mã>). Không có hoặc đọc lỗi thì ghép ảnh màu gốc.
+async function fkFilterFor(f) {
+    if (!f || !f.filter) return null;
+    if (FK_FILT[f.filter] !== undefined) return FK_FILT[f.filter];
+    try {
+        const rec = (await db.ref('config/filters/' + f.filter).once('value')).val();
+        const baked = rec ? await FR.loadFilter(rec) : null;
+        FK_FILT[f.filter] = baked ? { id: f.filter, name: String(rec.name || 'Màu frame'), baked } : null;
+    } catch (e) { FK_FILT[f.filter] = null; }
+    return FK_FILT[f.filter];
+}
+
+// Ảnh xem trước mang màu của frame (bản nhỏ, chỉ để xem và kéo)
+async function fkPreviewFiltered(id, src) {
+    const key = FKB.id + '|' + id;
+    if (FK_PVF[key]) return FK_PVF[key];
+    const im = await FR.loadImg(src);
+    const c = document.createElement('canvas');
+    c.width = im.naturalWidth; c.height = im.naturalHeight;
+    c.getContext('2d').drawImage(im, 0, 0);
+    FR.filterCanvas(c, FKB.baked);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
+    c.width = c.height = 0;
+    FK_PVF[key] = { url: URL.createObjectURL(blob), iw: im.naturalWidth, ih: im.naturalHeight };
+    return FK_PVF[key];
 }
 
 // Mỗi lần gửi một bản ghi riêng, chỉ tạo mới chứ không sửa xoá được
@@ -129,6 +159,7 @@ function fkBuild() {
         <div id="fk-pk-grid" class="fr-pk-grid"></div>
         <div class="fr-pk-foot" id="fk-pk-foot">
             <span id="fk-pk-count"></span>
+            <button class="fr-btn" id="fk-pk-rep" onclick="fkPkRepeat()" style="display:none;">Lặp đủ ô</button>
             <button class="fr-btn solid" id="fk-pk-ok" onclick="fkPkDone()" disabled>Chọn</button>
         </div>
     </div>`);
@@ -142,6 +173,7 @@ async function fkOpenFrame(id) {
     FKF = Object.assign({ id }, f);
     FKP = FKF.slots.map(() => null);
     FK_SEL = -1;
+    FKB = await fkFilterFor(FKF);
     document.getElementById('fk-back').style.display = fkFramesFor(_albCtx.branch).length > 1 ? '' : 'none';
     fkStep('comp');
     fkRestoring = true;
@@ -250,13 +282,15 @@ function fkBindStage() {
 async function fkSetPhoto(i, id, keep) {
     const loc = FK_LOCAL.find(x => x.id === id);
     if (loc) {
-        FKP[i] = Object.assign({ id, url: loc.url, full: loc.full, local: true, iw: loc.iw, ih: loc.ih, s: 1, ox: 0, oy: 0, r: 0 }, keep || {});
+        const url = FKB ? (await fkPreviewFiltered(id, loc.url)).url : loc.url;
+        FKP[i] = Object.assign({ id, url, full: loc.full, local: true, iw: loc.iw, ih: loc.ih, s: 1, ox: 0, oy: 0, r: 0 }, keep || {});
         FR.clamp(FKF.slots[i], FKP[i]);
         return;
     }
-    const url = fkPrev(id);
-    const im = await FR.loadImg(url);
-    FKP[i] = Object.assign({ id, url, iw: im.naturalWidth, ih: im.naturalHeight, s: 1, ox: 0, oy: 0, r: 0 }, keep || {});
+    let url = fkPrev(id), iw, ih;
+    if (FKB) ({ url, iw, ih } = await fkPreviewFiltered(id, url));
+    else { const im = await FR.loadImg(url); iw = im.naturalWidth; ih = im.naturalHeight; }
+    FKP[i] = Object.assign({ id, url, iw, ih, s: 1, ox: 0, oy: 0, r: 0 }, keep || {});
     FR.clamp(FKF.slots[i], FKP[i]);
 }
 
@@ -412,6 +446,18 @@ function fkPkCount() {
     const n = FK_PK.picked.length, max = FK_PK.targets.length;
     document.getElementById('fk-pk-count').innerText = n ? `Đã chọn ${n}/${max} ảnh` : `Chọn tối đa ${max} ảnh`;
     document.getElementById('fk-pk-ok').disabled = !n;
+    // Chọn ít ảnh hơn số ô: cho lặp lại các ảnh đã chọn cho đủ ô (kiểu dải ảnh in đôi)
+    const rep = document.getElementById('fk-pk-rep');
+    rep.style.display = n && n < max ? '' : 'none';
+    rep.innerText = `Lặp đủ ${max} ô`;
+}
+
+// Điền lần lượt 1-2-3-1-2-3... cho tới hết ô trống
+function fkPkRepeat() {
+    if (!FK_PK || !FK_PK.picked.length) return;
+    const src = FK_PK.picked.slice();
+    FK_PK.picked = FK_PK.targets.map((_, j) => src[j % src.length]);
+    fkPkDone();
 }
 
 async function fkPkDone() {
@@ -473,7 +519,8 @@ async function fkExport() {
         const n = FKP.filter(Boolean).length;
         // Ghép từ bản gốc của frame và của từng ảnh chụp
         await FR.compose(cv.x, cv.s, FKF, FR.gUrl(FKF.file), FKP, p => p.local ? p.full : FR.gUrl(p.id),
-                         i => { btn.innerText = `Đang ghép ảnh ${FKP.slice(0, i + 1).filter(Boolean).length}/${n}...`; });
+                         i => { btn.innerText = `Đang ghép ảnh ${FKP.slice(0, i + 1).filter(Boolean).length}/${n}...`; },
+                         FKB && FKB.baked);
         btn.innerText = 'Đang xuất ảnh...';
         let blob = await new Promise(r => cv.c.toBlob(r, 'image/png'));
         // PNG cỡ in quá nặng với một số máy -> lùi về JPEG chất lượng tối đa
@@ -545,8 +592,14 @@ async function fkSend() {
         set(1);
         try { localStorage.removeItem(fkDraftKey()); } catch (e) {}
 
+        // Frame có bộ lọc màu: lưu thêm từng ảnh đã dùng, cùng màu với frame, để khách đăng ảnh lẻ
+        const le = FKB ? await fkSendSingles({ bName, now, cName, maKh }, btn, bar) : null;
+
         fkClose();
-        await Swal.fire({ title: 'Đã gửi cho tiệm', text: 'Ảnh ghép đã nằm trong album của bạn, nhân viên sẽ in giúp bạn.', icon: 'success', confirmButtonColor: '#111' });
+        await Swal.fire({ title: 'Đã gửi cho tiệm', icon: 'success', confirmButtonColor: '#111',
+            text: 'Ảnh ghép đã nằm trong album của bạn, nhân viên sẽ in giúp bạn.'
+                + (le && le.ok ? ` Album có thêm ${le.ok} ảnh lẻ màu ${FKB.name}.` : '')
+                + (le && le.err ? ` ${le.err} ảnh lẻ chưa lưu được.` : '') });
     } catch (e) {
         Swal.fire({ title: 'Chưa gửi được', text: e.message || 'Kiểm tra mạng rồi thử lại giúp mình nhé.', icon: 'error', confirmButtonColor: '#111' });
     } finally {
@@ -554,6 +607,47 @@ async function fkSend() {
         btn.innerText = 'Gửi cho tiệm in';
         bar.classList.add('fr-hidden');
     }
+}
+
+// Ảnh lẻ mang màu frame: đủ độ phân giải gốc, JPEG 95% (đổi màu thì phải lưu
+// lại file mới, 95% mắt thường không phân biệt được với ảnh gốc của máy chụp).
+// Tên PN-<tên bộ lọc>_<tên ảnh gốc> để album ghi "Ảnh 3 · Noir" và không lưu trùng.
+async function fkSendSingles(w, btn, bar) {
+    const seen = new Set(), list = [];
+    FKP.forEach(p => { if (p && !seen.has(p.id)) { seen.add(p.id); list.push(p); } });
+    const ten = String(FKB.name).replace(/[\\/:*?"<>|_]/g, ' ').trim().slice(0, 30) || 'Mau';
+    const daCo = new Set((_alb || []).map(x => x.name));
+    let ok = 0, err = 0;
+    for (let k = 0; k < list.length; k++) {
+        const p = list[k];
+        btn.innerText = `Đang lưu ảnh lẻ màu ${FKB.name} ${k + 1}/${list.length}`;
+        bar.firstElementChild.style.width = Math.round(k / list.length * 100) + '%';
+        const goc = p.local ? ((FK_LOCAL.find(x => x.id === p.id) || {}).file || {}).name || 'anh.jpg'
+                            : ((_alb || []).find(x => x.id === p.id) || {}).name || 'anh.jpg';
+        const name = `PN-${ten}_${goc.replace(/\.[a-z0-9]+$/i, '')}.jpg`;
+        if (daCo.has(name)) { ok++; continue; }   // lần gửi trước đã lưu rồi
+        try {
+            const im = await FR.loadImg(p.local ? p.full : FR.gUrl(p.id));
+            const cv = FR.canvasFor(im.naturalWidth, im.naturalHeight);
+            if (!cv) throw new Error('Máy không đủ bộ nhớ');
+            cv.x.drawImage(im, 0, 0, cv.c.width, cv.c.height);
+            im.src = '';
+            FR.filterCanvas(cv.c, FKB.baked);
+            const blob = await new Promise(r => cv.c.toBlob(r, 'image/jpeg', 0.95));
+            cv.c.width = cv.c.height = 0;
+            if (!blob) throw new Error('Không xuất được ảnh');
+            const sent = await guiLenDrive([new File([blob], name, { type: 'image/jpeg' })],
+                { branch: w.bName, day: getDStr(w.now).replace(/\//g, '-'), client: `${w.cName} - ${w.maKh}`, lot: _albCtx.fid });
+            const f = sent.files[0];
+            if (!f || !f.id) throw new Error((f && f.err) || 'Không gửi được');
+            if (sent.token) await FR.makePublic(f.id, sent.token).catch(() => {});
+            else await gsCall({ action: 'publish', id: f.id }).catch(() => {});
+            daCo.add(name);
+            ok++;
+        } catch (e) { err++; }
+    }
+    bar.firstElementChild.style.width = '100%';
+    return { ok, err };
 }
 
 async function fkSave() {

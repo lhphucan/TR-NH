@@ -113,6 +113,14 @@
 .fr-bar span { display: block; height: 100%; width: 0; background: #111; transition: width .3s; }
 .fr-hidden { display: none !important; }
 
+/* Bộ lọc màu (admin) */
+.fr-select { height: 38px; border: 1px solid #d4d4d8; border-radius: 8px; padding: 0 10px; font: 500 13px 'Inter', sans-serif; background: #fff; max-width: 180px; }
+.ft-prev { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.ft-prev canvas { width: 100%; height: auto; border-radius: 8px; display: block; background: #e5e5e5; }
+.ft-sl { margin-bottom: 8px; }
+.ft-sl input[type=range] { width: 100%; }
+@media (max-width: 600px) { .ft-prev { grid-template-columns: 1fr; } }
+
 /* Bên khách: chỗ trong suốt của frame hiện nền xám trơn thay cho ô lưới.
    Ô lưới chỉ có ích cho quản lý nhìn chỗ nào trong suốt; khách nhìn rối mắt. */
 #fk-modal .fr-fimg, #fk-modal .fr-stage, #fk-pk .fr-mini { background: #e5e5e5; }

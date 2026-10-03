@@ -169,7 +169,8 @@ const FR = (() => {
     // ---------- Ghép thành ảnh ----------
     // frame: { w, h, front, slots }; frameSrc: link ảnh frame; photos[i]: ảnh của
     // ô i hoặc null; photoSrc(p): link ảnh để vẽ (bản nhỏ khi xem, bản gốc khi ghép)
-    async function compose(ctx, sc, frame, frameSrc, photos, photoSrc, onStep) {
+    // baked: bảng màu của bộ lọc frame (tuỳ chọn), áp riêng vùng từng ô ngay sau khi vẽ ảnh
+    async function compose(ctx, sc, frame, frameSrc, photos, photoSrc, onStep, baked) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, frame.w * sc, frame.h * sc);
 
@@ -196,6 +197,7 @@ const FR = (() => {
             ctx.drawImage(im, -dw / 2, -dh / 2, dw, dh);
             ctx.restore();
             im.src = '';
+            if (baked) filterSlot(ctx, s, sc, baked);
         }
 
         if (frame.front) ctx.drawImage(fImg, 0, 0, frame.w * sc, frame.h * sc);
@@ -259,5 +261,206 @@ const FR = (() => {
         if (!r.ok) throw new Error('Không mở quyền xem được (HTTP ' + r.status + ')');
     }
 
-    return { gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, upload, uploadTo, makePublic };
+
+    // ---------- Bộ lọc màu cho ảnh khách ----------
+    // Một bộ lọc gồm chỉnh số (sáng, tương phản, bão hoà, ấm/lạnh, phai) và/hoặc
+    // một bảng tra màu (LUT). Hai phần được gộp sẵn thành một bảng 3 chiều rồi áp
+    // cho từng điểm ảnh, nên máy nào cũng ra cùng một màu — không dựa vào bộ lọc
+    // có sẵn của trình duyệt (iPhone đời cũ không có).
+
+    // LUT lưu dạng ảnh Hald cấp 8: ảnh vuông 512x512 chứa đủ 64x64x64 màu.
+    // Màu thứ i (đọc từ trái sang phải, trên xuống dưới) là r = i % 64,
+    // g = (i / 64) % 64, b = i / 4096, mỗi nấc nhân 255/63.
+    // Đưa ảnh này lên Canva, áp bộ lọc, tải về PNG là được đúng bảng màu của Canva.
+    const HALD_N = 64, HALD_W = 512;
+
+    function haldIdentity() {
+        const c = document.createElement('canvas');
+        c.width = c.height = HALD_W;
+        const x = c.getContext('2d');
+        const im = x.createImageData(HALD_W, HALD_W), d = im.data;
+        for (let i = 0; i < HALD_N * HALD_N * HALD_N; i++) {
+            const p = i * 4;
+            d[p] = Math.round((i % HALD_N) * 255 / (HALD_N - 1));
+            d[p + 1] = Math.round((Math.floor(i / HALD_N) % HALD_N) * 255 / (HALD_N - 1));
+            d[p + 2] = Math.round(Math.floor(i / (HALD_N * HALD_N)) * 255 / (HALD_N - 1));
+            d[p + 3] = 255;
+        }
+        x.putImageData(im, 0, 0);
+        return c;
+    }
+
+    // Đọc LUT từ ảnh Hald (ảnh mẫu đã lọc). Nhận mọi cấp: cạnh ảnh = cấp^3.
+    function lutFromHald(im) {
+        const W = im.naturalWidth || im.width, H = im.naturalHeight || im.height;
+        const L = Math.round(Math.cbrt(W));
+        if (W !== H || L * L * L !== W || L < 4 || L > 16) {
+            throw new Error(`Ảnh LUT phải là ảnh vuông đúng cỡ của ảnh mẫu (512 × 512). Ảnh này ${W} × ${H}: kiểm tra Canva đã tải về đúng cỡ chưa.`);
+        }
+        const N = L * L;
+        const c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        const x = c.getContext('2d');
+        x.drawImage(im, 0, 0);
+        const d = x.getImageData(0, 0, W, H).data;
+        const t = new Float32Array(N * N * N * 3);
+        for (let i = 0; i < N * N * N; i++) { t[i * 3] = d[i * 4]; t[i * 3 + 1] = d[i * 4 + 1]; t[i * 3 + 2] = d[i * 4 + 2]; }
+        c.width = c.height = 0;
+        return { N, t };
+    }
+
+    // Đọc file .cube (Lightroom, Photoshop, các gói LUT trên mạng)
+    function lutFromCube(text) {
+        let N = 0, lo = [0, 0, 0], hi = [1, 1, 1];
+        const vals = [];
+        String(text).split(/\r?\n/).forEach(line => {
+            const s = line.trim();
+            if (!s || s[0] === '#') return;
+            const p = s.split(/\s+/);
+            if (p[0] === 'LUT_3D_SIZE') N = parseInt(p[1]);
+            else if (p[0] === 'DOMAIN_MIN') lo = p.slice(1, 4).map(Number);
+            else if (p[0] === 'DOMAIN_MAX') hi = p.slice(1, 4).map(Number);
+            else if (/^[-+.\d]/.test(p[0]) && p.length >= 3) vals.push(+p[0], +p[1], +p[2]);
+        });
+        if (!N) throw new Error('File .cube không có LUT_3D_SIZE (chỉ nhận LUT 3D)');
+        if (vals.length !== N * N * N * 3) throw new Error(`File .cube thiếu dữ liệu: cần ${N * N * N} dòng màu, có ${vals.length / 3}`);
+        const t = new Float32Array(vals.length);
+        // Thứ tự trong .cube giống ảnh Hald: đỏ đổi nhanh nhất, xanh dương chậm nhất
+        for (let i = 0; i < vals.length; i++) {
+            const ch = i % 3;
+            t[i] = Math.max(0, Math.min(255, (vals[i] - lo[ch]) / ((hi[ch] - lo[ch]) || 1) * 255));
+        }
+        return { N, t };
+    }
+
+    // Tra màu trong một bảng 3 chiều, nội suy giữa 8 điểm lưới gần nhất
+    function lutSample(lut, r, g, b, out) {
+        const N = lut.N, t = lut.t, k = (N - 1) / 255, N2 = N * N;
+        const rf = Math.min(N - 1, Math.max(0, r * k)), gf = Math.min(N - 1, Math.max(0, g * k)), bf = Math.min(N - 1, Math.max(0, b * k));
+        const r0 = rf | 0, g0 = gf | 0, b0 = bf | 0;
+        const r1 = r0 < N - 1 ? r0 + 1 : r0, g1 = g0 < N - 1 ? g0 + 1 : g0, b1 = b0 < N - 1 ? b0 + 1 : b0;
+        const dr = rf - r0, dg = gf - g0, db = bf - b0;
+        for (let c = 0; c < 3; c++) {
+            const v000 = t[(r0 + g0 * N + b0 * N2) * 3 + c], v100 = t[(r1 + g0 * N + b0 * N2) * 3 + c];
+            const v010 = t[(r0 + g1 * N + b0 * N2) * 3 + c], v110 = t[(r1 + g1 * N + b0 * N2) * 3 + c];
+            const v001 = t[(r0 + g0 * N + b1 * N2) * 3 + c], v101 = t[(r1 + g0 * N + b1 * N2) * 3 + c];
+            const v011 = t[(r0 + g1 * N + b1 * N2) * 3 + c], v111 = t[(r1 + g1 * N + b1 * N2) * 3 + c];
+            const a = v000 + (v100 - v000) * dr, bb = v010 + (v110 - v010) * dr;
+            const cc = v001 + (v101 - v001) * dr, dd = v011 + (v111 - v011) * dr;
+            const e = a + (bb - a) * dg, f = cc + (dd - cc) * dg;
+            out[c] = e + (f - e) * db;
+        }
+        return out;
+    }
+
+    // Ảnh Hald 512 của một LUT bất kỳ (để lưu file .cube về cùng một dạng)
+    function lutToHald(lut) {
+        const c = document.createElement('canvas');
+        c.width = c.height = HALD_W;
+        const x = c.getContext('2d');
+        const im = x.createImageData(HALD_W, HALD_W), d = im.data, o = [0, 0, 0];
+        for (let i = 0; i < HALD_N * HALD_N * HALD_N; i++) {
+            lutSample(lut, (i % HALD_N) * 255 / (HALD_N - 1), (Math.floor(i / HALD_N) % HALD_N) * 255 / (HALD_N - 1),
+                      Math.floor(i / (HALD_N * HALD_N)) * 255 / (HALD_N - 1), o);
+            d[i * 4] = o[0]; d[i * 4 + 1] = o[1]; d[i * 4 + 2] = o[2]; d[i * 4 + 3] = 255;
+        }
+        x.putImageData(im, 0, 0);
+        return c;
+    }
+
+    // LUT có thật sự đổi màu không (ảnh mẫu tải lên mà quên áp bộ lọc thì báo)
+    function lutIsIdentity(lut) {
+        const N = lut.N;
+        let maxd = 0;
+        // Bảng nhỏ (file .cube 2-17 nấc) xét hết; bảng lớn lấy mẫu cho nhanh
+        const step = N * N * N > 40000 ? 7 : 1;
+        for (let i = 0; i < N * N * N; i += step) {
+            const id = [(i % N), Math.floor(i / N) % N, Math.floor(i / (N * N))].map(v => v * 255 / (N - 1));
+            for (let c = 0; c < 3; c++) maxd = Math.max(maxd, Math.abs(lut.t[i * 3 + c] - id[c]));
+        }
+        return maxd < 4;
+    }
+
+    // Chỉnh số một màu. a: { b sáng, c tương phản, s bão hoà, w ấm/lạnh: -100..100; f phai: 0..100 }
+    function adjustRGB(r, g, b, a, out) {
+        if (a.b) { const k = a.b * 1.28; r += k; g += k; b += k; }
+        if (a.c) {
+            const C = a.c * 2.55, f = (259 * (C + 255)) / (255 * (259 - C));
+            r = f * (r - 128) + 128; g = f * (g - 128) + 128; b = f * (b - 128) + 128;
+        }
+        if (a.s) {
+            const y = 0.299 * r + 0.587 * g + 0.114 * b, k = 1 + a.s / 100;
+            r = y + (r - y) * k; g = y + (g - y) * k; b = y + (b - y) * k;
+        }
+        if (a.w) { r += a.w * 0.35; b -= a.w * 0.35; }
+        if (a.f) {
+            // Phai: nâng vùng tối lên, ảnh bớt đen sâu như phim để lâu
+            const k = a.f / 100 * 0.3;
+            r = r * (1 - k) + 255 * k * 0.5; g = g * (1 - k) + 255 * k * 0.5; b = b * (1 - k) + 255 * k * 0.5;
+        }
+        out[0] = r < 0 ? 0 : r > 255 ? 255 : r;
+        out[1] = g < 0 ? 0 : g > 255 ? 255 : g;
+        out[2] = b < 0 ? 0 : b > 255 ? 255 : b;
+        return out;
+    }
+
+    function hasAdj(a) { return !!a && ['b', 'c', 's', 'w', 'f'].some(k => +a[k]); }
+
+    // Gộp chỉnh số + LUT thành một bảng duy nhất: áp từng điểm ảnh chỉ còn một lần tra
+    function bakeFilter(rec, lut) {
+        const a = (rec && rec.adj) || {};
+        if (!lut && !hasAdj(a)) return null;
+        const N = lut ? Math.min(HALD_N, Math.max(33, lut.N)) : 33;
+        const t = new Float32Array(N * N * N * 3), o = [0, 0, 0], step = 255 / (N - 1);
+        for (let bi = 0; bi < N; bi++) for (let gi = 0; gi < N; gi++) for (let ri = 0; ri < N; ri++) {
+            adjustRGB(ri * step, gi * step, bi * step, a, o);
+            if (lut) lutSample(lut, o[0], o[1], o[2], o);
+            const i = (ri + gi * N + bi * N * N) * 3;
+            t[i] = o[0]; t[i + 1] = o[1]; t[i + 2] = o[2];
+        }
+        return { N, t };
+    }
+
+    // Áp bảng màu cho một vùng chữ nhật của khung vẽ. inside(x, y) (tuỳ chọn) chỉ
+    // lọc các điểm thuộc ô ảnh. Làm từng dải 256 dòng cho nhẹ bộ nhớ máy cũ.
+    function filterRect(ctx, x0, y0, w, h, baked, inside) {
+        x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0));
+        w = Math.min(ctx.canvas.width - x0, Math.ceil(w)); h = Math.min(ctx.canvas.height - y0, Math.ceil(h));
+        if (w <= 0 || h <= 0) return;
+        const o = [0, 0, 0];
+        for (let y = y0; y < y0 + h; y += 256) {
+            const bh = Math.min(256, y0 + h - y);
+            const im = ctx.getImageData(x0, y, w, bh), d = im.data;
+            for (let yy = 0; yy < bh; yy++) for (let xx = 0; xx < w; xx++) {
+                if (inside && !inside(x0 + xx + 0.5, y + yy + 0.5)) continue;
+                const p = (yy * w + xx) * 4;
+                lutSample(baked, d[p], d[p + 1], d[p + 2], o);
+                d[p] = o[0]; d[p + 1] = o[1]; d[p + 2] = o[2];
+            }
+            ctx.putImageData(im, x0, y);
+        }
+    }
+
+    // Lọc đúng vùng một ô (ô có thể xoay): không đụng phần frame nằm quanh ô
+    function filterSlot(ctx, s, sc, baked) {
+        const cx = s.cx * sc, cy = s.cy * sc, hw = s.w * sc / 2 + 1, hh = s.h * sc / 2 + 1;
+        const a = (s.rot || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+        const ex = Math.abs(hw * cos) + Math.abs(hh * sin), ey = Math.abs(hw * sin) + Math.abs(hh * cos);
+        filterRect(ctx, cx - ex, cy - ey, ex * 2, ey * 2, baked, (x, y) => {
+            const dx = x - cx, dy = y - cy;
+            return Math.abs(dx * cos + dy * sin) <= hw && Math.abs(-dx * sin + dy * cos) <= hh;
+        });
+    }
+
+    function filterCanvas(c, baked) { filterRect(c.getContext('2d'), 0, 0, c.width, c.height, baked); }
+
+    // Bộ lọc lưu trên Firebase config/filters/<id> = { name, adj, lut (mã file ảnh Hald trên Drive) }
+    async function loadFilter(rec) {
+        if (!rec) return null;
+        const lut = rec.lut ? lutFromHald(await loadImg(gUrl(rec.lut))) : null;
+        return bakeFilter(rec, lut);
+    }
+
+    return { gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, upload, uploadTo, makePublic,
+             haldIdentity, lutFromHald, lutFromCube, lutToHald, lutIsIdentity, bakeFilter, hasAdj, filterRect, filterSlot, filterCanvas, loadFilter };
 })();

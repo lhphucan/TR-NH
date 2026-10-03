@@ -48,6 +48,13 @@ async function openFrameManager() {
                             </div>
                         </div>
                         <div>
+                            <label class="fr-label">Màu ảnh khách</label>
+                            <div class="fr-row">
+                                <select id="fa-filter" class="fr-select" onchange="FA.filter = this.value"></select>
+                                <button class="fr-btn" onclick="ftOpen()">Bộ lọc…</button>
+                            </div>
+                        </div>
+                        <div>
                             <label class="fr-label">Cho khách dùng</label>
                             <div class="fr-row">
                                 <button class="fr-btn" id="fa-on" onclick="faSetOn(true)">Đang dùng</button>
@@ -112,7 +119,10 @@ function closeFrameManager() {
 async function faLoad() {
     const box = document.getElementById('fa-list');
     box.innerHTML = '<p class="fr-hint">Đang tải...</p>';
-    try { FA_LIST = (await db.ref('frames').once('value')).val() || {}; }
+    try {
+        FA_LIST = (await db.ref('frames').once('value')).val() || {};
+        FT_LIST = (await db.ref('config/filters').once('value')).val() || {};
+    }
     catch (e) { box.innerHTML = '<p class="fr-hint">Không đọc được danh sách frame. Kiểm tra đã dán luật Firebase mới chưa.</p>'; return; }
     faRenderList();
 }
@@ -127,7 +137,7 @@ function faRenderList() {
             <button class="fr-fitem${f.on === false ? ' off' : ''}" onclick="faOpen('${faEsc(id)}')">
                 <span class="fr-fimg"><img src="${FR.gUrl(f.prev)}" alt="" loading="lazy"></span>
                 <b>${faEsc(f.name)}</b>
-                <span class="fr-meta">${(f.slots || []).length} ô · ${f.on === false ? 'đang ẩn' : 'đang dùng'}</span>
+                <span class="fr-meta">${(f.slots || []).length} ô · ${f.on === false ? 'đang ẩn' : 'đang dùng'}${f.filter && FT_LIST[f.filter] ? ' · ' + faEsc(FT_LIST[f.filter].name) : ''}</span>
                 <span class="fr-meta">${cs.length ? faEsc(cs.join(', ')) : 'chưa chọn cơ sở'}</span>
             </button>
             <button class="fr-fdel" onclick="faDelete('${faEsc(id)}')" aria-label="Xoá frame">✕</button>
@@ -169,7 +179,18 @@ function faShow(src) {
     faSetAll(FA.all !== false);
     faSetOn(FA.on !== false);
     faSetFront(FA.front !== false);
+    faFilterSelect();
     document.getElementById('fa-edit').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Danh sách bộ lọc trong ô "Màu ảnh khách"
+function faFilterSelect() {
+    const sel = document.getElementById('fa-filter');
+    if (!sel || !FA) return;
+    const ids = Object.keys(FT_LIST).sort((a, b) => String(FT_LIST[a].name).localeCompare(String(FT_LIST[b].name)));
+    if (FA.filter && !FT_LIST[FA.filter]) FA.filter = '';   // bộ lọc đã bị xoá
+    sel.innerHTML = '<option value="">Màu gốc</option>' + ids.map(id => `<option value="${faEsc(id)}">${faEsc(FT_LIST[id].name)}</option>`).join('');
+    sel.value = FA.filter || '';
 }
 
 function faSetFront(v) {
@@ -396,7 +417,7 @@ async function faSave() {
     const rec = {
         name: FA.name.slice(0, 60), w: FA.w, h: FA.h, front: !!FA.front, on: FA.on !== false, all: FA.all !== false, branches,
         slots: FA.slots.map(s => ({ cx: Math.round(s.cx), cy: Math.round(s.cy), w: Math.round(s.w), h: Math.round(s.h), rot: +s.rot || 0 })),
-        file: FA.file || '', prev: FA.prev || '', at: Date.now()
+        file: FA.file || '', prev: FA.prev || '', filter: FA.filter || '', at: Date.now()
     };
     try {
         if (FA.isNew) {
@@ -449,5 +470,260 @@ async function faDelete(id) {
         if (FA && FA.id === id) { FA = null; document.getElementById('fa-edit').classList.add('fr-hidden'); }
         Toast.fire({ icon: 'success', title: 'Đã xoá frame' });
         await faLoad();
+    } catch (e) { Swal.fire({ title: 'Chưa xoá được', text: e.message, icon: 'error', confirmButtonColor: '#111' }); }
+}
+
+
+// ===== Thư viện bộ lọc màu =====
+// config/filters/<mã> = { name, adj: { b, c, s, w, f }, lut: mã ảnh Hald trên Drive, at }
+// Frame chọn một bộ lọc: ảnh khách trong frame và ảnh lẻ khách nhận đều mang màu đó.
+let FT_LIST = {};
+let FT = null;          // bộ lọc đang sửa
+let FT_LUT = null;      // LUT vừa tải lên, chưa lưu: { lut, blob }
+let FT_LUTCUR = null;   // LUT đang dùng của bộ lọc đang sửa (đã đọc)
+let FT_SAMPLE = null;   // ảnh mẫu để xem trước
+let ftT = 0;
+const FT_SLIDERS = [['b', 'Sáng', -100, 100], ['c', 'Tương phản', -100, 100], ['s', 'Bão hoà (−100 = đen trắng)', -100, 100], ['w', 'Ấm / lạnh', -100, 100], ['f', 'Phai', 0, 100]];
+
+function ftOpen() {
+    let m = document.getElementById('ft-modal');
+    if (!m) {
+        document.body.insertAdjacentHTML('beforeend', `
+        <div id="ft-modal" class="fr-modal" style="z-index:4100;">
+            <div class="fr-head">
+                <h3>Bộ lọc màu</h3>
+                <button class="fr-x" onclick="ftClose()" aria-label="Đóng">&times;</button>
+            </div>
+            <div class="fr-body"><div class="fr-wrap">
+                <div class="fr-card">
+                    <div class="fr-row" id="ft-list"></div>
+                    <div class="fr-row" style="margin-top:10px;"><button class="fr-btn solid" onclick="ftNew()">+ Bộ lọc mới</button></div>
+                </div>
+                <div class="fr-card fr-hidden" id="ft-edit">
+                    <label class="fr-label">Tên bộ lọc</label>
+                    <input type="text" id="ft-name" placeholder="Ví dụ: Noir">
+                    <div class="ft-prev">
+                        <div><span class="fr-label">Gốc</span><canvas id="ft-a"></canvas></div>
+                        <div><span class="fr-label">Sau khi lọc</span><canvas id="ft-b"></canvas></div>
+                    </div>
+                    <div class="fr-row" style="margin:6px 0 12px;">
+                        <label class="fr-btn" for="ft-sample">Đổi ảnh mẫu</label>
+                        <input type="file" id="ft-sample" accept="image/*" class="fr-hidden" onchange="ftSample(this)">
+                    </div>
+                    <div id="ft-sliders"></div>
+                    <h4 style="margin-top:16px;">LUT (bảng màu)</h4>
+                    <p class="fr-hint" id="ft-lut-st"></p>
+                    <div class="fr-row">
+                        <button class="fr-btn" onclick="ftHaldDownload()">Tải ảnh mẫu LUT</button>
+                        <label class="fr-btn" for="ft-lut">Tải LUT lên</label>
+                        <input type="file" id="ft-lut" accept=".png,.cube,image/png" class="fr-hidden" onchange="ftLutUpload(this)">
+                        <button class="fr-btn danger" id="ft-lut-del" onclick="ftLutClear()">Bỏ LUT</button>
+                    </div>
+                    <p class="fr-hint">
+                        <b>Lấy đúng màu bộ lọc Canva:</b> bấm <b>Tải ảnh mẫu LUT</b> → trên Canva tạo thiết kế <b>đúng 512 × 512 px</b>,
+                        thả ảnh mẫu phủ kín → áp đúng bộ lọc và các thanh chỉnh hay dùng → tải về <b>PNG</b> → bấm <b>Tải LUT lên</b>.
+                        Chỉ lấy được phần đổi màu; tối góc, hạt, làm nét thì không.<br>
+                        Cũng nhận file <b>.cube</b> (LUT của Lightroom/Photoshop). Thanh chỉnh ở trên áp trước, LUT áp sau.
+                    </p>
+                    <div class="fr-row" style="margin-top:14px;">
+                        <span style="flex:1;"></span>
+                        <button class="fr-btn danger" onclick="ftDelete()">Xoá bộ lọc</button>
+                        <button class="fr-btn solid" id="ft-save" onclick="ftSave()">Lưu bộ lọc</button>
+                    </div>
+                </div>
+            </div></div>
+        </div>`);
+        m = document.getElementById('ft-modal');
+    }
+    m.style.display = 'flex';
+    ftRenderList();
+}
+
+function ftClose() {
+    document.getElementById('ft-modal').style.display = 'none';
+    faFilterSelect();
+    if (FA_LIST && document.getElementById('fa-list')) faRenderList();
+}
+
+function ftRenderList() {
+    const ids = Object.keys(FT_LIST).sort((a, b) => String(FT_LIST[a].name).localeCompare(String(FT_LIST[b].name)));
+    document.getElementById('ft-list').innerHTML = ids.map(id => `
+        <button type="button" class="fr-btn fr-chip${FT && FT.id === id ? ' on' : ''}" onclick="ftOpenOne('${faEsc(id)}')">${faEsc(FT_LIST[id].name)}${FT_LIST[id].lut ? ' · LUT' : ''}</button>`).join('')
+        || '<p class="fr-hint" style="margin:0;">Chưa có bộ lọc nào.</p>';
+}
+
+function ftNew() {
+    FT = { id: 'L_' + Date.now(), isNew: true, name: '', adj: { b: 0, c: 0, s: 0, w: 0, f: 0 }, lut: '' };
+    FT_LUT = null; FT_LUTCUR = null;
+    ftShow();
+}
+
+async function ftOpenOne(id) {
+    const r = FT_LIST[id];
+    if (!r) return;
+    FT = { id, name: r.name || '', adj: Object.assign({ b: 0, c: 0, s: 0, w: 0, f: 0 }, r.adj || {}), lut: r.lut || '' };
+    FT_LUT = null; FT_LUTCUR = null;
+    ftShow();
+    if (FT.lut) {
+        try { FT_LUTCUR = FR.lutFromHald(await FR.loadImg(FR.gUrl(FT.lut))); }
+        catch (e) { Toast.fire({ icon: 'error', title: 'Không đọc được LUT đang dùng' }); }
+        ftLutStatus(); ftPreview();
+    }
+}
+
+function ftShow() {
+    document.getElementById('ft-edit').classList.remove('fr-hidden');
+    document.getElementById('ft-name').value = FT.name;
+    document.getElementById('ft-sliders').innerHTML = FT_SLIDERS.map(([k, label, lo, hi]) => `
+        <div class="ft-sl">
+            <label class="fr-label">${label} <b id="ft-v-${k}">${FT.adj[k] || 0}</b></label>
+            <input type="range" min="${lo}" max="${hi}" step="1" value="${FT.adj[k] || 0}" oninput="ftAdj('${k}', this.value)">
+        </div>`).join('');
+    ftLutStatus();
+    ftRenderList();
+    ftPreview();
+}
+
+function ftAdj(k, v) {
+    FT.adj[k] = +v;
+    document.getElementById('ft-v-' + k).innerText = v;
+    clearTimeout(ftT);
+    ftT = setTimeout(ftPreview, 60);
+}
+
+function ftLutStatus() {
+    const st = document.getElementById('ft-lut-st');
+    const lut = FT_LUT ? FT_LUT.lut : FT_LUTCUR;
+    st.innerText = FT_LUT ? 'Đã đọc LUT mới (chưa lưu).' : (FT.lut ? (lut ? 'Đang dùng LUT.' : 'Đang đọc LUT...') : 'Chưa có LUT: chỉ dùng các thanh chỉnh.');
+    document.getElementById('ft-lut-del').style.display = (FT.lut || FT_LUT) ? '' : 'none';
+}
+
+// Ảnh mẫu mặc định: dải màu + dải xám + màu da, đủ để thấy bộ lọc đổi gì
+function ftDefaultSample() {
+    const c = document.createElement('canvas');
+    c.width = 600; c.height = 400;
+    const x = c.getContext('2d');
+    for (let i = 0; i < 600; i++) { x.fillStyle = `hsl(${i * 360 / 600},80%,55%)`; x.fillRect(i, 0, 1, 130); }
+    const g = x.createLinearGradient(0, 0, 600, 0); g.addColorStop(0, '#000'); g.addColorStop(1, '#fff');
+    x.fillStyle = g; x.fillRect(0, 130, 600, 90);
+    ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac', '#3c2e28'].forEach((col, i) => { x.fillStyle = col; x.fillRect(i * 100, 220, 100, 180); });
+    return c;
+}
+
+async function ftSample(inp) {
+    const f = inp.files[0];
+    inp.value = '';
+    if (!f) return;
+    try {
+        const p = await FR.shrink(f, 700, 'image/jpeg');
+        FT_SAMPLE = await FR.loadImg(URL.createObjectURL(p.blob));
+        ftPreview();
+    } catch (e) { Toast.fire({ icon: 'error', title: 'Không mở được ảnh mẫu' }); }
+}
+
+function ftPreview() {
+    if (!FT) return;
+    const src = FT_SAMPLE || ftDefaultSample();
+    const W = src.naturalWidth || src.width, H = src.naturalHeight || src.height;
+    const a = document.getElementById('ft-a'), b = document.getElementById('ft-b');
+    [a, b].forEach(c => { c.width = W; c.height = H; c.getContext('2d').drawImage(src, 0, 0); });
+    const baked = FR.bakeFilter({ adj: FT.adj }, FT_LUT ? FT_LUT.lut : FT_LUTCUR);
+    if (baked) FR.filterCanvas(b, baked);
+}
+
+function ftHaldDownload() {
+    FR.haldIdentity().toBlob(blob => {
+        const u = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = u; a.download = 'PHOTONOIR LUT mau 512.png';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(u), 10000);
+    }, 'image/png');
+}
+
+async function ftLutUpload(inp) {
+    const f = inp.files[0];
+    inp.value = '';
+    if (!f) return;
+    try {
+        let lut, blob;
+        if (/\.cube$/i.test(f.name)) {
+            lut = FR.lutFromCube(await f.text());
+        } else {
+            const u = URL.createObjectURL(f);
+            try { lut = FR.lutFromHald(await FR.loadImg(u)); } finally { URL.revokeObjectURL(u); }
+            // Ảnh Hald đúng cỡ 512 thì lưu nguyên file, khỏi qua thêm một lần chuyển đổi
+            if (lut.N === 64) blob = f;
+        }
+        if (FR.lutIsIdentity(lut)) {
+            const r = await Swal.fire({ title: 'LUT này không đổi màu gì', text: 'Có vẻ ảnh mẫu chưa được áp bộ lọc trên Canva. Vẫn dùng?', icon: 'warning',
+                                        showCancelButton: true, confirmButtonText: 'Vẫn dùng', cancelButtonText: '<span style="color:#111">Chọn lại</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff' });
+            if (!r.isConfirmed) return;
+        }
+        if (!blob) blob = await new Promise(r => FR.lutToHald(lut).toBlob(r, 'image/png'));
+        FT_LUT = { lut, blob };
+        ftLutStatus(); ftPreview();
+        Toast.fire({ icon: 'success', title: 'Đã đọc LUT, xem trước bên trên' });
+    } catch (e) { Swal.fire({ title: 'Không đọc được LUT', text: e.message, icon: 'error', confirmButtonColor: '#111' }); }
+}
+
+function ftLutClear() {
+    FT_LUT = null; FT_LUTCUR = null; FT.lut = '';
+    ftLutStatus(); ftPreview();
+}
+
+async function ftSave() {
+    if (!FT) return;
+    FT.name = document.getElementById('ft-name').value.trim();
+    if (!FT.name) return Toast.fire({ icon: 'warning', title: 'Đặt tên cho bộ lọc' });
+    if (!FT_LUT && !FT.lut && !FR.hasAdj(FT.adj)) return Toast.fire({ icon: 'warning', title: 'Bộ lọc chưa đổi gì: kéo thanh chỉnh hoặc tải LUT' });
+    const btn = document.getElementById('ft-save');
+    btn.disabled = true; btn.innerText = 'ĐANG LƯU...';
+    try {
+        const old = FT_LIST[FT.id] && FT_LIST[FT.id].lut;
+        if (FT_LUT) {
+            const token = await driveToken();
+            const folder = await faFolder(token);
+            const up = await FR.upload(FT_LUT.blob, 'LUT ' + FT.name.replace(/[\\/:*?"<>|]/g, '_') + '.png', token, folder);
+            await FR.makePublic(up.id, token);
+            FT.lut = up.id;
+        }
+        const rec = { name: FT.name.slice(0, 40), adj: FT.adj, lut: FT.lut || '', at: Date.now() };
+        await db.ref('config/filters/' + FT.id).set(rec);
+        FT_LIST[FT.id] = rec;
+        // LUT cũ không còn ai dùng -> bỏ vào thùng rác Drive
+        if (old && old !== rec.lut) driveToken().then(t => fetch('https://www.googleapis.com/drive/v3/files/' + old, {
+            method: 'PATCH', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) })).catch(() => {});
+        if (FT_LUT) { FT_LUTCUR = FT_LUT.lut; FT_LUT = null; }
+        FT.isNew = false;
+        ftLutStatus(); ftRenderList();
+        Toast.fire({ icon: 'success', title: `Đã lưu bộ lọc "${rec.name}"` });
+    } catch (e) {
+        Swal.fire({ title: 'Chưa lưu được', text: e.message, icon: 'error', confirmButtonColor: '#111' });
+    } finally {
+        btn.disabled = false; btn.innerText = 'Lưu bộ lọc';
+    }
+}
+
+async function ftDelete() {
+    if (!FT) return;
+    if (FT.isNew) { FT = null; document.getElementById('ft-edit').classList.add('fr-hidden'); return; }
+    const dung = Object.values(FA_LIST || {}).filter(f => f.filter === FT.id).map(f => f.name);
+    const r = await Swal.fire({ title: `Xoá bộ lọc "${FT.name}"?`, icon: 'warning',
+        text: dung.length ? `Đang dùng ở: ${dung.join(', ')}. Các frame này sẽ về màu gốc.` : 'Không frame nào đang dùng bộ lọc này.',
+        showCancelButton: true, confirmButtonText: 'Xoá', cancelButtonText: '<span style="color:#111">Huỷ</span>', confirmButtonColor: '#dc2626', cancelButtonColor: '#fff' });
+    if (!r.isConfirmed) return;
+    try {
+        await db.ref('config/filters/' + FT.id).remove();
+        for (const [fid, f] of Object.entries(FA_LIST || {})) if (f.filter === FT.id) await db.ref('frames/' + fid + '/filter').set('');
+        const lut = FT_LIST[FT.id] && FT_LIST[FT.id].lut;
+        if (lut) driveToken().then(t => fetch('https://www.googleapis.com/drive/v3/files/' + lut, {
+            method: 'PATCH', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) })).catch(() => {});
+        delete FT_LIST[FT.id];
+        Object.values(FA_LIST || {}).forEach(f => { if (f.filter === FT.id) f.filter = ''; });
+        FT = null;
+        document.getElementById('ft-edit').classList.add('fr-hidden');
+        ftRenderList();
+        Toast.fire({ icon: 'success', title: 'Đã xoá bộ lọc' });
     } catch (e) { Swal.fire({ title: 'Chưa xoá được', text: e.message, icon: 'error', confirmButtonColor: '#111' }); }
 }

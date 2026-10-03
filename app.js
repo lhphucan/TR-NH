@@ -906,8 +906,12 @@ async function openAlbum(url, branch, clientId) {
 // ảnh chụp thường lúc 2-3 MB, có hôm 5,2 MB (Phúc Yên 5/9), còn bản ghép
 // 10-27 MB. So trong chính lượt đó: nặng gấp 3 lần ảnh thường mới là bản ghép.
 // Mốc lấy ở một phần tư nhẹ nhất để vài bản ghép không kéo mốc lên.
+// Ảnh lẻ khách nhận theo màu frame: PN-<tên màu>_<tên ảnh gốc>.jpg
+const ANH_LOC = /^PN-(.+?)_(.+?)(\.[a-z0-9]+)?$/i;
+function laAnhLoc(name) { return ANH_LOC.test(String(name || '')); }
+
 function banGhepIds(list) {
-    const sized = list.filter(x => parseInt(x.size || 0) > 0);
+    const sized = list.filter(x => parseInt(x.size || 0) > 0 && !laAnhLoc(x.name));
     if (sized.length < 3) return new Set();
     const asc = sized.map(x => parseInt(x.size)).sort((a, b) => a - b);
     const base = asc[Math.floor(asc.length / 4)];
@@ -916,11 +920,19 @@ function banGhepIds(list) {
 
 function albLabels(list) {
     const ghep = banGhepIds(list);
+    const so = {};   // tên ảnh gốc (bỏ đuôi) -> số thứ tự, để ảnh lẻ đã lọc mang đúng số
     let n = 0;
-    return list.map(x => {
+    const nhan = list.map(x => {
+        if (laAnhLoc(x.name)) return null;
         if (ghep.has(x.id)) return 'Ảnh ghép';
         n++;
+        so[String(x.name || '').replace(/\.[a-z0-9]+$/i, '')] = n;
         return 'Ảnh ' + n;
+    });
+    return list.map((x, i) => {
+        if (nhan[i]) return nhan[i];
+        const m = ANH_LOC.exec(String(x.name || ''));
+        return (so[m[2]] ? 'Ảnh ' + so[m[2]] : 'Ảnh') + ' · ' + m[1];
     });
 }
 
