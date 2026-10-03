@@ -215,15 +215,26 @@ async function driveUploadRetry(file, token, folderId, tries) {
 // thư mục lượt chụp đó thay vì thư mục ảnh khách gửi in.
 // Trả về { folderUrl, files: [{id, name} | {err}], token? }
 async function guiLenDrive(files, where, onFile) {
-    let info = null;
+    let info = null, quaScript = false;
     try {
         info = await gsCall(Object.assign({ action: 'upload',
             files: JSON.stringify(files.map(f => ({ name: f.name, type: f.type || 'image/jpeg', size: f.size }))) }, where));
     } catch (e) {
-        if (!/Thieu id/.test(e.message)) throw e;   // bản cũ không biết action upload
+        // Bản cũ không biết action upload -> dùng cách cũ. Lỗi khác (Apps Script
+        // thiếu quyền, Drive trục trặc...) -> gửi hết qua Apps Script cho khách khỏi kẹt
+        if (!/Thieu id/.test(e.message)) quaScript = true;
     }
 
     const out = [];
+    if (quaScript) {
+        let folderUrl = '';
+        for (let i = 0; i < files.length; i++) {
+            try { const r = await guiQuaScript(files[i], where); folderUrl = folderUrl || r.folder || ''; out.push({ id: r.id, name: r.name }); }
+            catch (e) { out.push({ err: e.message }); }
+            if (onFile) onFile(i, 1);
+        }
+        return { folderUrl, files: out };
+    }
     if (!info) {
         // Bản cũ: gửi vào thư mục lượt chụp thì chỉ cần chìa khoá, khỏi tạo thư mục khách thừa
         const old = await gsCall(Object.assign({ action: where.lot ? 'token' : 'folder' }, where));
@@ -263,7 +274,7 @@ async function guiQuaScript(file, where) {
     const res = await fetch(GS_URL, { method: 'POST', body: JSON.stringify(Object.assign({ k: GS_KEY, image: b64, mime: file.type || 'image/jpeg', name: file.name }, where)) });
     const d = JSON.parse(await res.text());
     if (!d.ok) throw new Error(d.error || 'Không gửi được');
-    return { id: d.id, name: d.name };
+    return { id: d.id, name: d.name, folder: d.folder };
 }
 
 // Đầu số di động Việt Nam đang lưu hành (sau chuyển đổi 11 số về 10 số)
