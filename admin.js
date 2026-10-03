@@ -497,7 +497,6 @@ function updateAlbumCount() {
     const btn = document.getElementById('album-download');
     btn.disabled = !n;
     btn.innerText = n ? `TẢI ${n} ẢNH` : 'TẢI ẢNH ĐÃ CHỌN';
-    document.getElementById('album-zalo').innerText = n ? `GỬI ZALO ${n} LINK` : 'GỬI ZALO CẢ LƯỢT';
 }
 
 // Mở thẳng album lượt đã trả cho một khách, từ nút ẢNH trên thẻ khách
@@ -523,47 +522,74 @@ function zaloCaption() {
         : `${bName} · ${document.getElementById('album-title').innerText} · ${ngay}`;
 }
 
-// Gửi LINK ảnh vào nhóm Zalo của tiệm, không gửi file: Zalo nén ảnh khi gửi,
-// còn link mở ra Drive là bản gốc. Chỉ gửi chữ nên mở được ngay khi bấm,
-// không phải chờ tải ảnh.
-// Tích ảnh thì gửi link từng ảnh đó, không tích thì gửi link cả lượt.
-function shareSelectedZalo() {
+// Mã QR link ảnh: nhân viên ngồi máy quán bấm, lấy điện thoại quét là có link
+// để gửi vào nhóm của tiệm. Gửi link chứ không gửi file: Zalo nén ảnh, còn link
+// mở ra Drive là bản gốc.
+// Trong album: mã QR cho cả lượt đang mở
+function qrAlbum() {
     if (!_albumShoot) return;
-    const ids = Object.keys(_albumPicked);
-    const links = ids.length
-        ? ids.map(id => 'https://drive.google.com/file/d/' + id + '/view')
-        : ['https://drive.google.com/drive/folders/' + _albumShoot];
-    guiZalo(zaloCaption() + '\n' + links.join('\n'));
+    moQrLink(zaloCaption(), 'https://drive.google.com/drive/folders/' + _albumShoot);
 }
 
-// Nút ZALO trên thẻ khách: gửi link cả lượt đã trả kèm tên khách
-function zaloClientLink(clientId, linkId) {
+// Nút QR trên thẻ khách: link lượt đã trả kèm tên khách
+function qrClientLink(clientId, linkId) {
     const c = (currentData && currentData[clientId]) || {};
     const url = c.links && c.links[linkId] && c.links[linkId].url;
     if (!url) return;
     const bName = (branchesCache[br] && branchesCache[br].name) || br || '';
     const ts = parseInt(clientId.split('_')[1]);
     const ngay = ts ? getDStr(new Date(ts)) : '';
-    guiZalo(`Khách ${c.name || 'Khách hàng'} #${clientId.split('_')[1].slice(-4)} · ${bName} · ${ngay} — đồng ý cho tiệm dùng ảnh\n${url}`);
+    moQrLink(`Khách ${c.name || 'Khách hàng'} #${clientId.split('_')[1].slice(-4)} · ${bName} · ${ngay} — đồng ý cho tiệm dùng ảnh`, url);
 }
 
-// Điện thoại: mở bảng chia sẻ để chọn Zalo. Máy tính: chép sẵn để dán vào Zalo,
-// vì bảng chia sẻ của Windows không có Zalo.
-function guiZalo(text) {
+// Thư viện vẽ mã QR ngay trên máy: không gửi link ảnh khách qua dịch vụ ngoài
+let _qrLib = null;
+function napQrLib() {
+    if (window.QRCode) return Promise.resolve();
+    if (_qrLib) return _qrLib;
+    _qrLib = new Promise((ok, fail) => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+        sc.onload = ok;
+        sc.onerror = () => { _qrLib = null; fail(new Error('Không tải được bộ tạo mã QR')); };
+        document.head.appendChild(sc);
+    });
+    return _qrLib;
+}
+
+let _qrText = '';
+async function moQrLink(caption, url) {
+    _qrText = caption + '\n' + url;
+    try { await napQrLib(); }
+    catch (e) { return chepLinkQr(); }   // mất mạng không vẽ được QR -> vẫn chép được link
     const cam = window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-    if (cam && navigator.share) {
-        navigator.share({ text }).catch(e => { if (!e || e.name !== 'AbortError') chepZalo(text); });
-        return;
-    }
-    chepZalo(text);
+    Swal.fire({
+        title: 'Quét để lấy link ảnh',
+        html: `<div id="qr-link" style="display:flex; justify-content:center; margin:4px 0 12px;"></div>
+               <div style="font-size:13px; color:#52525b; line-height:1.5;">${escapeHTML(caption)}</div>
+               <div style="font-size:11px; color:#a1a1aa; word-break:break-all; margin-top:6px;">${escapeHTML(url)}</div>
+               <div style="display:flex; gap:8px; justify-content:center; margin-top:16px;">
+                   <button type="button" class="swal2-styled" style="margin:0; background:#fff; color:#111; border:1px solid #111;" onclick="chepLinkQr()">CHÉP LINK</button>
+                   ${cam && navigator.share ? `<button type="button" class="swal2-styled" style="margin:0; background:#111; color:#fff;" onclick="chiaSeLinkQr()">CHIA SẺ</button>` : ''}
+               </div>`,
+        showConfirmButton: false, showCloseButton: true,
+        didOpen: () => {
+            // Mức sửa lỗi M: link Drive dài vẫn quét nhanh trên điện thoại cũ
+            new QRCode(document.getElementById('qr-link'), { text: url, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+        }
+    });
 }
 
-function chepZalo(text) {
-    const xong = () => Swal.fire({ title: 'Đã chép link', icon: 'success', confirmButtonColor: '#111',
-        html: 'Mở nhóm Zalo của tiệm, bấm <b>Ctrl+V</b> (điện thoại: giữ ô chat → <b>Dán</b>) rồi gửi.' });
-    const tay = () => Swal.fire({ title: 'Chép link này gửi vào Zalo', input: 'textarea', inputValue: text, confirmButtonColor: '#111', confirmButtonText: 'Xong' });
-    if (navigator.clipboard) navigator.clipboard.writeText(text).then(xong, tay);
+function chepLinkQr() {
+    const xong = () => Toast.fire({ icon: 'success', title: 'Đã chép link, dán vào nhóm của tiệm' });
+    const tay = () => Swal.fire({ title: 'Chép link này', input: 'textarea', inputValue: _qrText, confirmButtonColor: '#111', confirmButtonText: 'Xong' });
+    if (navigator.clipboard) navigator.clipboard.writeText(_qrText).then(xong, tay);
     else tay();
+}
+
+// Đang dùng điện thoại thì khỏi quét: mở thẳng bảng chia sẻ
+function chiaSeLinkQr() {
+    navigator.share({ text: _qrText }).catch(e => { if (!e || e.name !== 'AbortError') chepLinkQr(); });
 }
 
 // Tải bản GỐC, không phải ảnh xem trước
@@ -1503,8 +1529,8 @@ function load() {
                                    onchange="updateLink('${client.id}', '${linkId}')"
                                    onkeydown="if(event.key==='Enter'){this.blur();}"
                                    title="Sửa link rồi bấm Enter hoặc click ra ngoài để lưu">
-                            ${fid ? `<button onclick="openAlbumForClient('${client.id}', '${escapeHTML(fid)}')" class="btn-album-link" title="Xem ảnh lượt này, chọn ảnh để tải hoặc gửi link">ẢNH</button>` : ''}
-                            <button onclick="zaloClientLink('${client.id}', '${linkId}')" class="btn-album-link" title="Gửi link ảnh lượt này vào nhóm Zalo của tiệm">ZALO</button>
+                            ${fid ? `<button onclick="openAlbumForClient('${client.id}', '${escapeHTML(fid)}')" class="btn-album-link" title="Xem ảnh lượt này, chọn ảnh để tải về">ẢNH</button>` : ''}
+                            <button onclick="qrClientLink('${client.id}', '${linkId}')" class="btn-album-link" title="Mã QR link ảnh lượt này: quét bằng điện thoại để gửi vào nhóm tiệm">QR</button>
                             <button onclick="deleteLink('${client.id}', '${linkId}')" class="btn-del-link">XÓA</button>
                         </div>`;
                     });
