@@ -211,7 +211,9 @@ async function driveUploadRetry(file, token, folderId, tries) {
 // Hai đường lùi để khách không bao giờ bị kẹt:
 // - Apps Script còn bản cũ (chưa có action upload): dùng cách cũ.
 // - Trình duyệt không đẩy được vào đường gửi: gửi qua Apps Script (chậm hơn).
-// where: { branch, day, client }. Trả về { folderUrl, files: [{id, name} | {err}], token? }
+// where: { branch, day, client, lot? }. Có lot (mã thư mục lượt chụp) thì gửi vào
+// thư mục lượt chụp đó thay vì thư mục ảnh khách gửi in.
+// Trả về { folderUrl, files: [{id, name} | {err}], token? }
 async function guiLenDrive(files, where, onFile) {
     let info = null;
     try {
@@ -223,13 +225,16 @@ async function guiLenDrive(files, where, onFile) {
 
     const out = [];
     if (!info) {
-        const old = await gsCall(Object.assign({ action: 'folder' }, where));
+        // Bản cũ: gửi vào thư mục lượt chụp thì chỉ cần chìa khoá, khỏi tạo thư mục khách thừa
+        const old = await gsCall(Object.assign({ action: where.lot ? 'token' : 'folder' }, where));
+        const folderId = where.lot || old.folderId;
+        const folderUrl = where.lot ? 'https://drive.google.com/drive/folders/' + where.lot : (old.folderUrl || '');
         for (let i = 0; i < files.length; i++) {
-            try { const r = await driveUploadRetry(files[i], old.token, old.folderId); out.push({ id: r.id, name: r.name }); }
+            try { const r = await driveUploadRetry(files[i], old.token, folderId); out.push({ id: r.id, name: r.name }); }
             catch (e) { out.push({ err: e.message }); }
             if (onFile) onFile(i, 1);
         }
-        return { folderUrl: old.folderUrl || '', files: out, token: old.token };
+        return { folderUrl, files: out, token: old.token };
     }
 
     for (let i = 0; i < files.length; i++) {

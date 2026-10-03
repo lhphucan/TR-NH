@@ -129,7 +129,7 @@ function fkBuild() {
         <div id="fk-pk-grid" class="fr-pk-grid"></div>
         <div class="fr-pk-foot" id="fk-pk-foot">
             <span id="fk-pk-count"></span>
-            <button class="fr-btn solid" id="fk-pk-ok" onclick="fkPkDone()" disabled>Đặt vào ô</button>
+            <button class="fr-btn solid" id="fk-pk-ok" onclick="fkPkDone()" disabled>Chọn</button>
         </div>
     </div>`);
     fkBindStage();
@@ -526,8 +526,9 @@ async function fkSend() {
         const hhmmss = [now.getHours(), now.getMinutes(), now.getSeconds()].map(x => String(x).padStart(2, '0')).join('');
         const duoi = FK_RES.blob.type === 'image/png' ? '.png' : '.jpg';
         const file = new File([FK_RES.blob], `${cName}_${maKh}_GHEP FRAME_${hhmmss}${duoi}`, { type: FK_RES.blob.type || 'image/png' });
-        // Cùng thư mục với ảnh khách gửi in, nhân viên tìm một chỗ là thấy
-        const sent = await guiLenDrive([file], { branch: bName, day: getDStr(now).replace(/\//g, '-'), client: `${cName} - ${maKh}` }, (i, v) => set(v * 0.95));
+        // Lưu vào thư mục lượt chụp, đúng thư mục tiệm đã trả ảnh cho khách:
+        // thư mục đó vốn mở cho khách xem nên ảnh ghép hiện luôn trong album
+        const sent = await guiLenDrive([file], { branch: bName, day: getDStr(now).replace(/\//g, '-'), client: `${cName} - ${maKh}`, lot: _albCtx.fid }, (i, v) => set(v * 0.95));
         const up = sent.files[0];
         if (!up || !up.id) throw new Error((up && up.err) || 'Không gửi được ảnh');
         const info = { folderUrl: sent.folderUrl };
