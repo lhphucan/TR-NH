@@ -14,7 +14,7 @@ h1 { font-size: 16px; letter-spacing: 1px; margin: 4px 0 4px; text-transform: up
 .sub { font-size: 12px; color: var(--muted); margin: 0 0 14px; line-height: 1.5; }
 
 .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-.tab { flex: 1; padding: 12px; border: 1px solid var(--line); background: #fff; border-radius: 12px; font: 600 13px 'Inter', sans-serif; cursor: pointer; }
+.tab { flex: 1; padding: 12px; border: 1px solid var(--line); background: #fff; border-radius: 12px; font: 600 13px 'Inter', sans-serif; cursor: pointer; color: var(--text); }
 .tab.on { background: var(--text); color: #fff; border-color: var(--text); }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
@@ -31,10 +31,14 @@ label.f { font-size: 11px; font-weight: 600; color: var(--muted); display: block
 
 /* Danh sách frame */
 .flist { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.fitem { border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: #fff; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; }
+.fitem { border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: #fff; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; color: var(--text); }
 .fitem img { width: 100%; aspect-ratio: 3/2; object-fit: contain; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0/16px 16px; border-radius: 8px; display: block; }
 .fitem b { display: block; font-size: 12px; margin-top: 6px; }
 .fitem span { font-size: 11px; color: var(--muted); }
+.fitem.off { opacity: .5; }
+.fwrap { position: relative; }
+.fdel { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid #fecaca; background: #fff;
+        color: #dc2626; font: 700 16px 'Inter', sans-serif; cursor: pointer; line-height: 1; }
 
 /* Khung làm việc: chặn cuộn trang khi kéo trên khung */
 .stage { position: relative; width: 100%; touch-action: none; user-select: none; -webkit-user-select: none;
@@ -57,6 +61,43 @@ label.f { font-size: 11px; font-weight: 600; color: var(--muted); display: block
 .h.rt { cursor: grab; background: #2563eb; }
 .h.rt::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 2px; height: 14px; margin-left: -1px; background: #2563eb; }
 
+/* Ô bên khách */
+.cslot { position: absolute; overflow: hidden; background: #e5e5e5; }
+.cslot img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; }
+/* Khách không cần thấy viền ô nào: ô trống đã có nền xám và dấu cộng */
+.cmark { position: absolute; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+.cmark .plus { background: rgba(17,17,17,.75); color: #fff; font: 600 22px/1 'Inter', sans-serif; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+/* Bảng chọn ảnh trong lượt chụp */
+.pk { position: fixed; inset: 0; background: #fff; z-index: 50; display: flex; flex-direction: column; }
+.pk-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); flex: none; }
+.pk-head span { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.pk-x { background: none; border: none; font-size: 26px; line-height: 1; color: var(--muted); cursor: pointer; padding: 4px 12px; min-width: 44px; min-height: 44px; }
+.pk-grid { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 12px; align-content: start; }
+@media (min-width: 560px) { .pk-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .pk-grid { grid-template-columns: repeat(4, 1fr); } }
+/* Ô ảnh không được tự cắt phần thừa: bảng ảnh bị ép vừa chiều cao màn hình,
+   ô có cắt thừa thì trình duyệt được phép bóp hàng lại, ảnh chồng lên nhau và
+   chạm ảnh này trúng ảnh kia. Phần cắt để cho khung ảnh bên trong. */
+.pk-grid { grid-auto-rows: max-content; }
+.pk-item { position: relative; display: block; width: 100%; padding: 0; border: 2px solid transparent; border-radius: 12px;
+           background: var(--bg); cursor: pointer; }
+.pk-ph { display: block; width: 100%; aspect-ratio: 3/2; border-radius: 10px; overflow: hidden; }
+.pk-ph img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.pk-item.on { border-color: var(--text); }
+.pk-tick { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff;
+           background: rgba(0,0,0,.25); color: #fff; font: 700 14px/22px 'Inter', sans-serif; text-align: center; }
+.pk-item.on .pk-tick { background: var(--text); }
+.pk-used { position: absolute; left: 6px; bottom: 6px; background: rgba(17,17,17,.75); color: #fff; font: 600 10px 'Inter', sans-serif; padding: 3px 7px; border-radius: 10px; }
+.pk-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.pk-foot span { flex: 1; font-size: 13px; color: var(--muted); }
+
+.tool { display: none; margin-top: 12px; }
+.tool.on { display: block; }
+input[type=range] { width: 100%; accent-color: #111; }
+.res img { width: 100%; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.stat { font: 12px/1.7 ui-monospace, Menlo, monospace; background: #f4f4f5; padding: 10px 12px; border-radius: 8px; margin-top: 10px; white-space: pre-wrap; }
+
 /* Hộp hỏi và thông báo tự làm: hộp có sẵn của trình duyệt bị Zalo, Messenger
    chặn im lặng, bấm xoá xong không có gì xảy ra */
 .dlg { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
@@ -65,22 +106,6 @@ label.f { font-size: 11px; font-weight: 600; color: var(--muted); display: block
 .dlg-box .row .btn { flex: 1; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #111; color: #fff; font: 600 13px 'Inter', sans-serif;
          padding: 12px 16px; border-radius: 12px; z-index: 101; max-width: calc(100% - 32px); text-align: center; transition: opacity .3s; }
-.fwrap { position: relative; }
-.fdel { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid #fecaca; background: #fff;
-        color: #dc2626; font: 700 16px 'Inter', sans-serif; cursor: pointer; line-height: 1; }
-
-/* Ô bên khách */
-.cslot { position: absolute; overflow: hidden; background: #e5e5e5; }
-.cslot img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; }
-/* Khách không cần thấy viền ô nào: ô trống đã có nền xám và dấu cộng */
-.cmark { position: absolute; pointer-events: none; display: flex; align-items: center; justify-content: center; }
-.cmark .plus { background: rgba(17,17,17,.75); color: #fff; font: 600 22px/1 'Inter', sans-serif; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-
-.tool { display: none; margin-top: 12px; }
-.tool.on { display: block; }
-input[type=range] { width: 100%; accent-color: #111; }
-.res img { width: 100%; border-radius: 8px; border: 1px solid var(--line); display: block; }
-.stat { font: 12px/1.7 ui-monospace, Menlo, monospace; background: #f4f4f5; padding: 10px 12px; border-radius: 8px; margin-top: 10px; white-space: pre-wrap; }
 .hidden { display: none !important; }
 
 @media (hover: none) and (pointer: coarse) {
@@ -94,7 +119,7 @@ input[type=range] { width: 100%; accent-color: #111; }
 <body>
 <div class="wrap">
     <h1>Ghép frame — bản thử</h1>
-    <p class="sub">Bản thử chạy riêng, chưa nối Drive và chưa gửi tiệm. Frame lưu trong trình duyệt của máy đang dùng.</p>
+    <p class="sub">Bản thử chạy riêng, chưa gửi tiệm. Frame lưu trong trình duyệt của máy đang dùng.</p>
 
     <div class="tabs">
         <button class="tab on" id="tab-ad" onclick="showTab('ad')">Quản lý: dựng frame</button>
@@ -109,14 +134,13 @@ input[type=range] { width: 100%; accent-color: #111; }
             <div class="row" style="margin-top:12px;">
                 <label class="btn solid" for="ad-file">+ Thêm frame PNG</label>
                 <input type="file" id="ad-file" accept=".png,image/png" class="hidden" onchange="adUpload(this)">
-                <button class="btn" onclick="genSample()">Tạo frame mẫu để thử</button>
             </div>
-            <p class="hint">Xuất frame từ Canva dạng PNG, bật <b>Nền trong suốt</b>, các lỗ đặt ảnh để trống.</p>
+            <p class="hint">Xuất frame từ Canva dạng PNG, bật <b>Nền trong suốt</b>, các lỗ đặt ảnh để trống. Up lên là trang tự tìm lỗ và tạo sẵn ô.</p>
         </div>
 
         <div class="card hidden" id="ad-edit">
             <h2>Dựng ô ảnh</h2>
-            <div class="row" style="margin-bottom:10px;">
+            <div class="row" style="margin-bottom:10px; align-items:flex-end;">
                 <div style="flex:1; min-width:180px;">
                     <label class="f">Tên frame</label>
                     <input type="text" id="ad-name">
@@ -126,6 +150,13 @@ input[type=range] { width: 100%; accent-color: #111; }
                     <div class="row">
                         <button class="btn" id="ad-front" onclick="setFront(true)">Trên ảnh</button>
                         <button class="btn" id="ad-back" onclick="setFront(false)">Dưới ảnh</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="f">Cho khách dùng</label>
+                    <div class="row">
+                        <button class="btn" id="ad-on" onclick="setOn(true)">Đang dùng</button>
+                        <button class="btn" id="ad-off" onclick="setOn(false)">Ẩn</button>
                     </div>
                 </div>
             </div>
@@ -154,6 +185,7 @@ input[type=range] { width: 100%; accent-color: #111; }
 
             <div class="row" style="margin-top:14px;">
                 <span id="ad-count" class="hint" style="margin:0; flex:1;"></span>
+                <button class="btn" onclick="adRedetect()">Tự nhận lại lỗ</button>
                 <button class="btn danger" onclick="adDelete()">Xoá frame</button>
                 <button class="btn solid" onclick="adSave()">Lưu frame</button>
             </div>
@@ -162,7 +194,16 @@ input[type=range] { width: 100%; accent-color: #111; }
 
     <!-- ================= KHÁCH ================= -->
     <section id="pane-kh" class="hidden">
-        <div class="card" id="kh-pick">
+        <div class="card" id="kh-src">
+            <h2>Lượt chụp của khách</h2>
+            <div class="row">
+                <input type="text" id="kh-folder" placeholder="Dán link thư mục ảnh đã gửi khách" style="flex:1; min-width:200px;">
+                <button class="btn solid" onclick="khLoadShoot()">Mở lượt chụp</button>
+            </div>
+            <p class="hint" id="kh-src-hint">Bản thử: dán link thư mục Drive nhân viên đã gửi khách. Lúc làm thật khách bấm từ album nên khỏi dán.</p>
+        </div>
+
+        <div class="card hidden" id="kh-pick">
             <h2>Chọn frame</h2>
             <div id="kh-list" class="flist"></div>
         </div>
@@ -173,13 +214,12 @@ input[type=range] { width: 100%; accent-color: #111; }
                 <span id="kh-prog" class="hint" style="margin:0;"></span>
             </div>
             <div id="kh-stage" class="stage"></div>
-            <p class="hint">Chạm ô trống để chọn ảnh. Chạm ô đã có ảnh rồi kéo để dời, chụm hai ngón để phóng to.</p>
+            <p class="hint">Chạm ô trống để chọn ảnh, chọn nhiều ảnh một lần thì tự điền vào các ô trống. Chạm ô đã có ảnh để đổi ảnh khác. Kéo để dời, chụm hai ngón để phóng to.</p>
 
             <div id="kh-tool" class="tool">
-                <label class="f">Phóng to</label>
+                <label class="f">Phóng to ảnh vừa chỉnh</label>
                 <input type="range" id="kh-zoom" min="1" max="4" step="0.01" value="1" oninput="khZoom(this.value)">
                 <div class="row" style="margin-top:8px;">
-                    <button class="btn" onclick="khOp('change')">Đổi ảnh</button>
                     <button class="btn" onclick="khOp('rot')">Xoay ảnh 90°</button>
                     <button class="btn danger" onclick="khOp('del')">Bỏ ảnh</button>
                 </div>
@@ -188,7 +228,6 @@ input[type=range] { width: 100%; accent-color: #111; }
             <div class="row" style="margin-top:14px;">
                 <button class="btn solid" id="kh-done" onclick="khExport()" disabled style="flex:1;">GHÉP XONG</button>
             </div>
-            <input type="file" id="kh-file" class="hidden" accept=".jpg,.jpeg,.png,.heic,.heif,.webp,image/jpeg,image/png,image/heic,image/heif,image/webp" onchange="khFile(this)">
         </div>
 
         <div class="card hidden res" id="kh-res">
@@ -203,6 +242,19 @@ input[type=range] { width: 100%; accent-color: #111; }
     </section>
 </div>
 
+<!-- Bảng chọn ảnh trong lượt chụp -->
+<div id="pk" class="pk hidden">
+    <div class="pk-head">
+        <span id="pk-title">Chọn ảnh</span>
+        <button class="pk-x" onclick="pkClose()" aria-label="Đóng">&times;</button>
+    </div>
+    <div id="pk-grid" class="pk-grid"></div>
+    <div class="pk-foot" id="pk-foot">
+        <span id="pk-count"></span>
+        <button class="btn solid" id="pk-ok" onclick="pkDone()" disabled>ĐẶT VÀO Ô</button>
+    </div>
+</div>
+
 <div id="dlg" class="dlg hidden">
     <div class="dlg-box">
         <p id="dlg-msg"></p>
@@ -215,6 +267,45 @@ input[type=range] { width: 100%; accent-color: #111; }
 <div id="toast" class="toast hidden"></div>
 
 <script>
+// Cầu nối Drive: đọc hộ danh sách ảnh của một thư mục (trang khách không đăng nhập Google)
+const GS = 'https://script.google.com/macros/s/AKfycbzgTZONjA_08zddPfHmnSod_Zh6U5aQFwlUBOeshWusseed6gOuuD4RBekpVi5b3fAH/exec';
+const GS_KEY = '0vRhkkYveiToxF9yK4sG4rWacTaMbfNl';
+
+// ================= Hộp hỏi, thông báo =================
+// Tự làm thay cho confirm/alert: hai hộp đó bị Zalo, Messenger chặn im lặng
+function ask(msg, okText) {
+    return new Promise(done => {
+        const d = document.getElementById('dlg');
+        document.getElementById('dlg-msg').innerText = msg;
+        const ok = document.getElementById('dlg-ok'), no = document.getElementById('dlg-no');
+        ok.innerText = okText || 'Đồng ý';
+        const close = v => { d.classList.add('hidden'); ok.onclick = no.onclick = d.onclick = null; done(v); };
+        ok.onclick = () => close(true);
+        no.onclick = () => close(false);
+        d.onclick = e => { if (e.target === d) close(false); };
+        d.classList.remove('hidden');
+    });
+}
+
+let _toastT = 0;
+function toast(msg, ms) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.classList.remove('hidden');
+    t.style.opacity = '1';
+    clearTimeout(_toastT);
+    _toastT = setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.classList.add('hidden'), 300); }, ms || 2600);
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+function showTab(t) {
+    document.getElementById('tab-ad').classList.toggle('on', t === 'ad');
+    document.getElementById('tab-kh').classList.toggle('on', t === 'kh');
+    document.getElementById('pane-ad').classList.toggle('hidden', t !== 'ad');
+    document.getElementById('pane-kh').classList.toggle('hidden', t !== 'kh');
+}
+
 // ================= Lưu frame trong trình duyệt =================
 // IndexedDB chứ không phải localStorage: một frame PNG cỡ in nặng 10-20 MB,
 // localStorage chỉ chứa được khoảng 5 MB.
@@ -243,31 +334,6 @@ const idb = {
     del(id) { return this.run('readwrite', s => s.delete(id)); }
 };
 
-// Hộp hỏi và thông báo tự làm thay cho confirm/alert của trình duyệt
-function ask(msg, okText) {
-    return new Promise(done => {
-        const d = document.getElementById('dlg');
-        document.getElementById('dlg-msg').innerText = msg;
-        const ok = document.getElementById('dlg-ok'), no = document.getElementById('dlg-no');
-        ok.innerText = okText || 'Đồng ý';
-        const close = v => { d.classList.add('hidden'); ok.onclick = no.onclick = d.onclick = null; done(v); };
-        ok.onclick = () => close(true);
-        no.onclick = () => close(false);
-        d.onclick = e => { if (e.target === d) close(false); };
-        d.classList.remove('hidden');
-    });
-}
-
-let _toastT = 0;
-function toast(msg, ms) {
-    const t = document.getElementById('toast');
-    t.innerText = msg;
-    t.classList.remove('hidden');
-    t.style.opacity = '1';
-    clearTimeout(_toastT);
-    _toastT = setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.classList.add('hidden'), 300); }, ms || 2600);
-}
-
 let FRAMES = [];
 const urlCache = {};
 function previewUrl(f) {
@@ -277,7 +343,7 @@ function previewUrl(f) {
 
 async function loadFrames() {
     try { FRAMES = await idb.all(); }
-    catch (e) { FRAMES = FRAMES || []; toast('Trình duyệt này không lưu được frame, chỉ dùng tạm trong phiên.', 4000); }
+    catch (e) { toast('Trình duyệt này không lưu được frame, chỉ dùng tạm trong phiên.', 4000); }
     FRAMES.sort((a, b) => b.id.localeCompare(a.id));
     renderLists();
 }
@@ -285,35 +351,31 @@ async function loadFrames() {
 function renderLists() {
     const item = (f, del) => `
         <div class="fwrap">
-            <button class="fitem" data-id="${f.id}" style="width:100%;">
+            <button class="fitem${f.on === false ? ' off' : ''}" data-id="${f.id}" style="width:100%;">
                 <img src="${previewUrl(f)}" alt="">
                 <b>${esc(f.name)}</b>
-                <span>${f.slots.length} ô · ${f.w}×${f.h} · frame ${f.front ? 'trên' : 'dưới'} ảnh</span>
+                <span>${f.slots.length} ô · frame ${f.front ? 'trên' : 'dưới'} ảnh${f.on === false ? ' · đang ẩn' : ''}</span>
             </button>
             ${del ? `<button class="fdel" data-del="${f.id}" aria-label="Xoá frame">✕</button>` : ''}
         </div>`;
     const adList = document.getElementById('ad-list');
-    const khList = document.getElementById('kh-list');
     adList.innerHTML = FRAMES.map(f => item(f, true)).join('') || '<p class="hint">Chưa có frame nào.</p>';
-    khList.innerHTML = FRAMES.map(f => item(f, false)).join('') || '<p class="hint">Chưa có frame nào. Sang tab Quản lý để thêm.</p>';
     adList.querySelectorAll('.fitem').forEach(b => b.onclick = () => adOpen(b.dataset.id));
     adList.querySelectorAll('.fdel').forEach(b => b.onclick = () => adDelete(b.dataset.del));
+
+    // Khách chỉ thấy frame đang dùng
+    const dung = FRAMES.filter(f => f.on !== false);
+    const khList = document.getElementById('kh-list');
+    khList.innerHTML = dung.map(f => item(f, false)).join('') || '<p class="hint">Chưa có frame nào đang dùng.</p>';
     khList.querySelectorAll('.fitem').forEach(b => b.onclick = () => khOpen(b.dataset.id));
-}
-
-function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-
-function showTab(t) {
-    document.getElementById('tab-ad').classList.toggle('on', t === 'ad');
-    document.getElementById('tab-kh').classList.toggle('on', t === 'kh');
-    document.getElementById('pane-ad').classList.toggle('hidden', t !== 'ad');
-    document.getElementById('pane-kh').classList.toggle('hidden', t !== 'kh');
 }
 
 // ================= Ảnh =================
 function loadImg(src) {
     return new Promise((ok, fail) => {
         const im = new Image();
+        // Ảnh Google cho phép đọc chéo; thiếu dòng này thì vẽ vào khung xong không xuất được
+        if (/^https?:/.test(src)) im.crossOrigin = 'anonymous';
         im.onload = () => ok(im);
         im.onerror = () => fail(new Error('Không đọc được ảnh'));
         im.src = src;
@@ -356,6 +418,80 @@ function canvasFor(W, H) {
     return null;
 }
 
+// ================= Tự nhận lỗ đục =================
+// Tìm các vùng trong suốt khép kín trên frame rồi tạo sẵn ô cho từng vùng.
+// Vùng chạm mép ảnh là nền ngoài frame, không phải lỗ. Vùng quá nhỏ là vết
+// trong suốt lặt vặt (khe chữ, bóng đổ), bỏ.
+async function detectHoles(prevBlob, W, H) {
+    const u = URL.createObjectURL(prevBlob);
+    let w, h, alpha;
+    try {
+        const im = await loadImg(u);
+        w = im.naturalWidth; h = im.naturalHeight;
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const x = c.getContext('2d');
+        x.drawImage(im, 0, 0);
+        alpha = x.getImageData(0, 0, w, h).data;
+        c.width = c.height = 0;
+    } finally { URL.revokeObjectURL(u); }
+
+    const N = w * h, clear = new Uint8Array(N), seen = new Uint8Array(N), stack = new Int32Array(N);
+    for (let i = 0; i < N; i++) clear[i] = alpha[i * 4 + 3] < 128 ? 1 : 0;
+
+    const holes = [];
+    for (let start = 0; start < N; start++) {
+        if (!clear[start] || seen[start]) continue;
+        let sp = 0, count = 0, edge = false;
+        const pts = [];
+        stack[sp++] = start; seen[start] = 1;
+        while (sp) {
+            const p = stack[--sp], px = p % w, py = (p - px) / w;
+            count++;
+            if (px === 0 || py === 0 || px === w - 1 || py === h - 1) edge = true;
+            if (!(px & 1) && !(py & 1)) pts.push(px, py);   // lấy mẫu cách điểm cho nhanh
+            if (px > 0 && clear[p - 1] && !seen[p - 1]) { seen[p - 1] = 1; stack[sp++] = p - 1; }
+            if (px < w - 1 && clear[p + 1] && !seen[p + 1]) { seen[p + 1] = 1; stack[sp++] = p + 1; }
+            if (py > 0 && clear[p - w] && !seen[p - w]) { seen[p - w] = 1; stack[sp++] = p - w; }
+            if (py < h - 1 && clear[p + w] && !seen[p + w]) { seen[p + w] = 1; stack[sp++] = p + w; }
+        }
+        if (edge || count < N * 0.004) continue;
+        holes.push(fitRect(pts));
+    }
+
+    // Đổi về cỡ frame thật, chừa thêm mép để viền frame che, không lộ khe trắng
+    const k = W / w, bleed = Math.round(Math.max(W, H) * 0.003);
+    const slots = holes.map(r => ({ cx: r.cx * k, cy: r.cy * k, w: r.w * k + bleed * 2, h: r.h * k + bleed * 2, rot: r.rot }));
+    // Xếp theo hàng từ trên xuống, trong hàng từ trái sang
+    slots.sort((a, b) => Math.abs(a.cy - b.cy) < Math.min(a.h, b.h) / 2 ? a.cx - b.cx : a.cy - b.cy);
+    return slots.map(s => ({ cx: Math.round(s.cx), cy: Math.round(s.cy), w: Math.round(s.w), h: Math.round(s.h), rot: s.rot }));
+}
+
+// Hình chữ nhật nhỏ nhất ôm được vùng lỗ, kể cả lỗ đục nghiêng
+function fitRect(pts) {
+    const n = pts.length / 2;
+    const box = deg => {
+        const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+        let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+        for (let i = 0; i < n; i++) {
+            const x = pts[i * 2], y = pts[i * 2 + 1];
+            const u = x * c + y * s, v = -x * s + y * c;
+            if (u < u0) u0 = u; if (u > u1) u1 = u;
+            if (v < v0) v0 = v; if (v > v1) v1 = v;
+        }
+        // +2: điểm lấy mẫu cách 2, mép thật nằm xa hơn điểm mẫu cuối
+        return { deg, u0, u1, v0, v1, area: (u1 - u0 + 2) * (v1 - v0 + 2) };
+    };
+    let best = box(0);
+    for (let d = -45; d < 45; d += 1) { const b = box(d); if (b.area < best.area - 1e-6) best = b; }
+    for (let d = best.deg - 1; d <= best.deg + 1; d += 0.1) { const b = box(d); if (b.area < best.area - 1e-6) best = b; }
+    // Lệch dưới 1,5 độ coi như thẳng: lỗ đục thẳng là chuyện thường
+    if (Math.abs(best.deg) < 1.5) best = box(0);
+    const a = best.deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    const mu = (best.u0 + best.u1) / 2 + 0.5, mv = (best.v0 + best.v1) / 2 + 0.5;
+    return { cx: mu * c - mv * s, cy: mu * s + mv * c, w: best.u1 - best.u0 + 2, h: best.v1 - best.v0 + 2,
+             rot: Math.round(((best.deg % 360) + 360) % 360 * 10) / 10 };
+}
+
 // ================= QUẢN LÝ: dựng frame =================
 let ED = null;      // frame đang sửa
 let SEL = -1;       // ô đang chọn
@@ -367,16 +503,28 @@ async function adUpload(inp) {
     try {
         const p = await shrink(file, 1600, 'image/png');
         ED = { id: 'F_' + Date.now(), name: file.name.replace(/\.png$/i, ''), w: p.nw, h: p.nh,
-               front: true, slots: [], blob: file, prev: p.blob };
+               front: true, on: true, slots: [], blob: file, prev: p.blob };
         SEL = -1;
+        ED.slots = await detectHoles(ED.prev, ED.w, ED.h);
         adShow();
+        toast(ED.slots.length ? `Tìm thấy ${ED.slots.length} lỗ, đã tạo sẵn ${ED.slots.length} ô. Kiểm lại rồi bấm Lưu.`
+                              : 'Không thấy lỗ trong suốt nào. Kéo trên frame để vẽ ô.', 4000);
     } catch (e) { toast('Không đọc được file frame: ' + e.message, 4000); }
+}
+
+async function adRedetect() {
+    if (!ED) return;
+    if (ED.slots.length && !(await ask('Tìm lại lỗ sẽ thay hết các ô đang có. Làm tiếp?', 'Tìm lại'))) return;
+    ED.slots = await detectHoles(ED.prev, ED.w, ED.h);
+    SEL = -1;
+    adRender();
+    toast(`Tìm thấy ${ED.slots.length} lỗ`);
 }
 
 function adOpen(id) {
     const f = FRAMES.find(x => x.id === id);
     if (!f) return;
-    ED = JSON.parse(JSON.stringify({ id: f.id, name: f.name, w: f.w, h: f.h, front: f.front, slots: f.slots }));
+    ED = JSON.parse(JSON.stringify({ id: f.id, name: f.name, w: f.w, h: f.h, front: f.front, on: f.on !== false, slots: f.slots }));
     ED.blob = f.blob; ED.prev = f.prev;
     SEL = -1;
     adShow();
@@ -386,8 +534,8 @@ function adShow() {
     document.getElementById('ad-edit').classList.remove('hidden');
     document.getElementById('ad-name').value = ED.name;
     document.getElementById('ad-img').src = urlCache[ED.id] || (urlCache[ED.id] = URL.createObjectURL(ED.prev));
+    setOn(ED.on !== false);
     setFront(ED.front);
-    adRender();
     document.getElementById('ad-edit').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -396,6 +544,13 @@ function setFront(v) {
     document.getElementById('ad-front').classList.toggle('solid', v);
     document.getElementById('ad-back').classList.toggle('solid', !v);
     adRender();
+}
+
+// Ẩn frame thay vì xoá: frame theo mùa, hết đợt thì ẩn, đợt sau bật lại
+function setOn(v) {
+    ED.on = v;
+    document.getElementById('ad-on').classList.toggle('solid', v);
+    document.getElementById('ad-off').classList.toggle('solid', !v);
 }
 
 function adK() {
@@ -414,7 +569,7 @@ const HANDLES = [
 
 function adRender() {
     const k = adK();
-    const box = (s) => `left:${(s.cx - s.w / 2) * k}px; top:${(s.cy - s.h / 2) * k}px; width:${s.w * k}px; height:${s.h * k}px; transform:rotate(${s.rot}deg);`;
+    const box = s => `left:${(s.cx - s.w / 2) * k}px; top:${(s.cy - s.h / 2) * k}px; width:${s.w * k}px; height:${s.h * k}px; transform:rotate(${s.rot}deg);`;
 
     // Lớp ảnh giả: frame trên ảnh thì nó nằm dưới frame, viền frame che mép;
     // frame dưới ảnh thì nó nằm trên frame
@@ -549,7 +704,7 @@ async function adSave() {
     if (!ED) return;
     ED.name = document.getElementById('ad-name').value.trim() || 'Frame';
     if (!ED.slots.length) return toast('Frame chưa có ô ảnh nào. Kéo trên frame để vẽ ô.', 3500);
-    const rec = { id: ED.id, name: ED.name, w: ED.w, h: ED.h, front: ED.front,
+    const rec = { id: ED.id, name: ED.name, w: ED.w, h: ED.h, front: ED.front, on: ED.on !== false,
                   slots: ED.slots.map(s => ({ cx: Math.round(s.cx), cy: Math.round(s.cy), w: Math.round(s.w), h: Math.round(s.h), rot: s.rot })),
                   blob: ED.blob, prev: ED.prev };
     try { await idb.put(rec); }
@@ -570,59 +725,71 @@ async function adDelete(id) {
     toast('Đã xoá frame');
 }
 
-// Frame mẫu cùng cỡ frame Canva thật (6250×4405) để thử ngay trên điện thoại
-async function genSample() {
-    const W = 6250, H = 4405;
-    const cv = canvasFor(W, H);
-    if (!cv) return toast('Máy này không tạo nổi khung vẽ để làm frame mẫu.', 4000);
-    const { c, x, s } = cv;
-    x.scale(s, s);
-    x.fillStyle = '#f3ede4'; x.fillRect(0, 0, W, H);
-    x.strokeStyle = '#4a3428'; x.lineWidth = 60; x.strokeRect(30, 30, W - 60, H - 60);
-    x.fillStyle = '#4a3428';
-    x.font = '700 260px Inter, sans-serif'; x.textAlign = 'center';
-    x.fillText('PHOTO NOIR', 1650, 520);
-    x.font = '500 120px Inter, sans-serif';
-    x.fillText('khung mẫu', 4700, 520);
+// ================= KHÁCH: lượt chụp =================
+let SHOOT = null;     // { folder, images: [{id, name, size}] }
 
-    // Lỗ đục: 4 ô vuông bên trái, 2 ô dọc bên phải
-    const holes = [
-        { x: 250, y: 750, w: 1550, h: 1550 }, { x: 1950, y: 750, w: 1550, h: 1550 },
-        { x: 250, y: 2450, w: 1550, h: 1550 }, { x: 1950, y: 2450, w: 1550, h: 1550 },
-        { x: 3750, y: 750, w: 1050, h: 1500 }, { x: 4950, y: 750, w: 1050, h: 1500 }
-    ];
-    holes.forEach(h => x.clearRect(h.x, h.y, h.w, h.h));
-    x.font = '600 110px Inter, sans-serif';
-    x.fillText('Bản thử ghép frame', 4875, 3300);
-
-    const full = await new Promise(r => c.toBlob(r, 'image/png'));
-    c.width = c.height = 0;
-    if (!full) return toast('Không xuất được frame mẫu trên máy này.', 4000);
-    const p = await shrink(full, 1600, 'image/png');
-    // Ô to hơn lỗ 20 điểm mỗi bên: viền frame che mép ảnh, không lộ khe trắng
-    const B = 20;
-    const rec = { id: 'F_' + Date.now(), name: 'Khung mẫu 6 ô', w: W, h: H, front: true,
-                  slots: holes.map(h => ({ cx: h.x + h.w / 2, cy: h.y + h.h / 2, w: h.w + B * 2, h: h.h + B * 2, rot: 0 })),
-                  blob: full, prev: p.blob };
-    try { await idb.put(rec); } catch (e) { FRAMES.push(rec); }
-    await loadFrames();
+async function gsAlbum(folder) {
+    const url = GS + '?' + new URLSearchParams({ k: GS_KEY, action: 'album', folder });
+    let last;
+    // Apps Script thỉnh thoảng trả trang trung gian thay vì dữ liệu -> thử lại
+    for (let i = 0; i < 4; i++) {
+        try {
+            const d = await (await fetch(url)).json();
+            if (d.ok) return d.images || [];
+            last = new Error(d.error || 'Không đọc được thư mục');
+            if (/hop le|Thieu/.test(d.error || '')) break;
+        } catch (e) { last = e; }
+        await new Promise(r => setTimeout(r, 800 * (i + 1)));
+    }
+    throw last;
 }
+
+async function khLoadShoot(folderArg) {
+    const raw = folderArg || document.getElementById('kh-folder').value.trim();
+    const folder = (raw.match(/folders\/([\w-]+)/) || [])[1] || (/^[\w-]{20,}$/.test(raw) ? raw : '');
+    if (!folder) return toast('Link thư mục chưa đúng', 3000);
+    const hint = document.getElementById('kh-src-hint');
+    hint.innerText = 'Đang đọc lượt chụp...';
+    try {
+        let imgs = await gsAlbum(folder);
+        // Bỏ bản ghép khung có sẵn của máy chụp: ảnh chụp thường 2-3 MB, bản ghép 10-27 MB.
+        // Khách ghép vào frame mới thì dùng ảnh chụp, không dùng ảnh đã ghép.
+        const NANG = 5 * 1024 * 1024;
+        if (imgs.some(x => x.size < NANG)) imgs = imgs.filter(x => x.size < NANG);
+        if (!imgs.length) throw new Error('Thư mục chưa có ảnh nào');
+        SHOOT = { folder, images: imgs };
+        hint.innerText = `Lượt chụp có ${imgs.length} ảnh.`;
+        document.getElementById('kh-pick').classList.remove('hidden');
+        document.getElementById('kh-comp').classList.add('hidden');
+        document.getElementById('kh-res').classList.add('hidden');
+        renderLists();
+    } catch (e) {
+        hint.innerText = 'Không đọc được: ' + e.message;
+    }
+}
+
+// Ảnh trong lượt chụp lấy thẳng từ Google bằng mã ảnh: bản 1600 để xem và
+// kéo, bản =s0 là bản gốc nguyên vẹn để ghép (đã đối chiếu mã băm, khớp từng byte)
+const photoPrev = id => 'https://lh3.googleusercontent.com/d/' + id + '=s1600';
+const photoFull = id => 'https://lh3.googleusercontent.com/d/' + id + '=s0';
+const photoThumb = id => 'https://lh3.googleusercontent.com/d/' + id + '=s600';
 
 // ================= KHÁCH: ghép ảnh =================
 let CF = null;        // frame đang ghép
-let PH = [];          // ảnh của từng ô
-let CSEL = -1;        // ô đang chỉnh
-let pickFor = -1;     // ô đang chờ chọn ảnh
+let PH = [];          // ảnh của từng ô: { id, url, iw, ih, s, ox, oy, r }
+let CSEL = -1;        // ô vừa chỉnh (thanh phóng to và nút xoay tác động vào ô này)
 
-function khOpen(id) {
+async function khOpen(id) {
     CF = FRAMES.find(x => x.id === id);
-    if (!CF) return;
-    PH.forEach(p => p && URL.revokeObjectURL(p.url));
+    if (!CF || !SHOOT) return;
     PH = CF.slots.map(() => null);
     CSEL = -1;
     document.getElementById('kh-pick').classList.add('hidden');
     document.getElementById('kh-res').classList.add('hidden');
     document.getElementById('kh-comp').classList.remove('hidden');
+    _restoring = true;
+    khRender();
+    try { await draftRestore(); } finally { _restoring = false; }
     khRender();
 }
 
@@ -672,9 +839,9 @@ function khRender() {
         }
         return `<div class="cslot" style="${slotBox(s, k)} z-index:1;">${img}</div>`;
     }).join('');
-    const marks = CF.slots.map((s, i) => `
-        <div class="cmark${i === CSEL ? ' sel' : ''}" style="${slotBox(s, k)} z-index:4;">
-            ${PH[i] ? '' : `<span class="plus" style="transform:rotate(${-s.rot}deg)">+</span>`}
+    const marks = CF.slots.map((s, i) => PH[i] ? '' : `
+        <div class="cmark" style="${slotBox(s, k)} z-index:4;">
+            <span class="plus" style="transform:rotate(${-s.rot}deg)">+</span>
         </div>`).join('');
     document.getElementById('kh-stage').innerHTML = fr + slots + marks;
 
@@ -684,6 +851,7 @@ function khRender() {
     const tool = document.getElementById('kh-tool');
     tool.classList.toggle('on', CSEL >= 0 && !!PH[CSEL]);
     if (CSEL >= 0 && PH[CSEL]) document.getElementById('kh-zoom').value = PH[CSEL].s;
+    draftLater();
 }
 
 // Điểm chạm rơi vào ô nào (ô có thể đang xoay)
@@ -747,10 +915,8 @@ function slotAt(fx, fy) {
         pts.delete(e.pointerId);
         if (pts.size < 2) pinch = null;
         if (pts.size === 0) {
-            if (tap) {
-                if (tap.i < 0) { CSEL = -1; khRender(); }
-                else if (!PH[tap.i]) { pickFor = tap.i; document.getElementById('kh-file').click(); }
-            }
+            // Chạm nhẹ không kéo: ô trống thì chọn ảnh, ô có ảnh thì đổi ảnh khác
+            if (tap && tap.i >= 0) pkOpen(tap.i, PH[tap.i] ? 'replace' : 'fill');
             pan = null; tap = null;
         }
     };
@@ -766,19 +932,13 @@ function slotAt(fx, fy) {
     }, { passive: false });
 })();
 
-async function khFile(inp) {
-    const file = inp.files[0];
-    inp.value = '';
-    if (!file || pickFor < 0) return;
-    const i = pickFor; pickFor = -1;
-    document.getElementById('kh-prog').innerText = 'Đang mở ảnh...';
-    try {
-        const p = await shrink(file, 1600, 'image/jpeg');
-        if (PH[i]) URL.revokeObjectURL(PH[i].url);
-        PH[i] = { file, url: URL.createObjectURL(p.blob), iw: p.nw, ih: p.nh, s: 1, ox: 0, oy: 0, r: 0 };
-        CSEL = i;
-    } catch (e) { toast('Không mở được ảnh này: ' + e.message, 4000); }
-    khRender();
+// Đặt một ảnh trong lượt chụp vào ô. Cần cỡ ảnh để tính phủ kín ô,
+// lấy từ bản 1600 (cùng tỷ lệ với bản gốc nên phép tính không đổi).
+async function setPhoto(i, id, keep) {
+    const url = photoPrev(id);
+    const im = await loadImg(url);
+    PH[i] = Object.assign({ id, url, iw: im.naturalWidth, ih: im.naturalHeight, s: 1, ox: 0, oy: 0, r: 0 }, keep || {});
+    clampPh(i);
 }
 
 function khZoom(v) {
@@ -788,14 +948,123 @@ function khZoom(v) {
 }
 
 function khOp(op) {
-    if (CSEL < 0) return;
-    if (op === 'change') { pickFor = CSEL; document.getElementById('kh-file').click(); return; }
-    if (op === 'rot' && PH[CSEL]) { PH[CSEL].r = (PH[CSEL].r + 90) % 360; PH[CSEL].ox = PH[CSEL].oy = 0; clampPh(CSEL); }
-    if (op === 'del' && PH[CSEL]) { URL.revokeObjectURL(PH[CSEL].url); PH[CSEL] = null; CSEL = -1; }
+    if (CSEL < 0 || !PH[CSEL]) return;
+    if (op === 'rot') { PH[CSEL].r = (PH[CSEL].r + 90) % 360; PH[CSEL].ox = PH[CSEL].oy = 0; clampPh(CSEL); }
+    if (op === 'del') { PH[CSEL] = null; CSEL = -1; }
     khRender();
 }
 
-// Vẽ thành ảnh: cùng một phép tính với khung xem, chỉ khác tỷ lệ
+// ================= Bảng chọn ảnh =================
+// fill: chạm ô trống -> chọn nhiều ảnh, điền vào ô đó rồi lần lượt các ô trống sau nó
+// replace: chạm ô có ảnh -> chọn một ảnh để thay
+let PK = null;
+
+function pkOpen(slot, mode) {
+    if (!SHOOT) return;
+    let targets = [slot];
+    if (mode === 'fill') {
+        const n = CF.slots.length;
+        for (let j = 1; j < n; j++) { const t = (slot + j) % n; if (!PH[t]) targets.push(t); }
+    }
+    PK = { mode, slot, targets, picked: [] };
+    const used = new Set(PH.filter(Boolean).map(p => p.id));
+    document.getElementById('pk-title').innerText = mode === 'replace' ? 'Chọn ảnh để đổi' : 'Chọn ảnh';
+    document.getElementById('pk-foot').classList.toggle('hidden', mode === 'replace');
+    document.getElementById('pk-grid').innerHTML = SHOOT.images.map(x => `
+        <button type="button" class="pk-item" data-id="${esc(x.id)}">
+            <span class="pk-ph"><img src="${photoThumb(x.id)}" alt="" loading="lazy" decoding="async"></span>
+            ${mode === 'fill' ? '<span class="pk-tick"></span>' : ''}
+            ${used.has(x.id) ? '<span class="pk-used">Đã dùng</span>' : ''}
+        </button>`).join('');
+    document.getElementById('pk-grid').querySelectorAll('.pk-item').forEach(b => b.onclick = () => pkTap(b));
+    pkCount();
+    document.getElementById('pk').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function pkClose() {
+    document.getElementById('pk').classList.add('hidden');
+    document.body.style.overflow = '';
+    PK = null;
+}
+
+async function pkTap(b) {
+    const id = b.dataset.id;
+    if (PK.mode === 'replace') {
+        const i = PK.slot;
+        pkClose();
+        await setPhoto(i, id);
+        CSEL = i;
+        khRender();
+        return;
+    }
+    const at = PK.picked.indexOf(id);
+    if (at >= 0) PK.picked.splice(at, 1);
+    else if (PK.picked.length < PK.targets.length) PK.picked.push(id);
+    else return toast(`Chỉ còn ${PK.targets.length} ô trống`);
+    document.querySelectorAll('#pk-grid .pk-item').forEach(el => {
+        const on = PK.picked.includes(el.dataset.id);
+        el.classList.toggle('on', on);
+        const t = el.querySelector('.pk-tick');
+        if (t) t.innerText = on ? '✓' : '';
+    });
+    pkCount();
+}
+
+function pkCount() {
+    if (!PK || PK.mode !== 'fill') return;
+    const n = PK.picked.length, max = PK.targets.length;
+    document.getElementById('pk-count').innerText = n ? `Đã chọn ${n}/${max} ảnh` : `Chọn tối đa ${max} ảnh`;
+    document.getElementById('pk-ok').disabled = !n;
+}
+
+async function pkDone() {
+    if (!PK || !PK.picked.length) return;
+    const jobs = PK.picked.map((id, j) => setPhoto(PK.targets[j], id));
+    const first = PK.targets[0];
+    pkClose();
+    document.getElementById('kh-prog').innerText = 'Đang đặt ảnh...';
+    await Promise.all(jobs.map(p => p.catch(() => null)));
+    CSEL = first;
+    khRender();
+}
+
+// ================= Lưu nháp =================
+// iPhone hay tự tải lại trang khi khách chuyển sang Zalo rồi quay lại: ghép dở
+// là mất. Lưu trên máy khách theo lượt chụp và frame; chỉ lưu mã ảnh và vị trí
+// nên rất nhẹ.
+const draftKey = () => 'pn_fdraft_' + SHOOT.folder + '_' + CF.id;
+let _draftT = 0;
+let _restoring = false;   // đang mở lại nháp: chưa được lưu, kẻo lưu đè khung trống lên nháp
+function draftLater() {
+    if (_restoring) return;
+    clearTimeout(_draftT);
+    _draftT = setTimeout(() => {
+        if (!CF || !SHOOT) return;
+        try {
+            if (!PH.some(Boolean)) { localStorage.removeItem(draftKey()); return; }
+            localStorage.setItem(draftKey(), JSON.stringify({
+                at: Date.now(),
+                photos: PH.map(p => p && { id: p.id, s: p.s, ox: p.ox, oy: p.oy, r: p.r })
+            }));
+        } catch (e) { /* máy chặn lưu thì thôi */ }
+    }, 400);
+}
+
+async function draftRestore() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(draftKey()) || 'null'); } catch (e) {}
+    if (!d || !Array.isArray(d.photos) || d.photos.length !== CF.slots.length) return;
+    if (Date.now() - d.at > 7 * 24 * 3600 * 1000) return;   // nháp cũ quá một tuần thì thôi
+    const ok = new Set(SHOOT.images.map(x => x.id));
+    const jobs = d.photos.map((p, i) => p && ok.has(p.id)
+        ? setPhoto(i, p.id, { s: p.s, ox: p.ox, oy: p.oy, r: p.r }).catch(() => null) : null);
+    await Promise.all(jobs);
+    if (PH.some(Boolean)) toast('Đã mở lại bản đang ghép dở');
+}
+
+// ================= Ghép thành ảnh =================
+// Cùng một phép tính với khung xem, chỉ khác tỷ lệ
 async function compose(ctx, sc, useFull, onStep) {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, CF.w * sc, CF.h * sc);
@@ -810,8 +1079,7 @@ async function compose(ctx, sc, useFull, onStep) {
         if (onStep) onStep(i);
         // Mở từng ảnh gốc một rồi bỏ ngay: sáu ảnh 12 MP mở cùng lúc là
         // gần 300 MB, iPhone cũ đóng trang ngay.
-        const u = useFull ? URL.createObjectURL(p.file) : p.url;
-        const im = await loadImg(u);
+        const im = await loadImg(useFull ? photoFull(p.id) : p.url);
         const s = CF.slots[i], g = geom(s, p);
         ctx.save();
         ctx.translate(s.cx * sc, s.cy * sc);
@@ -825,7 +1093,6 @@ async function compose(ctx, sc, useFull, onStep) {
         ctx.drawImage(im, -dw / 2, -dh / 2, dw, dh);
         ctx.restore();
         im.src = '';
-        if (useFull) URL.revokeObjectURL(u);
     }
 
     if (CF.front) ctx.drawImage(frameImg, 0, 0, CF.w * sc, CF.h * sc);
@@ -848,7 +1115,7 @@ async function khExport() {
         if (!cv) throw new Error('Máy này không đủ bộ nhớ để ghép ảnh cỡ in.');
         const W = cv.c.width, H = cv.c.height;
 
-        await compose(cv.x, cv.s, true, i => { btn.innerText = `ĐANG GHÉP Ô ${i + 1}...`; });
+        await compose(cv.x, cv.s, true, i => { btn.innerText = `ĐANG GHÉP ẢNH ${PH.slice(0, i + 1).filter(Boolean).length}/${PH.filter(Boolean).length}...`; });
         const t1 = performance.now();
 
         btn.innerText = 'ĐANG XUẤT ẢNH...';
@@ -916,6 +1183,12 @@ window.addEventListener('resize', () => {
 });
 
 loadFrames();
+
+// Mở sẵn lượt chụp nếu link có ?folder=
+(function () {
+    const f = new URLSearchParams(location.search).get('folder');
+    if (f) { document.getElementById('kh-folder').value = f; showTab('kh'); khLoadShoot(f); }
+})();
 </script>
 </body>
 </html>
