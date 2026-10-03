@@ -339,6 +339,8 @@ let _albumPicked = {};       // { fileId: {name} }
 // Ngày album xem, tách khỏi bộ lọc danh sách khách: khách đứng chờ lấy ảnh vừa
 // chụp, còn danh sách có thể đang lọc cả tuần để xem doanh thu.
 let _albumDay = new Date();
+// Album mở từ thẻ khách: ghi tên khách vào chú thích khi gửi Zalo
+let _albumFor = null;
 
 function ymdOf(d) {
     return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
@@ -395,6 +397,7 @@ async function openAlbumBrowser() {
 }
 
 function closeAlbumBrowser() {
+    _albumFor = null;
     document.getElementById('album-modal').style.display = 'none';
     document.body.classList.remove('album-open');
     _albumShoot = null;
@@ -404,6 +407,7 @@ function closeAlbumBrowser() {
 
 // Về màn chọn lượt chụp
 async function albumBack() {
+    _albumFor = null;
     _albumShoot = null;
     _albumPicked = {};
     document.getElementById('album-back').style.display = 'none';
@@ -493,6 +497,105 @@ function updateAlbumCount() {
     const btn = document.getElementById('album-download');
     btn.disabled = !n;
     btn.innerText = n ? `TẢI ${n} ẢNH` : 'TẢI ẢNH ĐÃ CHỌN';
+    document.getElementById('album-zalo').disabled = !n;
+}
+
+// Mở thẳng album lượt đã trả cho một khách, từ nút ẢNH trên thẻ khách
+function openAlbumForClient(clientId, folderId) {
+    if (!GS_URL) return Toast.fire({ icon: 'warning', title: 'Chưa cấu hình nơi lưu ảnh trong Quản lý' });
+    const c = (currentData && currentData[clientId]) || {};
+    const ma = clientId.split('_')[1].slice(-4);
+    const ts = parseInt(clientId.split('_')[1]);
+    if (ts) _albumDay = new Date(ts);   // nút quay lại về đúng ngày chụp
+    document.getElementById('album-modal').style.display = 'flex';
+    document.body.classList.add('album-open');
+    startDriveWatch();
+    openAlbum(folderId, (c.name || 'Khách hàng') + ' #' + ma);
+    _albumFor = { name: c.name || 'Khách hàng', ma };
+}
+
+// Chú thích kèm ảnh gửi nhóm Zalo: khách nào, cơ sở nào, ngày nào
+function zaloCaption() {
+    const bName = (branchesCache[br] && branchesCache[br].name) || br || '';
+    const ngay = getDStr(_albumDay);
+    return _albumFor
+        ? `Khách ${_albumFor.name} #${_albumFor.ma} · ${bName} · ${ngay} — đồng ý cho tiệm dùng ảnh`
+        : `${bName} · ${document.getElementById('album-title').innerText} · ${ngay}`;
+}
+
+// Gửi ảnh gốc đã chọn vào nhóm Zalo của tiệm.
+// Điện thoại chỉ cho mở bảng chia sẻ NGAY sau một lần bấm; tải ảnh gốc mất vài
+// giây là quá hạn và bảng không mở. Nên tải xong trước, rồi mới hiện nút
+// "Mở Zalo" để nhân viên bấm lần nữa.
+let _zaloFiles = null, _zaloCaption = '';
+async function shareSelectedZalo() {
+    const ids = Object.keys(_albumPicked);
+    if (!ids.length) return;
+    const btn = document.getElementById('album-zalo');
+    const bar = document.getElementById('album-count');
+    btn.disabled = true;
+
+    let files = [];
+    try {
+        const token = await driveToken();
+        let done = 0;
+        for (let s = 0; s < ids.length; s += 3) {   // 3 ảnh một lượt như nút tải
+            const part = await Promise.all(ids.slice(s, s + 3).map(async id => {
+                const res = await fetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media',
+                                        { headers: { Authorization: 'Bearer ' + token } });
+                if (!res.ok) throw new Error('Drive từ chối (HTTP ' + res.status + ')');
+                const blob = await res.blob();
+                done++; bar.innerText = `Đang lấy ảnh gốc ${done}/${ids.length}...`;
+                return new File([blob], _albumPicked[id].name, { type: blob.type || 'image/jpeg' });
+            }));
+            files = files.concat(part);
+        }
+    } catch (e) {
+        updateAlbumCount();
+        return Swal.fire({ title: 'Chưa lấy được ảnh', text: e.message, icon: 'error', confirmButtonColor: '#111' });
+    }
+    updateAlbumCount();
+    const caption = zaloCaption();
+
+    // Máy tính không có bảng chia sẻ sang Zalo: tải ảnh về, chép sẵn chú thích
+    if (!(navigator.canShare && navigator.canShare({ files }))) {
+        files.forEach(f => {
+            const u = URL.createObjectURL(f);
+            const a = document.createElement('a');
+            a.href = u; a.download = f.name;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(u), 10000);
+        });
+        try { await navigator.clipboard.writeText(caption); } catch (e) { /* không chép được thì thôi */ }
+        return Swal.fire({ title: `Đã tải ${files.length} ảnh gốc`,
+            html: 'Mở nhóm Zalo trên máy tính rồi kéo các ảnh vừa tải vào.<br><span style="font-size:13px;color:#666">Chú thích đã chép sẵn, bấm Ctrl+V để dán.</span>',
+            icon: 'success', confirmButtonColor: '#111' });
+    }
+
+    _zaloFiles = files;
+    _zaloCaption = caption;
+    Swal.fire({
+        title: `Đã sẵn sàng ${files.length} ảnh gốc`,
+        html: `<p style="font-size:13px;color:#666;margin:0 0 14px;">Bấm nút dưới, chọn <b>Zalo</b> rồi chọn nhóm của tiệm.</p>
+               <button type="button" id="zalo-open" class="swal2-confirm swal2-styled" style="background:#111;margin:0;" onclick="zaloShareNow()">MỞ ZALO</button>`,
+        showConfirmButton: false, showCancelButton: true,
+        cancelButtonText: '<span style="color:#111">Hủy</span>', cancelButtonColor: '#fff'
+    }).then(() => { _zaloFiles = null; });
+}
+
+// Gọi ngay trong lúc bấm nút, không chờ gì trước, để điện thoại chịu mở bảng chia sẻ
+function zaloShareNow() {
+    if (!_zaloFiles) return;
+    const files = _zaloFiles;
+    // Zalo hay bỏ qua chữ đi kèm ảnh -> chép sẵn để dán vào nhóm nếu cần
+    if (navigator.clipboard) navigator.clipboard.writeText(_zaloCaption).catch(() => {});
+    navigator.share({ files, text: _zaloCaption }).then(() => {
+        Swal.close();
+        Toast.fire({ icon: 'success', title: 'Đã chuyển ảnh sang ứng dụng' });
+    }).catch(e => {
+        if (e && e.name === 'AbortError') return;   // nhân viên tự đóng bảng chia sẻ
+        Swal.fire({ title: 'Chưa mở được Zalo', text: 'Thử lại, hoặc bấm TẢI ẢNH rồi gửi từ thư viện ảnh.', icon: 'error', confirmButtonColor: '#111' });
+    });
 }
 
 // Tải bản GỐC, không phải ảnh xem trước
@@ -1432,6 +1535,7 @@ function load() {
                                    onchange="updateLink('${client.id}', '${linkId}')"
                                    onkeydown="if(event.key==='Enter'){this.blur();}"
                                    title="Sửa link rồi bấm Enter hoặc click ra ngoài để lưu">
+                            ${fid ? `<button onclick="openAlbumForClient('${client.id}', '${escapeHTML(fid)}')" class="btn-album-link" title="Xem ảnh lượt này, tải hoặc gửi Zalo">ẢNH</button>` : ''}
                             <button onclick="deleteLink('${client.id}', '${linkId}')" class="btn-del-link">XÓA</button>
                         </div>`;
                     });

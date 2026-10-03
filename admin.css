@@ -313,6 +313,12 @@ body.album-open { overflow: hidden; }
 #album-count { font-size: 13px; font-weight: 600; color: #52525b; }
 #album-download { height: 44px; padding: 0 20px; }
 #album-download:disabled { opacity: 0.45; cursor: not-allowed; }
+.album-acts { display: flex; gap: 8px; flex: none; }
+#album-zalo { height: 44px; padding: 0 16px; background: #fff; color: #111; border: 1px solid #111; }
+#album-zalo:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-album-link { background: #fff; color: #111; border: 1px solid #d4d4d8; height: 34px; padding: 0 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; box-sizing: border-box; }
+.btn-album-link:hover { border-color: #111; }
+@media (max-width: 600px) { .btn-album-link { min-height: 44px; } }
 
 @media (hover: none) and (pointer: coarse) {
     .album-tick { width: 36px; height: 36px; }

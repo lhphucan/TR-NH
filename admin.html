@@ -305,7 +305,10 @@
             <div id="album-body" class="album-body"></div>
             <div id="album-foot" class="album-foot" style="display:none;">
                 <span id="album-count">Chưa chọn ảnh nào</span>
-                <button type="button" id="album-download" class="btn btn-add" onclick="downloadSelected()" disabled>TẢI ẢNH ĐÃ CHỌN</button>
+                <div class="album-acts">
+                    <button type="button" id="album-zalo" class="btn" onclick="shareSelectedZalo()" disabled>GỬI ZALO</button>
+                    <button type="button" id="album-download" class="btn btn-add" onclick="downloadSelected()" disabled>TẢI ẢNH ĐÃ CHỌN</button>
+                </div>
             </div>
         </div>
     </div>
