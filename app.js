@@ -447,8 +447,9 @@ function renderHistory(history, branch) {
         if (links.length) {
             links.forEach((lid, i) => {
                 const l = d.links[lid] || {};
-                inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${escapeHTML(h.branch)}')">Xem &amp; lưu ảnh</button></div>`;
+                inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${escapeHTML(h.branch)}', '${escapeHTML(h.id)}')">Xem &amp; lưu ảnh</button></div>`;
             });
+            inner += typeof frRows === 'function' ? frRows(d, h.branch) : '';
         } else {
             inner = `<div class="hist-empty">Tiệm chưa gửi ảnh cho lượt này</div>`;
         }
@@ -572,8 +573,10 @@ function renderData(data, branch) {
     if (data.links && Object.keys(data.links).length > 0) {
         Object.keys(data.links).forEach((linkId, index) => {
             const l = data.links[linkId] || {};
-            html += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${index+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${safeBranch}')">Xem &amp; lưu ảnh</button></div>`;
+            html += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${index+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${safeBranch}', '${escapeHTML(data.id)}')">Xem &amp; lưu ảnh</button></div>`;
         });
+        // Ảnh khách đã ghép vào frame và gửi tiệm
+        html += typeof frRows === 'function' ? frRows(data, branch) : '';
     } else {
         html += `<div style="font-size:12px; color:#888; text-align:center; padding:15px; background:#fff; border:1px dashed #d4d4d8; border-radius:8px; margin-top:10px;">
             <div style="width: 8px; height: 8px; background: #111; border-radius: 50%; animation: pulse 1.5s infinite; display:inline-block; margin-right:5px;"></div>
@@ -606,8 +609,9 @@ function renderData(data, branch) {
             if (lids.length) {
                 lids.forEach((lid, i) => {
                     const l = d.links[lid] || {};
-                    inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${escapeHTML(h.branch)}')">Xem &amp; lưu ảnh</button></div>`;
+                    inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${escapeHTML(h.branch)}', '${escapeHTML(h.id)}')">Xem &amp; lưu ảnh</button></div>`;
                 });
+                inner += typeof frRows === 'function' ? frRows(d, h.branch) : '';
             } else {
                 inner = `<div class="hist-empty">Lượt này chưa có ảnh</div>`;
             }
@@ -781,11 +785,15 @@ function albThumb(id) { return 'https://lh3.googleusercontent.com/d/' + id + '=s
 // Bản gốc: =s0 trả đúng từng byte như file trên Drive, không nén
 function albFull(id) { return 'https://lh3.googleusercontent.com/d/' + id + '=s0'; }
 
-async function openAlbum(url, branch) {
+async function openAlbum(url, branch, clientId) {
     const fid = (String(url || '').match(/folders\/([\w-]+)/) || [])[1];
     if (!fid) { window.open(url, '_blank', 'noopener'); return; }   // link lạ -> mở Drive như cũ
 
     _albBranch = branch || '';
+    // Lượt chụp đang xem: ghép frame cần biết gửi ảnh ghép vào phiên nào, lượt nào
+    window._albCtx = { fid, branch: branch || '', clientId: clientId || '', url };
+    const fb = document.getElementById('alb-frame-btn');
+    if (fb) fb.style.display = 'none';
 
     // Mở khung rồi mới đọc: khách thấy album hiện ra ngay, chỗ ảnh báo đang
     // tải. Hộp thoại chờ của thư viện có màu và cỡ chữ riêng, nhìn rời hẳn
@@ -821,6 +829,8 @@ async function openAlbum(url, branch) {
             <span class="alb-thumb"><img src="${escapeHTML(albThumb(x.id))}" alt="" loading="lazy" decoding="async"></span>
             <span class="alb-name">${escapeHTML(_albLabels[i])}</span>
         </button>`).join('');
+    // Có frame cho cơ sở này thì hiện nút ghép frame
+    if (typeof frAlbumReady === 'function') frAlbumReady();
 }
 
 // Tên file máy chụp đặt rất dài và toàn mã máy, ví dụ

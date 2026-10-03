@@ -10,6 +10,10 @@
 !admin.css
 !admin.js
 !frame-demo.html
+!frame-core.js
+!frame-admin.js
+!frame-khach.js
+!frame.css
 !.gitignore
 !database.rules.json
 !firebase.json

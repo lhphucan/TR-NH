@@ -11,6 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./frame.css">
 </head>
 <body>
     <div class="card">
@@ -69,10 +70,13 @@
     </div>
 
     <script src="./app.js" defer></script>
+    <script src="./frame-core.js" defer></script>
+    <script src="./frame-khach.js" defer></script>
     <!-- Album ảnh: khách xem và lưu ngay, không phải mở tab Drive -->
     <div id="alb-modal" class="alb-modal">
         <div class="alb-head">
             <span id="alb-count">0 ảnh</span>
+            <button type="button" id="alb-frame-btn" class="view-btn" style="display:none; margin-left:auto; margin-right:8px;" onclick="frOpen()">Ghép frame</button>
             <button type="button" class="alb-close" onclick="closeAlbum()" aria-label="Đóng">&times;</button>
         </div>
         <div id="alb-grid" class="alb-grid"></div>
