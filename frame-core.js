@@ -227,7 +227,9 @@ const FR = (() => {
     // một file vào đúng một thư mục, không đọc hay xoá được gì.
     async function uploadTo(loc, blob, onProgress) {
         const total = blob.size;
-        const CH = 2 * 1024 * 1024;   // phải là bội của 256 KB
+        // Mảnh 8 MB (phải là bội của 256 KB): ảnh điện thoại thường đi trong một
+        // lần gửi; mảnh nhỏ thì mỗi mảnh lại phải chờ Drive trả lời rồi mới gửi tiếp
+        const CH = 8 * 1024 * 1024;
         const doneAt = r => { const rg = r.headers.get('Range'); return rg ? parseInt(rg.split('-')[1], 10) + 1 : 0; };
         let off = 0, fails = 0;
         while (true) {

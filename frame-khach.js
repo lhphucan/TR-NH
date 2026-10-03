@@ -746,6 +746,7 @@ async function fkSend() {
         const file = new File([FK_RES.blob], `${cName}_${maKh}_GHEP FRAME_${hhmmss}${duoi}`, { type: FK_RES.blob.type || 'image/png' });
         // Lưu vào thư mục lượt chụp, đúng thư mục tiệm đã trả ảnh cho khách:
         // thư mục đó vốn mở cho khách xem nên ảnh ghép hiện luôn trong album
+        const batDau = Date.now();
         const sent = await guiLenDrive([file], { branch: bName, day: getDStr(now).replace(/\//g, '-'), client: `${cName} - ${maKh}`, lot: _albCtx.fid }, (i, v) => set(v * 0.95));
         const up = sent.files[0];
         if (!up || !up.id) throw new Error((up && up.err) || 'Không gửi được ảnh');
@@ -757,7 +758,8 @@ async function fkSend() {
         const time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + now.toLocaleDateString('vi-VN');
         // Yêu cầu in: bên nhân viên hiện như ảnh khách gửi, có giờ và nút tải bản gốc
         await db.ref('data/' + branch + '/' + clientId + '/client_uploads/U_' + Date.now())
-                .set({ time, drive: [{ id: up.id, name: up.name }], folder: info.folderUrl, kind: 'frame' });
+                .set({ time, drive: [{ id: up.id, name: up.name }], folder: info.folderUrl, kind: 'frame',
+                       took: Math.round((Date.now() - batDau) / 1000), mb: Math.round(size / 104857.6) / 10, via: sent.via || '' });
         // Ghi để ảnh ghép hiện trong album khách; ghi sau cùng để lỡ hỏng thì tiệm vẫn nhận được ảnh
         await fkFramedRef().set({ time, id: up.id, frame: FKF.id }).catch(() => {});
         set(1);

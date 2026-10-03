@@ -1558,6 +1558,7 @@ function load() {
                                     <span style="font-size:12px; font-weight:700; color:#111; display:flex; align-items:center; gap:6px; text-transform:uppercase;">
                                         <svg class="icon-sm" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
                                         ${up.kind === 'frame' ? 'Ảnh ghép frame' : 'Yêu cầu in'} ${gioGui(up.time)}
+                                        ${up.took != null ? `<span class="up-meta" title="Thời gian khách gửi, dung lượng, đường đi">${+up.took || 0}s · ${+up.mb || 0} MB${/script|cu/.test(up.via || '') ? ' · dự phòng' : ''}</span>` : ''}
                                     </span>
                                     <div style="display:flex; gap:8px;">
                                         ${up.folder ? `<a href="${escapeHTML(up.folder)}" target="_blank" rel="noopener" class="up-btn ghost">MỞ THƯ MỤC</a>` : ''}
@@ -2352,8 +2353,9 @@ function load() {
             let token = '';
             if (driveItems.length) {
                 if (btn) btn.innerHTML = 'ĐANG CHUẨN BỊ...';
+                // Chìa khoá giữ sẵn 50 phút: khỏi hỏi lại Apps Script mỗi lần bấm (2-6 giây)
                 try {
-                    token = (await gsTokenCall()).token;
+                    token = await driveToken();
                 } catch (e) {
                     if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
                     return Swal.fire({ title: 'Không tải được', text: 'Không lấy được quyền đọc ảnh: ' + e.message, icon: 'error', confirmButtonColor: '#111' });
@@ -2370,7 +2372,13 @@ function load() {
                     ? 'https://www.googleapis.com/drive/v3/files/' + it.id + '?alt=media'
                     : it.url;
                 const opt = it.kind === 'drive' ? { headers: { Authorization: 'Bearer ' + token } } : {};
-                const res = await fetch(url, opt);
+                let res = await fetch(url, opt);
+                // Chìa khoá giữ sẵn đã hết hạn: xin chìa mới rồi thử lại một lần
+                if (res.status === 401 && it.kind === 'drive') {
+                    _driveToken = '';
+                    token = await driveToken();
+                    res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+                }
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 return await res.blob();
             };

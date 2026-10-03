@@ -123,7 +123,7 @@ function safeUrlAttr(u) { return escapeHTML(safeUrl(u)); }
 // cả file qua Apps Script chậm gấp 6-10 lần và rất thất thường.
 function loadDriveEndpoint() {
     return db.ref('config/gs_url').once('value')
-        .then(s => { GS_URL = (s.val() || '').trim(); })
+        .then(s => { GS_URL = (s.val() || '').trim(); danhThucScript(); })
         .catch(() => { GS_URL = ''; });
 }
 
@@ -214,11 +214,19 @@ async function driveUploadRetry(file, token, folderId, tries) {
 // where: { branch, day, client, lot? }. Có lot (mã thư mục lượt chụp) thì gửi vào
 // thư mục lượt chụp đó thay vì thư mục ảnh khách gửi in.
 // Trả về { folderUrl, files: [{id, name} | {err}], token? }
-async function guiLenDrive(files, where, onFile) {
+// moSan: (tuỳ chọn) lời hỏi mở đường gửi đã gửi đi từ trước (moDuongGui), để
+// khách bấm Gửi là ảnh đi ngay, khỏi chờ Apps Script.
+// Kết quả có thêm via: 'drive' (đẩy thẳng), 'script' (đi vòng qua Apps Script,
+// chậm), 'drive+script' (có ảnh phải đi vòng), 'cu' (Apps Script bản cũ).
+function moDuongGui(files, where) {
+    return gsCall(Object.assign({ action: 'upload',
+        files: JSON.stringify(files.map(f => ({ name: f.name, type: f.type || 'image/jpeg', size: f.size }))) }, where));
+}
+
+async function guiLenDrive(files, where, onFile, moSan) {
     let info = null, quaScript = false;
     try {
-        info = await gsCall(Object.assign({ action: 'upload',
-            files: JSON.stringify(files.map(f => ({ name: f.name, type: f.type || 'image/jpeg', size: f.size }))) }, where));
+        info = await (moSan || moDuongGui(files, where));
     } catch (e) {
         // Bản cũ không biết action upload -> dùng cách cũ. Lỗi khác (Apps Script
         // thiếu quyền, Drive trục trặc...) -> gửi hết qua Apps Script cho khách khỏi kẹt
@@ -233,7 +241,7 @@ async function guiLenDrive(files, where, onFile) {
             catch (e) { out.push({ err: e.message }); }
             if (onFile) onFile(i, 1);
         }
-        return { folderUrl, files: out };
+        return { folderUrl, files: out, via: 'script' };
     }
     if (!info) {
         // Bản cũ: gửi vào thư mục lượt chụp thì chỉ cần chìa khoá, khỏi tạo thư mục khách thừa
@@ -245,20 +253,65 @@ async function guiLenDrive(files, where, onFile) {
             catch (e) { out.push({ err: e.message }); }
             if (onFile) onFile(i, 1);
         }
-        return { folderUrl, files: out, token: old.token };
+        return { folderUrl, files: out, token: old.token, via: 'cu' };
     }
 
+    let vong = 0;
     for (let i = 0; i < files.length; i++) {
         try {
             const r = await FR.uploadTo(info.sessions[i], files[i], v => onFile && onFile(i, v));
             out.push({ id: r.id, name: r.name });
         } catch (e) {
             // Đẩy thẳng không được -> nhờ Apps Script cất hộ
+            vong++;
             try { out.push(await guiQuaScript(files[i], where)); if (onFile) onFile(i, 1); }
             catch (e2) { out.push({ err: e2.message }); }
         }
     }
-    return { folderUrl: info.folderUrl || '', files: out };
+    return { folderUrl: info.folderUrl || '', files: out, via: vong ? 'drive+script' : 'drive' };
+}
+
+// Đánh thức Apps Script: để lâu không ai gọi thì lần gọi đầu chậm thêm 1-3 giây.
+// Gọi nhẹ một lần lúc khách vừa vào trang (bị từ chối ngay, không đụng Drive),
+// tới lúc mở album hay gửi ảnh thì nó đã sẵn sàng.
+let _daDanhThuc = false;
+function danhThucScript() {
+    if (_daDanhThuc || !GS_URL) return;
+    _daDanhThuc = true;
+    fetch(GS_URL + '?' + new URLSearchParams({ k: GS_KEY, action: 'ping' })).catch(() => {});
+}
+
+// Khách vừa chọn ảnh: hỏi Apps Script mở đường gửi luôn, trong lúc khách còn xem
+// lại. Chỉ mở đường gửi, chưa tạo file nào: khách đổi ý thì không sinh file rác.
+let _guiSan = null;   // { files, renamed, where, moSan, at }
+function chuanBiGui() {
+    _guiSan = null;
+    const files = document.getElementById('cFile').files;
+    if (!files || !files.length || !GS_URL || !currentClientId) return;
+    const branch = document.getElementById('branch').value;
+    const p = tenFileGui(files, branch);
+    _guiSan = { files, renamed: p.renamed, where: p.where, at: Date.now(), moSan: moDuongGui(p.renamed, p.where) };
+    _guiSan.moSan.catch(() => {});   // lỗi thì lúc bấm Gửi tự thử lại
+}
+
+// Tên file và thư mục cho ảnh khách gửi in
+function tenFileGui(files, branch) {
+    const bName = (BRANCHES_CACHE[branch] && BRANCHES_CACHE[branch].name) || branch;
+    const day = getDStr(new Date()).replace(/\//g, '-');
+    const maKh = String(currentClientId).split('_')[1].slice(-4);
+    // Mỗi khách một thư mục riêng, kèm tên để nhân viên nhận ra ngay.
+    // Phải lấy tên của PHIÊN đang mở — ô nhập và localStorage còn giữ tên
+    // của lượt tra cứu trước nên dễ ghi nhầm sang khách khác.
+    const cName = (currentClientName || 'Khach').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40) || 'Khach';
+    // Khách gửi nhiều đợt vào cùng thư mục: thêm giờ để tên không trùng,
+    // Drive không ghi đè mà tạo file thứ hai cùng tên.
+    const now = new Date();
+    const hhmmss = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0') + String(now.getSeconds()).padStart(2, '0');
+    const renamed = Array.from(files).map((f, i) => {
+        const ext = (f.name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0];
+        return new File([f], `${cName}_${maKh}_${hhmmss}_${String(i + 1).padStart(2, '0')}${ext}`, { type: f.type || 'image/jpeg' });
+    });
+    return { renamed, where: { branch: bName, day, client: `${cName} - ${maKh}` } };
 }
 
 // Gửi một file qua Apps Script: chậm (ảnh phải đổi sang chữ, nặng thêm 1/3)
@@ -742,36 +795,25 @@ async function sendToShop() {
     const branch = document.getElementById('branch').value;
 
     try {
+        const batDau = Date.now();
+        let via = 'imgbb';
         let uploadedUrls = [];   // ảnh lưu trên imgbb (đường dự phòng)
         let driveFiles = [];     // ảnh lưu trên Drive: {id, name}
         let folderUrl = '';
         let lastErr = '';
 
         if (GS_URL) {
-            // Xin token + thư mục MỘT lần cho cả lượt gửi
-            const bName = (BRANCHES_CACHE[branch] && BRANCHES_CACHE[branch].name) || branch;
-            const day = getDStr(new Date()).replace(/\//g, '-');
-            const maKh = String(currentClientId).split('_')[1].slice(-4);
-
-            // Mỗi khách một thư mục riêng, kèm tên để nhân viên nhận ra ngay.
-            // Phải lấy tên của PHIÊN đang mở — ô nhập và localStorage còn giữ tên
-            // của lượt tra cứu trước nên dễ ghi nhầm sang khách khác.
-            const cName = (currentClientName || 'Khach')
-                            .replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40) || 'Khach';
-            // Khách gửi nhiều đợt vào cùng thư mục: thêm giờ gửi để tên không trùng,
-            // Drive không ghi đè mà tạo file thứ hai cùng tên.
-            const now = new Date();
-            const hhmmss = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0')
-                       + String(now.getSeconds()).padStart(2, '0');
-            const renamed = Array.from(files).map((f, i) => {
-                const ext = (f.name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0];
-                return new File([f], `${cName}_${maKh}_${hhmmss}_${String(i + 1).padStart(2, '0')}${ext}`, { type: f.type || 'image/jpeg' });
-            });
-
-            const sent = await guiLenDrive(renamed, { branch: bName, day, client: `${cName} - ${maKh}` },
+            // Đường gửi đã mở sẵn lúc khách chọn ảnh (còn hạn, đúng các ảnh này) thì
+            // dùng luôn; không thì mở bây giờ
+            const san = _guiSan && _guiSan.files === files && Date.now() - _guiSan.at < 30 * 60 * 1000 ? _guiSan : null;
+            _guiSan = null;
+            const { renamed, where } = san || tenFileGui(files, branch);
+            const sent = await guiLenDrive(renamed, where,
                                            (i, v) => setBtnLoading(v >= 1 ? i + 1 : i, files.length,
-                                                                   sizes.slice(0, i).reduce((a, b) => a + b, 0) + v * sizes[i]));
+                                                                   sizes.slice(0, i).reduce((a, b) => a + b, 0) + v * sizes[i]),
+                                           san && san.moSan);
             folderUrl = sent.folderUrl;
+            via = sent.via || '';
             sent.files.forEach(r => { if (r.id) driveFiles.push({ id: r.id, name: r.name }); else lastErr = r.err; });
         } else {
             // Chưa cấu hình Drive -> dùng imgbb như trước
@@ -802,6 +844,10 @@ async function sendToShop() {
             if (folderUrl) record.folder = folderUrl;
         }
         if (uploadedUrls.length) record.links = uploadedUrls;
+        // Ghi lại để biết hôm chậm là do mạng khách hay do hệ thống
+        record.took = Math.round((Date.now() - batDau) / 1000);
+        record.mb = Math.round(tong / 104857.6) / 10;
+        record.via = via;
 
         // Ảnh đã nằm trên Drive rồi; nếu ghi vào hệ thống hỏng thì tiệm không thấy
         // yêu cầu in, phải báo đúng để khách biết mà nhờ nhân viên.
