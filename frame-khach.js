@@ -93,12 +93,16 @@ async function frOpen() {
 
 function fkClose() {
     document.getElementById('fk-modal').style.display = 'none';
+    if (document.getElementById('fk-ed')) { document.getElementById('fk-ed').classList.remove('on'); FK_ED = -1; }
     // Album vẫn đang mở bên dưới: giữ khoá cuộn trang
     if (document.getElementById('alb-modal').style.display !== 'flex') document.body.style.overflow = '';
 }
 
 function fkStep(s) {
     ['pick', 'comp', 'res'].forEach(x => document.getElementById('fk-' + x).classList.toggle('fr-hidden', x !== s));
+    document.getElementById('fk-modal').dataset.step = s;
+    // Nút đổi frame nằm trên thanh đầu, chỉ hiện ở màn ghép khi có từ 2 frame
+    document.getElementById('fk-back').style.display = s === 'comp' && FKF && fkFramesFor(_albCtx.branch).length > 1 ? '' : 'none';
     document.getElementById('fk-title').innerText = s === 'pick' ? 'Chọn frame' : s === 'comp' ? 'Ghép ảnh vào frame' : 'Ảnh ghép';
 }
 
@@ -108,27 +112,20 @@ function fkBuild() {
     <div id="fk-modal" class="fr-modal" style="display:none;">
         <div class="fr-head">
             <h3 id="fk-title">Chọn frame</h3>
+            <button class="fr-btn fk-hbtn" id="fk-back" onclick="fkStep('pick')">Đổi frame</button>
             <button class="fr-x" onclick="fkClose()" aria-label="Đóng">&times;</button>
         </div>
         <div class="fr-body"><div class="fr-wrap">
             <div id="fk-pick" class="fr-card"><div id="fk-list" class="fr-flist"></div></div>
 
-            <div id="fk-comp" class="fr-card fr-hidden">
-                <div class="fr-row" style="margin-bottom:10px;">
-                    <button class="fr-btn" id="fk-back" onclick="fkStep('pick')">‹ Chọn frame khác</button>
-                    <span id="fk-prog" class="fr-hint" style="margin:0;"></span>
-                </div>
+            <div id="fk-comp" class="fr-card fk-comp fr-hidden">
+                <div id="fk-rot" class="fk-rot fr-hidden">⟳ Xoay ngang điện thoại để xem frame to hơn</div>
                 <div id="fk-stage" class="fr-stage"></div>
-                <p class="fr-hint">Chạm ô trống để chọn ảnh, chọn nhiều ảnh một lần thì tự điền vào các ô trống. Chạm ô đã có ảnh để đổi ảnh khác. Kéo để dời, chụm hai ngón để phóng to.</p>
-                <div id="fk-tool" class="fr-tool">
-                    <label class="fr-label">Phóng to ảnh vừa chỉnh</label>
-                    <input type="range" id="fk-zoom" min="1" max="4" step="0.01" value="1" oninput="fkZoom(this.value)">
-                    <div class="fr-row" style="margin-top:8px;">
-                        <button class="fr-btn" onclick="fkOp('rot')">Xoay ảnh 90°</button>
-                        <button class="fr-btn danger" onclick="fkOp('del')">Bỏ ảnh</button>
-                    </div>
+                <p class="fr-hint fk-tip">Chạm ô trống để chọn ảnh, chạm ô có ảnh để chỉnh.</p>
+                <div class="fk-foot">
+                    <span id="fk-prog"></span>
+                    <button class="fr-btn solid" id="fk-done" onclick="fkExport()" disabled>Ghép xong</button>
                 </div>
-                <button class="fr-btn solid fr-big" id="fk-done" style="margin-top:14px;" onclick="fkExport()" disabled>Ghép xong</button>
             </div>
 
             <div id="fk-res" class="fr-card fr-res fr-hidden">
@@ -142,6 +139,29 @@ function fkBuild() {
                 </div>
             </div>
         </div></div>
+    </div>
+
+    <div id="fk-ed" class="fk-ed">
+        <div class="fr-head">
+            <button class="fr-btn solid" onclick="fkEdClose()">Xong</button>
+            <h3 id="fk-ed-title" style="text-align:center;"></h3>
+            <button class="fr-btn fk-nav" onclick="fkEdGo(-1)" aria-label="Ô trước">‹</button>
+            <button class="fr-btn fk-nav" onclick="fkEdGo(1)" aria-label="Ô sau">›</button>
+        </div>
+        <div id="fk-ed-view" class="fk-ed-view"><div id="fk-ed-in" class="fk-ed-in"></div></div>
+        <div class="fk-ed-tools" id="fk-ed-tools">
+            <div id="fk-ed-has">
+                <label class="fr-label">Phóng to</label>
+                <input type="range" id="fk-ed-zoom" min="1" max="4" step="0.01" value="1" oninput="fkZoom(this.value)">
+                <div class="fr-row" style="margin-top:10px;">
+                    <button class="fr-btn" style="flex:1;" onclick="fkEdChange()">Đổi ảnh</button>
+                    <button class="fr-btn" style="flex:1;" onclick="fkOp('rot')">Xoay 90°</button>
+                    <button class="fr-btn danger" style="flex:1;" onclick="fkOp('del')">Bỏ ảnh</button>
+                </div>
+                <p class="fr-hint" style="text-align:center;">Kéo để dời ảnh, chụm hai ngón để phóng to.</p>
+            </div>
+            <button class="fr-btn solid fr-big" id="fk-ed-add" onclick="fkPkOpen(FK_ED, 'fill')">+ Chọn ảnh cho ô này</button>
+        </div>
     </div>
 
     <div id="fk-pk" class="fr-pk" style="display:none;">
@@ -164,6 +184,8 @@ function fkBuild() {
         </div>
     </div>`);
     fkBindStage();
+    fkBindEd();
+    // Xoay máy: vẽ lại cho frame vừa khung mới
     window.addEventListener('resize', () => { if (FKF && !document.getElementById('fk-comp').classList.contains('fr-hidden')) fkRender(); });
 }
 
@@ -173,8 +195,9 @@ async function fkOpenFrame(id) {
     FKF = Object.assign({ id }, f);
     FKP = FKF.slots.map(() => null);
     FK_SEL = -1;
+    FK_ED = -1;
+    document.getElementById('fk-ed').classList.remove('on');
     FKB = await fkFilterFor(FKF);
-    document.getElementById('fk-back').style.display = fkFramesFor(_albCtx.branch).length > 1 ? '' : 'none';
     fkStep('comp');
     fkRestoring = true;
     fkRender();
@@ -182,15 +205,29 @@ async function fkOpenFrame(id) {
     fkRender();
 }
 
+// Cỡ khung ghép: vừa bề ngang, và khi xoay ngang máy thì vừa cả chiều cao còn lại
+// (trừ thanh đầu, thanh dưới) để không phải cuộn mới thấy hết frame.
 function fkK() {
     const st = document.getElementById('fk-stage');
-    st.style.height = (st.clientWidth * FKF.h / FKF.w) + 'px';
-    return st.clientWidth / FKF.w;
+    const wrap = st.parentElement;
+    const foot = wrap.querySelector('.fk-foot'), head = document.querySelector('#fk-modal .fr-head');
+    const tip = wrap.querySelector('.fk-tip'), rot = document.getElementById('fk-rot');
+    const ngang = fkNgang();
+    const availH = window.innerHeight - (head ? head.offsetHeight : 0) - 16
+                 - (ngang ? 0 : (foot ? foot.offsetHeight : 0) + (tip ? tip.offsetHeight + 8 : 0)
+                              + (rot && !rot.classList.contains('fr-hidden') ? rot.offsetHeight + 8 : 0) + 8);
+    const fullW = wrap.clientWidth - (ngang && foot ? foot.offsetWidth + 10 : 0);
+    const W = Math.max(160, Math.min(fullW, availH * FKF.w / FKF.h));
+    st.style.width = W + 'px';
+    st.style.height = (W * FKF.h / FKF.w) + 'px';
+    return W / FKF.w;
 }
 
-function fkRender() {
-    if (!FKF) return;
-    const k = fkK();
+// Điện thoại xoay ngang (màn thấp): bố cục ngang, nút Ghép xong sang bên phải
+function fkNgang() { return !!(window.matchMedia && window.matchMedia('(orientation: landscape) and (max-height: 520px)').matches); }
+
+// HTML của frame + ảnh các ô ở tỷ lệ k (điểm màn hình trên 1 điểm frame)
+function fkStageHtml(k) {
     const fr = `<img class="fr-frame" src="${FR.gUrl(FKF.prev)}" alt="" style="z-index:${FKF.front ? 3 : 0}">`;
     const slots = FKF.slots.map((s, i) => {
         const p = FKP[i];
@@ -204,78 +241,141 @@ function fkRender() {
     }).join('');
     const marks = FKF.slots.map((s, i) => FKP[i] ? '' : `
         <div class="fr-cmark" style="${FR.boxCss(s, k)} z-index:4;"><span class="fr-plus" style="transform:rotate(${-s.rot}deg)">+</span></div>`).join('');
-    document.getElementById('fk-stage').innerHTML = fr + slots + marks;
+    return fr + slots + marks;
+}
+
+function fkRender() {
+    if (!FKF) return;
+    // Frame khổ ngang trên điện thoại cầm dọc: gợi ý xoay ngang cho to
+    const cam = window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    document.getElementById('fk-rot').classList.toggle('fr-hidden', !(cam && FKF.w > FKF.h * 1.15 && window.innerHeight > window.innerWidth));
+    const k = fkK();
+    document.getElementById('fk-stage').innerHTML = fkStageHtml(k);
 
     const n = FKP.filter(Boolean).length;
-    document.getElementById('fk-prog').innerText = `${n}/${FKF.slots.length} ô đã có ảnh`;
+    document.getElementById('fk-prog').innerText = `${n}/${FKF.slots.length} ô có ảnh`;
     document.getElementById('fk-done').disabled = n === 0;
-    document.getElementById('fk-tool').classList.toggle('on', FK_SEL >= 0 && !!FKP[FK_SEL]);
-    if (FK_SEL >= 0 && FKP[FK_SEL]) document.getElementById('fk-zoom').value = FKP[FK_SEL].s;
+    if (FK_ED >= 0) fkEdRender();
     fkDraftLater();
 }
 
-function fkBindStage() {
-    const st = document.getElementById('fk-stage');
+// ---------- Màn chỉnh một ô ----------
+// Ô trên điện thoại chỉ còn 40-70 điểm, kéo hay chụm trong đó gần như không
+// được. Chạm ô có ảnh thì mở ô đó to gần hết màn, phần frame xung quanh mờ đi.
+let FK_ED = -1, FK_EDK = 1;
+
+function fkEdOpen(i) {
+    FK_ED = i;
+    FK_SEL = i;
+    document.getElementById('fk-ed').classList.add('on');
+    fkEdRender();
+}
+
+function fkEdClose() {
+    document.getElementById('fk-ed').classList.remove('on');
+    FK_ED = -1;
+    FK_SEL = -1;
+    fkRender();
+}
+
+function fkEdGo(d) {
+    const n = FKF.slots.length;
+    FK_ED = (FK_ED + d + n) % n;
+    FK_SEL = FK_ED;
+    fkEdRender();
+}
+
+function fkEdChange() { fkPkOpen(FK_ED, 'replace'); }
+
+function fkEdRender() {
+    if (FK_ED < 0 || !FKF) return;
+    const i = FK_ED, s = FKF.slots[i], p = FKP[i];
+    FK_SEL = i;
+    const view = document.getElementById('fk-ed-view');
+    const VW = view.clientWidth, VH = view.clientHeight;
+    // Ô có thể xoay: lấy khung bao để ô luôn nằm trọn trong màn
+    const a = (s.rot || 0) * Math.PI / 180;
+    const bw = Math.abs(s.w * Math.cos(a)) + Math.abs(s.h * Math.sin(a));
+    const bh = Math.abs(s.w * Math.sin(a)) + Math.abs(s.h * Math.cos(a));
+    const k = FK_EDK = Math.min(VW * 0.86 / bw, VH * 0.86 / bh);
+    const inner = document.getElementById('fk-ed-in');
+    inner.style.width = FKF.w * k + 'px';
+    inner.style.height = FKF.h * k + 'px';
+    inner.style.left = (VW / 2 - s.cx * k) + 'px';
+    inner.style.top = (VH / 2 - s.cy * k) + 'px';
+    inner.innerHTML = fkStageHtml(k) + `<div class="fk-ed-hole" style="${FR.boxCss(s, k)}"></div>`;
+    document.getElementById('fk-ed-title').innerText = `Ô ${i + 1}/${FKF.slots.length}`;
+    document.getElementById('fk-ed-has').style.display = p ? '' : 'none';
+    document.getElementById('fk-ed-add').style.display = p ? 'none' : '';
+    if (p) document.getElementById('fk-ed-zoom').value = p.s;
+}
+
+// Kéo để dời, chụm hai ngón hoặc lăn chuột để phóng to ảnh của ô đang chỉnh
+function fkBindEd() {
+    const view = document.getElementById('fk-ed-view');
     const pts = new Map();
-    let pan = null, pinch = null, tap = null;
-    const fpt = e => { const r = st.getBoundingClientRect(), k = st.clientWidth / FKF.w;
-                       return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k }; };
-
-    st.addEventListener('pointerdown', e => {
-        if (!FKF) return;
+    let pan = null, pinch = null;
+    view.addEventListener('pointerdown', e => {
+        if (FK_ED < 0 || !FKP[FK_ED]) return;
         pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        st.setPointerCapture(e.pointerId);
-        if (pts.size === 2 && FK_SEL >= 0 && FKP[FK_SEL]) {
+        view.setPointerCapture(e.pointerId);
+        if (pts.size === 2) {
             const [a, b] = [...pts.values()];
-            pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: FKP[FK_SEL].s };
-            pan = null; tap = null;
-            return;
-        }
-        const p = fpt(e);
-        const i = FR.slotAt(FKF.slots, p.x, p.y);
-        tap = { i, x: e.clientX, y: e.clientY };
-        if (i >= 0 && FKP[i]) {
-            if (FK_SEL !== i) { FK_SEL = i; fkRender(); }
-            pan = { x: e.clientX, y: e.clientY, ox: FKP[i].ox, oy: FKP[i].oy };
-        }
+            pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: FKP[FK_ED].s };
+            pan = null;
+        } else pan = { x: e.clientX, y: e.clientY, ox: FKP[FK_ED].ox, oy: FKP[FK_ED].oy };
     });
-
-    st.addEventListener('pointermove', e => {
-        if (!pts.has(e.pointerId)) return;
+    view.addEventListener('pointermove', e => {
+        if (!pts.has(e.pointerId) || FK_ED < 0 || !FKP[FK_ED]) return;
         pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap = null;
+        const s = FKF.slots[FK_ED], p = FKP[FK_ED];
         if (pinch && pts.size >= 2) {
             const [a, b] = [...pts.values()];
-            FKP[FK_SEL].s = pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d;
-            FR.clamp(FKF.slots[FK_SEL], FKP[FK_SEL]); fkRender();
-        } else if (pan && FK_SEL >= 0 && FKP[FK_SEL]) {
+            p.s = pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d;
+        } else if (pan) {
             // Đổi độ dời trên màn sang trục của ô (ô có thể đang xoay)
-            const s = FKF.slots[FK_SEL], k = st.clientWidth / FKF.w, a = -s.rot * Math.PI / 180;
-            const dx = (e.clientX - pan.x) / k, dy = (e.clientY - pan.y) / k;
-            const lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
-            FKP[FK_SEL].ox = pan.ox + lx / s.w;
-            FKP[FK_SEL].oy = pan.oy + ly / s.h;
-            FR.clamp(s, FKP[FK_SEL]); fkRender();
-        }
+            const ang = -s.rot * Math.PI / 180;
+            const dx = (e.clientX - pan.x) / FK_EDK, dy = (e.clientY - pan.y) / FK_EDK;
+            p.ox = pan.ox + (dx * Math.cos(ang) - dy * Math.sin(ang)) / s.w;
+            p.oy = pan.oy + (dx * Math.sin(ang) + dy * Math.cos(ang)) / s.h;
+        } else return;
+        FR.clamp(s, p); fkEdRender();
     });
-
     const up = e => {
         pts.delete(e.pointerId);
         if (pts.size < 2) pinch = null;
-        if (pts.size === 0) {
-            // Chạm nhẹ không kéo: ô trống thì chọn ảnh, ô có ảnh thì đổi ảnh khác
-            if (tap && tap.i >= 0) fkPkOpen(tap.i, FKP[tap.i] ? 'replace' : 'fill');
-            pan = null; tap = null;
-        }
+        if (pts.size === 0) { pan = null; fkRender(); }
     };
-    st.addEventListener('pointerup', up);
-    st.addEventListener('pointercancel', up);
-    st.addEventListener('wheel', e => {
-        if (FK_SEL < 0 || !FKP[FK_SEL]) return;
+    view.addEventListener('pointerup', up);
+    view.addEventListener('pointercancel', up);
+    view.addEventListener('wheel', e => {
+        if (FK_ED < 0 || !FKP[FK_ED]) return;
         e.preventDefault();
-        FKP[FK_SEL].s *= e.deltaY < 0 ? 1.08 : 1 / 1.08;
-        FR.clamp(FKF.slots[FK_SEL], FKP[FK_SEL]); fkRender();
+        FKP[FK_ED].s *= e.deltaY < 0 ? 1.08 : 1 / 1.08;
+        FR.clamp(FKF.slots[FK_ED], FKP[FK_ED]); fkRender();
     }, { passive: false });
+    window.addEventListener('resize', () => { if (FK_ED >= 0) fkEdRender(); });
+}
+
+// Khung ghép chính chỉ để xem tổng thể và chạm: ô trống thì chọn ảnh, ô có ảnh
+// thì mở màn chỉnh ô. Không kéo trên khung nhỏ nữa, hết cảnh chạm nhầm.
+function fkBindStage() {
+    const st = document.getElementById('fk-stage');
+    let tap = null;
+    st.addEventListener('pointerdown', e => {
+        if (!FKF) return;
+        const r = st.getBoundingClientRect(), k = st.clientWidth / FKF.w;
+        tap = { i: FR.slotAt(FKF.slots, (e.clientX - r.left) / k, (e.clientY - r.top) / k), x: e.clientX, y: e.clientY };
+    });
+    st.addEventListener('pointermove', e => { if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 10) tap = null; });
+    st.addEventListener('pointercancel', () => { tap = null; });
+    st.addEventListener('pointerup', () => {
+        if (tap && tap.i >= 0) {
+            if (FKP[tap.i]) fkEdOpen(tap.i);
+            else fkPkOpen(tap.i, 'fill');
+        }
+        tap = null;
+    });
 }
 
 // Đặt ảnh vào ô. Cỡ ảnh lấy từ bản 1600 (cùng tỷ lệ với bản gốc nên phép tính không đổi)
@@ -297,13 +397,14 @@ async function fkSetPhoto(i, id, keep) {
 function fkZoom(v) {
     if (FK_SEL < 0 || !FKP[FK_SEL]) return;
     FKP[FK_SEL].s = parseFloat(v);
-    FR.clamp(FKF.slots[FK_SEL], FKP[FK_SEL]); fkRender();
+    FR.clamp(FKF.slots[FK_SEL], FKP[FK_SEL]);
+    if (FK_ED >= 0) fkEdRender(); else fkRender();
 }
 
 function fkOp(op) {
     if (FK_SEL < 0 || !FKP[FK_SEL]) return;
     if (op === 'rot') { FKP[FK_SEL].r = (FKP[FK_SEL].r + 90) % 360; FKP[FK_SEL].ox = FKP[FK_SEL].oy = 0; FR.clamp(FKF.slots[FK_SEL], FKP[FK_SEL]); }
-    if (op === 'del') { FKP[FK_SEL] = null; FK_SEL = -1; }
+    if (op === 'del') FKP[FK_SEL] = null;
     fkRender();
 }
 
