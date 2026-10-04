@@ -997,9 +997,83 @@ async function setupUI() {
         // load() đã chạy trong renderBranchTabs → currentData sẵn sàng; mở bảng doanh thu inline
         setTimeout(openRevenueModal, 300);
     } else {
+        chuongVe();
+        // Lần bấm đầu tiên trên trang mở khoá tiếng (trình duyệt chặn tự phát tiếng)
+        document.addEventListener('pointerdown', () => { if (chuongBat() && !_amThanh) try { _amThanh = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }, { once: true });
         // Máy quán tự làm ảnh lẻ màu frame cho khách (xem leQuet)
         setInterval(leQuet, 15000);
         setTimeout(leQuet, 3000);
+    }
+}
+
+// ===== Chuông báo: có yêu cầu in / ảnh ghép frame mới =====
+// Kêu "ting" + thông báo trong trang + thông báo của Windows (kể cả khi đang mở
+// cửa sổ khác). Chỉ báo yêu cầu vừa gửi trong 3 phút, không báo lại cái cũ khi
+// mở trang hay đổi tab cơ sở. Bấm nút 🔔 trên đầu trang để bật/tắt.
+const _daBao = new Set();
+let _amThanh = null;
+
+function chuongBat() { try { return localStorage.getItem('pn_chuong') !== '0'; } catch (e) { return true; } }
+
+function chuongVe() {
+    const t = document.getElementById('chuong-chu');
+    if (t) t.innerText = chuongBat() ? 'Chuông: bật' : 'Chuông: tắt';
+}
+
+async function chuongBam() {
+    const bat = !chuongBat();
+    try { localStorage.setItem('pn_chuong', bat ? '1' : '0'); } catch (e) {}
+    chuongVe();
+    if (!bat) return Toast.fire({ icon: 'info', title: 'Đã tắt chuông' });
+    // Trình duyệt chỉ cho phát tiếng và xin quyền thông báo ngay sau một lần bấm
+    tieng();
+    if ('Notification' in window && Notification.permission === 'default') {
+        try { await Notification.requestPermission(); } catch (e) {}
+    }
+    Toast.fire({ icon: 'success', title: 'Đã bật chuông báo' });
+}
+
+// Tiếng "ting" hai nốt, tự tạo bằng Web Audio (không cần file âm thanh)
+function tieng() {
+    try {
+        _amThanh = _amThanh || new (window.AudioContext || window.webkitAudioContext)();
+        if (_amThanh.state === 'suspended') _amThanh.resume();
+        const t0 = _amThanh.currentTime;
+        [[880, 0], [1320, 0.16]].forEach(([f, d]) => {
+            const o = _amThanh.createOscillator(), g = _amThanh.createGain();
+            o.type = 'sine'; o.frequency.value = f;
+            g.gain.setValueAtTime(0.0001, t0 + d);
+            g.gain.exponentialRampToValueAtTime(0.35, t0 + d + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.5);
+            o.connect(g).connect(_amThanh.destination);
+            o.start(t0 + d); o.stop(t0 + d + 0.55);
+        });
+    } catch (e) { /* máy không phát được tiếng thì thôi */ }
+}
+
+function chuongXet(data) {
+    let inMoi = 0, ghepMoi = 0;
+    Object.entries(data || {}).forEach(([cId, c]) => {
+        Object.keys((c && c.client_uploads) || {}).forEach(uId => {
+            const key = br + '/' + cId + '/' + uId;
+            if (_daBao.has(key)) return;
+            _daBao.add(key);
+            const ts = parseInt(uId.split('_')[1]);
+            if (!ts || Date.now() - ts > 3 * 60 * 1000) return;   // cái cũ: không báo
+            if (c.client_uploads[uId].kind === 'frame') ghepMoi++; else inMoi++;
+        });
+    });
+    if (!inMoi && !ghepMoi) return;
+    const chu = [inMoi ? 'Có yêu cầu in mới' : '', ghepMoi ? 'Có ảnh ghép frame mới' : ''].filter(Boolean).join(' · ');
+    Toast.fire({ icon: 'info', title: chu, timer: 6000 });
+    if (!chuongBat()) return;
+    tieng();
+    // Đang ở cửa sổ khác thì hiện thông báo của Windows, bấm vào là quay lại trang
+    if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+        try {
+            const n = new Notification('PHOTONOIR', { body: chu, tag: 'pn-moi', icon: './logo.png' });
+            n.onclick = () => { window.focus(); n.close(); };
+        } catch (e) {}
     }
 }
 
@@ -1557,6 +1631,7 @@ function load() {
         });
 
         const newData = snap.val();
+        if (dbPath === 'data/') chuongXet(newData);
 
         // Sửa 1 ô giá mà vẽ lại cả 200 thẻ (~10.000 phần tử) làm trang khựng vài giây.
         // Nếu chỉ vài khách đổi và số lượng không đổi -> chỉ thay đúng thẻ đó.
