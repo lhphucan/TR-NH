@@ -170,13 +170,37 @@ const FR = (() => {
     // frame: { w, h, front, slots }; frameSrc: link ảnh frame; photos[i]: ảnh của
     // ô i hoặc null; photoSrc(p): link ảnh để vẽ (bản nhỏ khi xem, bản gốc khi ghép)
     // baked: bảng màu của bộ lọc frame (tuỳ chọn), áp riêng vùng từng ô ngay sau khi vẽ ảnh
-    async function compose(ctx, sc, frame, frameSrc, photos, photoSrc, onStep, baked) {
+    // Các lớp của frame, từ DƯỚI lên TRÊN:
+    //   { k: 'photos' }                         ảnh khách trong các ô
+    //   { k: 'frame', op }                      file frame chính (tìm lỗ từ file này)
+    //   { k: 'fx', id, file, prev, name, op }   lớp PNG thêm (lấp lánh, sticker...)
+    // op: độ đậm 0..1. Frame cũ chưa có danh sách lớp: suy từ "Trên ảnh / Dưới ảnh".
+    function layersOf(f) {
+        const L = Array.isArray(f.layers) ? f.layers.filter(Boolean) : null;
+        if (L && L.some(l => l.k === 'photos') && L.some(l => l.k === 'frame')) return L;
+        return f.front === false ? [{ k: 'frame', op: 1 }, { k: 'photos' }] : [{ k: 'photos' }, { k: 'frame', op: 1 }];
+    }
+
+    // srcOf(lớp) -> địa chỉ ảnh của lớp frame/PNG. Truyền chuỗi thì coi là file frame chính.
+    async function compose(ctx, sc, frame, srcOf, photos, photoSrc, onStep, baked) {
+        if (typeof srcOf === 'string') { const u = srcOf; srcOf = l => l.k === 'frame' ? u : null; }
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, frame.w * sc, frame.h * sc);
+        for (const l of layersOf(frame)) {
+            if (l.k === 'photos') { await drawPhotos(ctx, sc, frame, photos, photoSrc, onStep, baked); continue; }
+            const src = srcOf(l);
+            if (!src) continue;
+            const im = await loadImg(src);
+            ctx.save();
+            ctx.globalAlpha = l.op == null ? 1 : Math.max(0, Math.min(1, +l.op));
+            // Lớp khác cỡ frame vẫn phủ khớp toàn bộ frame
+            ctx.drawImage(im, 0, 0, frame.w * sc, frame.h * sc);
+            ctx.restore();
+            im.src = '';
+        }
+    }
 
-        const fImg = await loadImg(frameSrc);
-        if (!frame.front) ctx.drawImage(fImg, 0, 0, frame.w * sc, frame.h * sc);
-
+    async function drawPhotos(ctx, sc, frame, photos, photoSrc, onStep, baked) {
         for (let i = 0; i < frame.slots.length; i++) {
             const p = photos[i];
             if (!p) continue;
@@ -199,9 +223,6 @@ const FR = (() => {
             im.src = '';
             if (baked) filterSlot(ctx, s, sc, baked);
         }
-
-        if (frame.front) ctx.drawImage(fImg, 0, 0, frame.w * sc, frame.h * sc);
-        fImg.src = '';
     }
 
     // ---------- Tải file lớn lên Drive ----------
@@ -463,6 +484,6 @@ const FR = (() => {
         return bakeFilter(rec, lut);
     }
 
-    return { gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, upload, uploadTo, makePublic,
+    return { gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, layersOf, upload, uploadTo, makePublic,
              haldIdentity, lutFromHald, lutFromCube, lutToHald, lutIsIdentity, bakeFilter, hasAdj, filterRect, filterSlot, filterCanvas, loadFilter };
 })();

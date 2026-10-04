@@ -247,7 +247,7 @@ async function fkOpenFrame(id) {
     FK_ED = -1;
     document.getElementById('fk-ed').classList.remove('on');
     FKB = await fkFilterFor(FKF);
-    fkPrefetch(FKF.file).catch(() => {});
+    [FKF.file, ...fkFxFiles()].forEach(id => fkPrefetch(id).catch(() => {}));
     fkStep('comp');
     fkRestoring = true;
     fkRender();
@@ -278,8 +278,21 @@ function fkNgang() { return !!(window.matchMedia && window.matchMedia('(orientat
 
 // HTML của frame + ảnh các ô ở tỷ lệ k (điểm màn hình trên 1 điểm frame)
 function fkStageHtml(k) {
-    const fr = `<img class="fr-frame" src="${FR.gUrl(FKF.prev)}" alt="" style="z-index:${FKF.front ? 3 : 0}">`;
-    const slots = FKF.slots.map((s, i) => {
+    // Vẽ đúng thứ tự lớp admin xếp: lớp sau nằm trên lớp trước
+    let html = '';
+    FR.layersOf(FKF).forEach((l, j) => {
+        const z = 2 + j * 2;
+        if (l.k === 'photos') { html += fkSlotsHtml(k, z); return; }
+        const id = l.k === 'frame' ? FKF.prev : l.prev;
+        if (id) html += `<img class="fr-frame" src="${FR.gUrl(id)}" alt="" style="z-index:${z}; opacity:${l.op == null ? 1 : l.op}">`;
+    });
+    const marks = FKF.slots.map((s, i) => FKP[i] ? '' : `
+        <div class="fr-cmark" style="${FR.boxCss(s, k)} z-index:60;"><span class="fr-plus" style="transform:rotate(${-s.rot}deg)">+</span></div>`).join('');
+    return html + marks;
+}
+
+function fkSlotsHtml(k, z) {
+    return FKF.slots.map((s, i) => {
         const p = FKP[i];
         let img = '';
         if (p) {
@@ -287,12 +300,12 @@ function fkStageHtml(k) {
             img = `<img src="${p.url}" alt="" style="width:${p.iw * g.cover * p.s * k}px; height:${p.ih * g.cover * p.s * k}px;
                    transform:translate(-50%,-50%) translate(${p.ox * s.w * k}px,${p.oy * s.h * k}px) rotate(${p.r}deg);">`;
         }
-        return `<div class="fr-cslot" style="${FR.boxCss(s, k)} z-index:1;">${img}</div>`;
+        return `<div class="fr-cslot" style="${FR.boxCss(s, k)} z-index:${z};">${img}</div>`;
     }).join('');
-    const marks = FKF.slots.map((s, i) => FKP[i] ? '' : `
-        <div class="fr-cmark" style="${FR.boxCss(s, k)} z-index:4;"><span class="fr-plus" style="transform:rotate(${-s.rot}deg)">+</span></div>`).join('');
-    return fr + slots + marks;
 }
+
+// File gốc của các lớp PNG thêm (lấp lánh, sticker...)
+const fkFxFiles = () => FR.layersOf(FKF).filter(l => l.k === 'fx' && l.file).map(l => l.file);
 
 function fkRender() {
     if (!FKF) return;
@@ -671,7 +684,7 @@ async function fkExport() {
         const n = FKP.filter(Boolean).length;
         // Bản gốc chưa tải xong thì chờ, nút ghi rõ đã tải bao nhiêu MB để khách
         // biết web đang chạy chứ không treo
-        const need = [FKF.file, ...new Set(FKP.filter(p => p && !p.local).map(p => p.id))];
+        const need = [FKF.file, ...fkFxFiles(), ...new Set(FKP.filter(p => p && !p.local).map(p => p.id))];
         need.forEach(id => fkPrefetch(id).catch(() => {}));
         // Ảnh chưa bắt đầu tải thì lấy dung lượng có sẵn trong danh sách album
         const coSan = id => +(((_alb || []).find(x => x.id === id) || {}).size || 0);
@@ -688,7 +701,7 @@ async function fkExport() {
         const goc = {};
         try { for (const id of need) goc[id] = await fkOrigUrl(id); } finally { clearInterval(iv); }
         // Ghép từ bản gốc của frame và của từng ảnh chụp
-        await FR.compose(cv.x, cv.s, FKF, goc[FKF.file], FKP, p => p.local ? p.full : goc[p.id],
+        await FR.compose(cv.x, cv.s, FKF, l => goc[l.k === 'frame' ? FKF.file : l.file], FKP, p => p.local ? p.full : goc[p.id],
                          i => { btn.innerText = `Đang ghép ảnh ${FKP.slice(0, i + 1).filter(Boolean).length}/${n}...`; },
                          FKB && FKB.baked);
         btn.innerText = 'Đang xuất ảnh...';
@@ -703,7 +716,7 @@ async function fkExport() {
         const pv = document.createElement('canvas');
         const ps = Math.min(1, 1400 / FKF.w);
         pv.width = Math.round(FKF.w * ps); pv.height = Math.round(FKF.h * ps);
-        await FR.compose(pv.getContext('2d'), ps, FKF, FR.gUrl(FKF.prev), FKP, p => p.url);
+        await FR.compose(pv.getContext('2d'), ps, FKF, l => FR.gUrl(l.k === 'frame' ? FKF.prev : l.prev), FKP, p => p.url);
         const pvBlob = await new Promise(r => pv.toBlob(r, 'image/jpeg', 0.9));
         pv.width = pv.height = 0;
 

@@ -41,13 +41,6 @@ async function openFrameManager() {
                             <input type="text" id="fa-name">
                         </div>
                         <div>
-                            <label class="fr-label">Frame nằm</label>
-                            <div class="fr-row">
-                                <button class="fr-btn" id="fa-front" onclick="faSetFront(true)">Trên ảnh</button>
-                                <button class="fr-btn" id="fa-back" onclick="faSetFront(false)">Dưới ảnh</button>
-                            </div>
-                        </div>
-                        <div>
                             <label class="fr-label">Màu ảnh khách</label>
                             <div class="fr-row">
                                 <select id="fa-filter" class="fr-select" onchange="FA.filter = this.value"></select>
@@ -69,12 +62,18 @@ async function openFrameManager() {
                     </div>
                     <div class="fr-row" id="fa-branches" style="margin-top:8px;"></div>
                     <p class="fr-hint" id="fa-all-hint" style="margin:6px 0 10px;"></p>
+                    <label class="fr-label">Các lớp <span style="font-weight:500; color:#888;">(trên cùng ở đầu danh sách, kéo ⠿ để đổi thứ tự)</span></label>
+                    <div id="fa-layers" class="fa-layers"></div>
+                    <div class="fr-row" style="margin:8px 0 12px;">
+                        <label class="fr-btn" for="fa-fx">+ Thêm lớp PNG</label>
+                        <input type="file" id="fa-fx" accept=".png,image/png" class="fr-hidden" onchange="faAddFx(this)">
+                    </div>
                     <p class="fr-hint" style="margin:0 0 10px;">
-                        <b>Trên ảnh</b>: frame đục lỗ đè lên, viền che mép ảnh. <b>Dưới ảnh</b>: frame làm nền, ảnh đè lên.
+                        Lớp PNG trong suốt (lấp lánh, sticker, chữ...) phủ khớp toàn bộ frame: xuất từ Canva <b>cùng cỡ với frame</b>.
                         Vùng sọc xám là chỗ ảnh khách sẽ nằm.<br>
                         Kéo trên chỗ trống để vẽ ô mới. Kéo ô để dời. Chấm ở góc đổi cả rộng lẫn cao, chấm ở cạnh chỉ kéo một chiều, chấm xanh phía dưới để xoay.
                     </p>
-                    <div id="fa-stage" class="fr-stage"><div id="fa-fill"></div><img class="fr-frame" id="fa-img" alt=""><div id="fa-slots"></div></div>
+                    <div id="fa-stage" class="fr-stage"><div id="fa-lay"></div><div id="fa-slots"></div></div>
 
                     <div id="fa-slotpanel" class="fr-tool">
                         <div class="fr-grid5">
@@ -103,6 +102,7 @@ async function openFrameManager() {
             </div></div>
         </div>`);
         faBindStage();
+        faBindLayers();
         window.addEventListener('resize', () => { if (FA && document.getElementById('fa-modal').style.display !== 'none') faRender(); });
         m = document.getElementById('fa-modal');
     }
@@ -137,7 +137,7 @@ function faRenderList() {
             <button class="fr-fitem${f.on === false ? ' off' : ''}" onclick="faOpen('${faEsc(id)}')">
                 <span class="fr-fimg"><img src="${FR.gUrl(f.prev)}" alt="" loading="lazy"></span>
                 <b>${faEsc(f.name)}</b>
-                <span class="fr-meta">${(f.slots || []).length} ô · ${f.on === false ? 'đang ẩn' : 'đang dùng'}${f.filter && FT_LIST[f.filter] ? ' · ' + faEsc(FT_LIST[f.filter].name) : ''}</span>
+                <span class="fr-meta">${(f.slots || []).length} ô${(f.layers || []).filter(l => l && l.k === 'fx').length ? ' · ' + (f.layers || []).filter(l => l && l.k === 'fx').length + ' lớp PNG' : ''} · ${f.on === false ? 'đang ẩn' : 'đang dùng'}${f.filter && FT_LIST[f.filter] ? ' · ' + faEsc(FT_LIST[f.filter].name) : ''}</span>
                 <span class="fr-meta">${cs.length ? faEsc(cs.join(', ')) : 'chưa chọn cơ sở'}</span>
             </button>
             <button class="fr-fdel" onclick="faDelete('${faEsc(id)}')" aria-label="Xoá frame">✕</button>
@@ -172,13 +172,19 @@ function faOpen(id) {
     faShow(FR.gUrl(f.prev));
 }
 
+let FA_FSRC = '';      // ảnh xem trước của file frame chính đang sửa
+let FA_TRASH = [];    // file Drive của lớp PNG đã bỏ, xoá sau khi lưu
+
 function faShow(src) {
     document.getElementById('fa-edit').classList.remove('fr-hidden');
     document.getElementById('fa-name').value = FA.name;
-    document.getElementById('fa-img').src = src;
+    FA_FSRC = src;
+    FA.layers = JSON.parse(JSON.stringify(FR.layersOf(FA)));
+    FA_TRASH = [];
     faSetAll(FA.all !== false);
     faSetOn(FA.on !== false);
-    faSetFront(FA.front !== false);
+    faLayersRender();
+    faRender();
     faFilterSelect();
     document.getElementById('fa-edit').scrollIntoView({ behavior: 'smooth' });
 }
@@ -193,11 +199,95 @@ function faFilterSelect() {
     sel.value = FA.filter || '';
 }
 
-function faSetFront(v) {
-    FA.front = v;
-    document.getElementById('fa-front').classList.toggle('solid', v);
-    document.getElementById('fa-back').classList.toggle('solid', !v);
+// ---------- Bảng lớp ----------
+const faLayerSrc = l => l.k === 'frame' ? FA_FSRC : (l._src || (l.prev ? FR.gUrl(l.prev) : ''));
+
+function faLayersRender() {
+    const box = document.getElementById('fa-layers');
+    if (!box || !FA) return;
+    const L = FA.layers;
+    // Danh sách hiện lớp trên cùng ở đầu, giống Canva
+    box.innerHTML = L.map((l, j) => j).reverse().map(j => {
+        const l = L[j];
+        const ten = l.k === 'photos' ? 'Ảnh khách' : l.k === 'frame' ? 'Frame chính' : (l.name || 'Lớp PNG');
+        const thumb = l.k === 'photos' ? '<span class="fa-lthumb ph"></span>' : `<span class="fa-lthumb"><img src="${faEsc(faLayerSrc(l))}" alt=""></span>`;
+        const op = l.op == null ? 1 : l.op;
+        return `<div class="fa-lrow${FA_DRAG && FA_DRAG.j === j ? ' drag' : ''}" data-j="${j}">
+            <span class="fa-lh" title="Kéo để đổi thứ tự">⠿</span>
+            ${thumb}
+            <span class="fa-lname">${faEsc(ten)}</span>
+            ${l.k === 'photos' ? '' : `<input type="range" class="fa-lop" min="0" max="100" value="${Math.round(op * 100)}" oninput="faLayerOp(${j}, this.value)" title="Độ đậm"><span class="fa-lpct" id="fa-lpct-${j}">${Math.round(op * 100)}%</span>`}
+            <button class="fr-btn fa-lbtn" onclick="faLayerMove(${j}, 1)" title="Lên trên" ${j === L.length - 1 ? 'disabled' : ''}>▲</button>
+            <button class="fr-btn fa-lbtn" onclick="faLayerMove(${j}, -1)" title="Xuống dưới" ${j === 0 ? 'disabled' : ''}>▼</button>
+            ${l.k === 'fx' ? `<button class="fr-btn danger fa-lbtn" onclick="faLayerDel(${j})" title="Bỏ lớp">✕</button>` : ''}
+        </div>`;
+    }).join('');
+}
+
+function faLayerOp(j, v) {
+    FA.layers[j].op = Math.round(+v) / 100;
+    const t = document.getElementById('fa-lpct-' + j);
+    if (t) t.innerText = Math.round(+v) + '%';
     faRender();
+}
+
+function faLayerMove(j, d) {
+    const t = j + d, L = FA.layers;
+    if (t < 0 || t >= L.length) return;
+    [L[j], L[t]] = [L[t], L[j]];
+    faLayersRender(); faRender();
+}
+
+function faLayerDel(j) {
+    const l = FA.layers[j];
+    if (!l || l.k !== 'fx') return;
+    if (l.file) FA_TRASH.push(l.file, l.prev);
+    FA.layers.splice(j, 1);
+    faLayersRender(); faRender();
+}
+
+// Thêm lớp PNG: chưa lên Drive ngay, chỉ lên khi bấm Lưu frame
+async function faAddFx(inp) {
+    const file = inp.files[0];
+    inp.value = '';
+    if (!file || !FA) return;
+    try {
+        const p = await FR.shrink(file, 1600, 'image/png');
+        if (Math.abs(p.nw / p.nh - FA.w / FA.h) > 0.01) {
+            Toast.fire({ icon: 'warning', title: `Lớp ${p.nw}×${p.nh} khác tỉ lệ frame ${FA.w}×${FA.h}: sẽ bị kéo giãn cho khớp` });
+        }
+        FA.layers.push({ k: 'fx', id: 'X_' + Date.now(), name: file.name.replace(/\.png$/i, '').slice(0, 40), op: 1,
+                         _blob: file, _prevBlob: p.blob, _src: URL.createObjectURL(p.blob) });
+        faLayersRender(); faRender();
+    } catch (e) { Swal.fire({ title: 'Không đọc được file PNG', text: e.message, icon: 'error', confirmButtonColor: '#111' }); }
+}
+
+// Kéo ⠿ để đổi thứ tự: dùng được cả chuột lẫn ngón tay
+let FA_DRAG = null;
+function faBindLayers() {
+    const box = document.getElementById('fa-layers');
+    box.addEventListener('pointerdown', e => {
+        const h = e.target.closest('.fa-lh');
+        if (!h) return;
+        e.preventDefault();
+        FA_DRAG = { j: +h.closest('.fa-lrow').dataset.j };
+        box.setPointerCapture(e.pointerId);
+        faLayersRender();
+    });
+    box.addEventListener('pointermove', e => {
+        if (!FA_DRAG) return;
+        const row = [...box.querySelectorAll('.fa-lrow')].find(r => { const b = r.getBoundingClientRect(); return e.clientY >= b.top && e.clientY <= b.bottom; });
+        if (!row) return;
+        const t = +row.dataset.j;
+        if (t === FA_DRAG.j) return;
+        const L = FA.layers, [it] = L.splice(FA_DRAG.j, 1);
+        L.splice(t, 0, it);
+        FA_DRAG.j = t;
+        faLayersRender(); faRender();
+    });
+    const end = () => { if (FA_DRAG) { FA_DRAG = null; faLayersRender(); } };
+    box.addEventListener('pointerup', end);
+    box.addEventListener('pointercancel', end);
 }
 
 // Mặc định mọi cơ sở, kể cả cơ sở mở sau này: khỏi phải nhớ quay lại tích thêm.
@@ -247,12 +337,15 @@ function faRender() {
     if (!FA) return;
     const k = faK();
     // Ảnh giả: frame trên ảnh thì nó nằm dưới frame, frame dưới ảnh thì nằm trên
-    const fill = document.getElementById('fa-fill');
-    fill.style.cssText = `position:absolute; inset:0; z-index:${FA.front ? 1 : 3};`;
-    fill.innerHTML = FA.slots.map(s => `<div class="fr-efill" style="${FR.boxCss(s, k)}"></div>`).join('');
-    document.getElementById('fa-img').style.zIndex = 2;
+    // Vẽ các lớp đúng thứ tự; vùng sọc xám là lớp "Ảnh khách"
+    document.getElementById('fa-lay').innerHTML = (FA.layers || FR.layersOf(FA)).map((l, j) => {
+        const z = 1 + j;
+        if (l.k === 'photos') return `<div style="position:absolute; inset:0; z-index:${z};">${FA.slots.map(s => `<div class="fr-efill" style="${FR.boxCss(s, k)}"></div>`).join('')}</div>`;
+        const src = faLayerSrc(l);
+        return src ? `<img class="fr-frame" src="${faEsc(src)}" alt="" style="z-index:${z}; opacity:${l.op == null ? 1 : l.op};">` : '';
+    }).join('');
     const ctl = document.getElementById('fa-slots');
-    ctl.style.cssText = 'position:absolute; inset:0; z-index:4;';
+    ctl.style.cssText = 'position:absolute; inset:0; z-index:90;';
 
     const handles = FA_HANDLES.map(([n, hx, hy, l, t, c]) =>
         `<span class="fr-h ${n}${hx && hy ? '' : ' side'}" data-act="rs" data-hx="${hx}" data-hy="${hy}" style="left:${l}; top:${t}; cursor:${c}-resize;"></span>`).join('')
@@ -414,8 +507,11 @@ async function faSave() {
 
     const btn = document.getElementById('fa-save'), bar = document.getElementById('fa-bar');
     btn.disabled = true;
+    const L = FA.layers || FR.layersOf(FA);
     const rec = {
-        name: FA.name.slice(0, 60), w: FA.w, h: FA.h, front: !!FA.front, on: FA.on !== false, all: FA.all !== false, branches,
+        // front vẫn ghi để trang khách bản cũ (còn trong bộ nhớ đệm) hiện đúng trên/dưới
+        name: FA.name.slice(0, 60), w: FA.w, h: FA.h, front: L.findIndex(l => l.k === 'frame') > L.findIndex(l => l.k === 'photos'),
+        on: FA.on !== false, all: FA.all !== false, branches,
         slots: FA.slots.map(s => ({ cx: Math.round(s.cx), cy: Math.round(s.cy), w: Math.round(s.w), h: Math.round(s.h), rot: +s.rot || 0 })),
         file: FA.file || '', prev: FA.prev || '', filter: FA.filter || '', at: Date.now()
     };
@@ -434,8 +530,34 @@ async function faSave() {
             await FR.makePublic(prev.id, token);
             rec.file = full.id; rec.prev = prev.id;
         }
+        // Lớp PNG mới thêm: đưa bản gốc và bản xem trước lên Drive
+        const moi = L.filter(l => l.k === 'fx' && l._blob);
+        if (moi.length) {
+            btn.innerText = 'ĐANG TẢI LỚP PNG LÊN...';
+            const token = await driveToken();
+            const folder = await faFolder(token);
+            for (const l of moi) {
+                const ten = (rec.name + ' - ' + l.name).replace(/[\\/:*?"<>|]/g, '_');
+                const full = await FR.upload(l._blob, ten + '.png', token, folder);
+                const prev = await FR.upload(l._prevBlob, ten + ' (xem truoc).png', token, folder);
+                await FR.makePublic(full.id, token);
+                await FR.makePublic(prev.id, token);
+                l.file = full.id; l.prev = prev.id;
+                delete l._blob; delete l._prevBlob;
+            }
+        }
+        rec.layers = L.map(l => l.k === 'photos' ? { k: 'photos' }
+                             : l.k === 'frame' ? { k: 'frame', op: l.op == null ? 1 : l.op }
+                             : { k: 'fx', id: l.id, name: l.name || '', file: l.file, prev: l.prev, op: l.op == null ? 1 : l.op });
         await db.ref('frames/' + FA.id).set(rec);
         FA.isNew = false; FA.file = rec.file; FA.prev = rec.prev;
+        // Lớp PNG đã bỏ: đưa file vào thùng rác Drive (lấy lại được trong 30 ngày)
+        if (FA_TRASH.length) {
+            const tk = await driveToken().catch(() => '');
+            FA_TRASH.filter(Boolean).forEach(fid => fetch('https://www.googleapis.com/drive/v3/files/' + fid, {
+                method: 'PATCH', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) }).catch(() => {}));
+            FA_TRASH = [];
+        }
         delete FA.blob;
         Toast.fire({ icon: 'success', title: `Đã lưu frame "${rec.name}"` });
         await faLoad();
@@ -461,7 +583,8 @@ async function faDelete(id) {
         // Bỏ file trên Drive vào thùng rác (lấy lại được trong 30 ngày)
         if (f && (f.file || f.prev)) {
             const token = await driveToken().catch(() => '');
-            for (const fid of [f.file, f.prev].filter(Boolean)) {
+            const fx = (f.layers || []).filter(l => l && l.k === 'fx').flatMap(l => [l.file, l.prev]);
+            for (const fid of [f.file, f.prev, ...fx].filter(Boolean)) {
                 fetch('https://www.googleapis.com/drive/v3/files/' + fid, {
                     method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true })
                 }).catch(() => {});
