@@ -32,7 +32,7 @@ async function fkLoadFrames() {
 function fkFramesFor(br) {
     return Object.keys(FK_FRAMES || {}).map(id => Object.assign({ id }, FK_FRAMES[id]))
         .filter(f => f.on !== false && (f.all || (f.branches && f.branches[br])) && f.file && f.prev && (f.slots || []).length)
-        .sort((a, b) => b.id.localeCompare(a.id));
+        .sort(FR.frameOrder);
 }
 
 // Ảnh để ghép: ảnh chụp trong lượt, bỏ các bản ghép khung có sẵn của máy chụp
@@ -133,7 +133,7 @@ async function frOpen() {
     fkStep('pick');
     document.getElementById('fk-list').innerHTML = frames.map(f => `
         <button class="fr-fitem" onclick="fkOpenFrame('${fkEsc(f.id)}')">
-            <span class="fr-fimg"><img src="${FR.gUrl(f.prev)}" alt="" loading="lazy"></span>
+            <span class="fr-fimg">${FR.thumbHtml(f)}</span>
             <b>${fkEsc(f.name)}</b>
             <span class="fr-meta">${f.slots.length} ảnh</span>
         </button>`).join('');
@@ -287,9 +287,12 @@ function fkStageHtml(k) {
         if (id) html += `<img class="fr-frame" src="${FR.gUrl(id)}" alt="" style="z-index:${z}; opacity:${l.op == null ? 1 : l.op}">`;
     });
     const marks = FKF.slots.map((s, i) => FKP[i] ? '' : `
-        <div class="fr-cmark" style="${FR.boxCss(s, k)} z-index:60;"><span class="fr-plus" style="transform:rotate(${-s.rot}deg)">+</span></div>`).join('');
+        <div class="fr-cmark" style="${FR.boxCss(s, k)} z-index:60;"><span class="fr-plus" style="transform:rotate(${-s.rot}deg); font-size:${fkPlus(s, k)}px">+</span></div>`).join('');
     return html + marks;
 }
+
+// Dấu + vừa với ô: khoảng 1/4 cạnh ngắn, không quá to ở ô nhỏ
+function fkPlus(s, k) { return Math.round(Math.max(12, Math.min(34, Math.min(s.w, s.h) * k * 0.26))); }
 
 function fkSlotsHtml(k, z) {
     return FKF.slots.map((s, i) => {

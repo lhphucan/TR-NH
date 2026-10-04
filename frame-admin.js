@@ -103,6 +103,7 @@ async function openFrameManager() {
         </div>`);
         faBindStage();
         faBindLayers();
+        faBindList();
         window.addEventListener('resize', () => { if (FA && document.getElementById('fa-modal').style.display !== 'none') faRender(); });
         m = document.getElementById('fa-modal');
     }
@@ -119,6 +120,7 @@ function closeFrameManager() {
 async function faLoad() {
     const box = document.getElementById('fa-list');
     box.innerHTML = '<p class="fr-hint">Đang tải...</p>';
+    FA_FORDER = null;
     try {
         FA_LIST = (await db.ref('frames').once('value')).val() || {};
         FT_LIST = (await db.ref('config/filters').once('value')).val() || {};
@@ -128,14 +130,15 @@ async function faLoad() {
 }
 
 function faRenderList() {
-    const ids = Object.keys(FA_LIST).sort((a, b) => b.localeCompare(a));
+    const ids = faOrderIds();
     const box = document.getElementById('fa-list');
     box.innerHTML = ids.map(id => {
         const f = FA_LIST[id];
         const cs = f.all ? ['Mọi cơ sở'] : Object.keys(f.branches || {}).filter(b => f.branches[b]).map(b => (branchesCache[b] && branchesCache[b].name) || b);
-        return `<div class="fr-fwrap">
+        return `<div class="fr-fwrap${FA_FDRAG && FA_FDRAG.id === id ? ' drag' : ''}" data-id="${faEsc(id)}">
+            <span class="fr-fgrip" title="Kéo để xếp thứ tự khách thấy">⠿</span>
             <button class="fr-fitem${f.on === false ? ' off' : ''}" onclick="faOpen('${faEsc(id)}')">
-                <span class="fr-fimg"><img src="${FR.gUrl(f.prev)}" alt="" loading="lazy"></span>
+                <span class="fr-fimg">${FR.thumbHtml(f)}</span>
                 <b>${faEsc(f.name)}</b>
                 <span class="fr-meta">${(f.slots || []).length} ô${(f.layers || []).filter(l => l && l.k === 'fx').length ? ' · ' + (f.layers || []).filter(l => l && l.k === 'fx').length + ' lớp PNG' : ''} · ${f.on === false ? 'đang ẩn' : 'đang dùng'}${f.filter && FT_LIST[f.filter] ? ' · ' + faEsc(FT_LIST[f.filter].name) : ''}</span>
                 <span class="fr-meta">${cs.length ? faEsc(cs.join(', ')) : 'chưa chọn cơ sở'}</span>
@@ -143,6 +146,53 @@ function faRenderList() {
             <button class="fr-fdel" onclick="faDelete('${faEsc(id)}')" aria-label="Xoá frame">✕</button>
         </div>`;
     }).join('') || '<p class="fr-hint">Chưa có frame nào.</p>';
+}
+
+// Thứ tự frame: kéo ⠿ trên thẻ frame, thả vào chỗ mới. Khách thấy đúng thứ tự này.
+let FA_FDRAG = null, FA_FORDER = null;
+function faOrderIds() {
+    if (FA_FORDER) return FA_FORDER.filter(id => FA_LIST[id]);
+    return Object.keys(FA_LIST).map(id => Object.assign({ id }, FA_LIST[id])).sort(FR.frameOrder).map(f => f.id);
+}
+
+function faBindList() {
+    const box = document.getElementById('fa-list');
+    box.addEventListener('pointerdown', e => {
+        const g = e.target.closest('.fr-fgrip');
+        if (!g) return;
+        e.preventDefault();
+        FA_FORDER = faOrderIds();
+        FA_FDRAG = { id: g.closest('.fr-fwrap').dataset.id, moved: false };
+        box.setPointerCapture(e.pointerId);
+        faRenderList();
+    });
+    box.addEventListener('pointermove', e => {
+        if (!FA_FDRAG) return;
+        const over = [...box.querySelectorAll('.fr-fwrap')].find(w => {
+            const b = w.getBoundingClientRect();
+            return e.clientX >= b.left && e.clientX <= b.right && e.clientY >= b.top && e.clientY <= b.bottom;
+        });
+        if (!over || over.dataset.id === FA_FDRAG.id) return;
+        const from = FA_FORDER.indexOf(FA_FDRAG.id), to = FA_FORDER.indexOf(over.dataset.id);
+        FA_FORDER.splice(from, 1);
+        FA_FORDER.splice(to, 0, FA_FDRAG.id);
+        FA_FDRAG.moved = true;
+        faRenderList();
+    });
+    const end = async () => {
+        if (!FA_FDRAG) return;
+        const moved = FA_FDRAG.moved;
+        FA_FDRAG = null;
+        faRenderList();
+        if (!moved) return;
+        // Ghi thứ tự mới cho mọi frame một lần
+        const up = {};
+        FA_FORDER.forEach((id, i) => { up[id + '/order'] = i; if (FA_LIST[id]) FA_LIST[id].order = i; });
+        try { await db.ref('frames').update(up); Toast.fire({ icon: 'success', title: 'Đã lưu thứ tự frame' }); }
+        catch (e) { Swal.fire({ title: 'Chưa lưu được thứ tự', text: e.message, icon: 'error', confirmButtonColor: '#111' }); }
+    };
+    box.addEventListener('pointerup', end);
+    box.addEventListener('pointercancel', end);
 }
 
 // Up frame mới: chưa lên Drive ngay, chỉ lên khi bấm Lưu
@@ -515,6 +565,7 @@ async function faSave() {
         slots: FA.slots.map(s => ({ cx: Math.round(s.cx), cy: Math.round(s.cy), w: Math.round(s.w), h: Math.round(s.h), rot: +s.rot || 0 })),
         file: FA.file || '', prev: FA.prev || '', filter: FA.filter || '', at: Date.now()
     };
+    if (FA_LIST[FA.id] && FA_LIST[FA.id].order != null) rec.order = FA_LIST[FA.id].order;
     try {
         if (FA.isNew) {
             // Frame mới: đưa PNG gốc và bản xem trước lên Drive trước, rồi mới ghi Firebase

@@ -36,7 +36,12 @@
 .fr-fitem { width: 100%; border: 1px solid #e5e5e5; border-radius: 12px; padding: 8px; background: #fff; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; color: #111; display: block; box-sizing: border-box; }
 .fr-fitem .fr-fimg { display: block; width: 100%; aspect-ratio: 3/2; border-radius: 8px; overflow: hidden;
                      background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0/16px 16px; }
-.fr-fitem .fr-fimg img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.fr-fitem .fr-fimg { position: relative; }
+.fr-fitem .fr-fimg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+/* Kéo ⠿ để xếp thứ tự frame khách thấy */
+.fr-fgrip { position: absolute; top: 6px; left: 6px; z-index: 3; width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e5e5e5; background: #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 16px; color: #666; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.fr-fwrap.drag .fr-fitem { border-color: #111; box-shadow: 0 6px 18px rgba(0,0,0,.15); }
 .fr-fitem b { display: block; font-size: 12px; margin-top: 6px; }
 .fr-fitem span.fr-meta { display: block; font-size: 11px; color: #666; }
 .fr-fitem.off { opacity: .5; }
@@ -67,7 +72,7 @@
 .fr-cslot { position: absolute; overflow: hidden; background: #e5e5e5; box-sizing: border-box; }
 .fr-cslot img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; }
 .fr-cmark { position: absolute; pointer-events: none; display: flex; align-items: center; justify-content: center; }
-.fr-plus { color: #555; font: 300 44px/1 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; }
+.fr-plus { color: #777; font-family: 'Inter', sans-serif; font-weight: 200; line-height: 1; display: flex; align-items: center; justify-content: center; }
 
 .fr-tool { display: none; margin-top: 12px; }
 .fr-tool.on { display: block; }

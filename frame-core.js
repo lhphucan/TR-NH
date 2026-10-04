@@ -181,6 +181,20 @@ const FR = (() => {
         return f.front === false ? [{ k: 'frame', op: 1 }, { k: 'photos' }] : [{ k: 'photos' }, { k: 'frame', op: 1 }];
     }
 
+    // Ảnh thu nhỏ của frame có đủ các lớp PNG, đúng thứ tự và độ đậm
+    function thumbHtml(f) {
+        return layersOf(f).map((l, j) => {
+            const id = l.k === 'frame' ? f.prev : l.k === 'fx' ? l.prev : '';
+            return id ? `<img src="${gUrl(id)}" alt="" loading="lazy" style="z-index:${j + 1}; opacity:${l.op == null ? 1 : l.op}">` : '';
+        }).join('');
+    }
+
+    // Thứ tự frame admin xếp (order nhỏ đứng trước); frame chưa xếp: mới nhất trước
+    function frameOrder(a, b) {
+        const oa = a.order == null ? Infinity : +a.order, ob = b.order == null ? Infinity : +b.order;
+        return oa !== ob ? oa - ob : String(b.id).localeCompare(String(a.id));
+    }
+
     // srcOf(lớp) -> địa chỉ ảnh của lớp frame/PNG. Truyền chuỗi thì coi là file frame chính.
     async function compose(ctx, sc, frame, srcOf, photos, photoSrc, onStep, baked) {
         if (typeof srcOf === 'string') { const u = srcOf; srcOf = l => l.k === 'frame' ? u : null; }
@@ -484,6 +498,6 @@ const FR = (() => {
         return bakeFilter(rec, lut);
     }
 
-    return { gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, layersOf, upload, uploadTo, makePublic,
+    return { gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, layersOf, thumbHtml, frameOrder, upload, uploadTo, makePublic,
              haldIdentity, lutFromHald, lutFromCube, lutToHald, lutIsIdentity, bakeFilter, hasAdj, filterRect, filterSlot, filterCanvas, loadFilter };
 })();
