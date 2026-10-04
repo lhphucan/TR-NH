@@ -772,23 +772,29 @@ async function fkSend() {
         else await gsCall({ action: 'publish', id: up.id }).catch(() => {});
 
         const time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + now.toLocaleDateString('vi-VN');
+        // Frame có màu: giao việc làm ảnh lẻ màu frame cho máy tính quán (trang nhân
+        // viên đang mở tự làm). Điện thoại khách hay bị tắt giữa chừng nên không làm ở đây.
+        const anhDrive = [...new Map(FKP.filter(p => p && !p.local).map(p => [p.id, p])).values()]
+            .map(p => ({ id: p.id, name: ((_alb || []).find(x => x.id === p.id) || {}).name || 'anh.jpg' }));
+        const rec = { time, drive: [{ id: up.id, name: up.name }], folder: info.folderUrl, kind: 'frame',
+                      took: Math.round((Date.now() - batDau) / 1000), mb: Math.round(size / 104857.6) / 10, via: sent.via || '' };
+        if (FKB && anhDrive.length) rec.le = { filter: FKB.id, ten: fkTenLoc(), lot: _albCtx.fid, photos: anhDrive };
         // Yêu cầu in: bên nhân viên hiện như ảnh khách gửi, có giờ và nút tải bản gốc
-        await db.ref('data/' + branch + '/' + clientId + '/client_uploads/U_' + Date.now())
-                .set({ time, drive: [{ id: up.id, name: up.name }], folder: info.folderUrl, kind: 'frame',
-                       took: Math.round((Date.now() - batDau) / 1000), mb: Math.round(size / 104857.6) / 10, via: sent.via || '' });
+        await db.ref('data/' + branch + '/' + clientId + '/client_uploads/U_' + Date.now()).set(rec);
         // Ghi để ảnh ghép hiện trong album khách; ghi sau cùng để lỡ hỏng thì tiệm vẫn nhận được ảnh
         await fkFramedRef().set({ time, id: up.id, frame: FKF.id }).catch(() => {});
         set(1);
         try { localStorage.removeItem(fkDraftKey()); } catch (e) {}
 
-        // Frame có bộ lọc màu: lưu thêm từng ảnh đã dùng, cùng màu với frame, để khách đăng ảnh lẻ
-        const le = FKB ? await fkSendSingles({ bName, now, cName, maKh }, btn, bar) : null;
+        // Ảnh khách chọn từ máy không có trên Drive: máy quán không lấy được, làm
+        // ngay trên điện thoại (thường chỉ một vài ảnh)
+        const le = FKB && FKP.some(p => p && p.local) ? await fkSendSingles({ bName, now, cName, maKh }, btn, bar) : null;
 
         fkClose();
         await Swal.fire({ title: 'Đã gửi cho tiệm', icon: 'success', confirmButtonColor: '#111',
             text: 'Ảnh ghép đã nằm trong album của bạn, nhân viên sẽ in giúp bạn.'
-                + (le && le.ok ? ` Album có thêm ${le.ok} ảnh lẻ màu ${FKB.name}.` : '')
-                + (le && le.err ? ` ${le.err} ảnh lẻ chưa lưu được.` : '') });
+                + (FKB && anhDrive.length ? ` Ảnh lẻ màu ${FKB.name} sẽ có trong album sau ít phút.` : '')
+                + (le && le.err ? ` ${le.err} ảnh từ máy chưa lưu được màu ${FKB.name}.` : '') });
     } catch (e) {
         Swal.fire({ title: 'Chưa gửi được', text: e.message || 'Kiểm tra mạng rồi thử lại giúp mình nhé.', icon: 'error', confirmButtonColor: '#111' });
     } finally {
@@ -801,10 +807,14 @@ async function fkSend() {
 // Ảnh lẻ mang màu frame: đủ độ phân giải gốc, JPEG 95% (đổi màu thì phải lưu
 // lại file mới, 95% mắt thường không phân biệt được với ảnh gốc của máy chụp).
 // Tên PN-<tên bộ lọc>_<tên ảnh gốc> để album ghi "Ảnh 3 · Noir" và không lưu trùng.
+// Tên màu trong tên file ảnh lẻ: PN-<tên màu>_<tên ảnh gốc>.jpg (máy quán dùng đúng tên này)
+function fkTenLoc() { return String(FKB.name).replace(/[\\/:*?"<>|_]/g, ' ').trim().slice(0, 30) || 'Mau'; }
+
+// Chỉ còn làm cho ảnh khách chọn từ máy; ảnh của lượt chụp do máy quán làm
 async function fkSendSingles(w, btn, bar) {
     const seen = new Set(), list = [];
-    FKP.forEach(p => { if (p && !seen.has(p.id)) { seen.add(p.id); list.push(p); } });
-    const ten = String(FKB.name).replace(/[\\/:*?"<>|_]/g, ' ').trim().slice(0, 30) || 'Mau';
+    FKP.forEach(p => { if (p && p.local && !seen.has(p.id)) { seen.add(p.id); list.push(p); } });
+    const ten = fkTenLoc();
     const daCo = new Set((_alb || []).map(x => x.name));
     let ok = 0, err = 0;
     for (let k = 0; k < list.length; k++) {

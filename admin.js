@@ -996,6 +996,111 @@ async function setupUI() {
     if (userRole === 'viewer') {
         // load() đã chạy trong renderBranchTabs → currentData sẵn sàng; mở bảng doanh thu inline
         setTimeout(openRevenueModal, 300);
+    } else {
+        // Máy quán tự làm ảnh lẻ màu frame cho khách (xem leQuet)
+        setInterval(leQuet, 15000);
+        setTimeout(leQuet, 3000);
+    }
+}
+
+// ===== Ảnh lẻ màu frame: máy tính quán làm thay điện thoại khách =====
+// Khách ghép vào frame có bộ lọc màu thì yêu cầu in kèm le = { filter, ten, lot,
+// photos: [{id, name}] }. Trang nhân viên đang mở tự lấy ảnh gốc trên Drive, đổi màu,
+// lưu PN-<ten>_<tên gốc>.jpg vào thư mục lượt. Ghi tiến độ le.n / le.xong; nhiều máy
+// cùng mở thì máy nào giữ chỗ (le.dang) trước máy đó làm.
+let _leDang = false;
+const _leFilt = {};
+// Mã riêng của máy/tab này: các máy cùng cơ sở thường đăng nhập chung một tài
+// khoản, giữ chỗ theo tài khoản thì máy nào cũng tưởng là của mình rồi làm trùng
+const LE_MAY = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+// Dấu tiến độ ảnh lẻ của một khách: đổi là biết phải vẽ lại thẻ
+function leChuKy(c) {
+    return JSON.stringify(Object.values((c && c.client_uploads) || {}).map(u => u && u.le ? [u.le.n || 0, !!u.le.xong, u.le.loi || '', !!u.le.dang] : 0));
+}
+
+function leDongTrangThai(cId, uId, le) {
+    const tong = le.photos.length, n = Math.min(le.n || 0, tong);
+    const ten = escapeHTML(le.ten || 'màu frame');
+    const st = le.xong ? `đủ ${tong}` : (le.loi ? `lỗi: ${escapeHTML(le.loi)}` : (le.dang ? `đang làm ${n}/${tong}` : `chờ máy quán ${n}/${tong}`));
+    return `<div class="le-row" style="margin-top:8px; font-size:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span style="font-weight:600;">Ảnh lẻ màu ${ten}: <span style="color:${le.xong ? '#16a34a' : '#a16207'};">${st}</span></span>
+        <button type="button" class="up-btn ghost" onclick="leLamLai('${cId}', '${uId}')">LÀM LẠI</button>
+    </div>`;
+}
+
+async function leLamLai(cId, uId) {
+    if (userRole === 'viewer') return;
+    await db.ref(dbPath + br + '/' + cId + '/client_uploads/' + uId + '/le').update({ xong: null, n: 0, loi: null, dang: null });
+    Toast.fire({ icon: 'info', title: 'Máy này sẽ làm lại ảnh lẻ' });
+    setTimeout(leQuet, 500);
+}
+
+// Tìm việc còn dở trong danh sách đang xem rồi làm từng việc một
+async function leQuet() {
+    if (_leDang || dbPath !== 'data/' || !currentData || !GS_URL || userRole === 'viewer') return;
+    for (const [cId, c] of Object.entries(currentData)) {
+        for (const [uId, up] of Object.entries((c && c.client_uploads) || {})) {
+            const le = up && up.kind === 'frame' && up.le;
+            // Đã xong, hoặc lỗi (chờ nhân viên bấm Làm lại, khỏi thử mãi vô ích)
+            if (!le || le.xong || le.loi || !Array.isArray(le.photos) || !le.photos.length) continue;
+            // Máy khác đang làm (còn báo trong 2 phút) thì để nó làm
+            if (le.dang && Date.now() - (le.dang.at || 0) < 120000 && le.dang.by !== LE_MAY) continue;
+            _leDang = true;
+            try { await leLam(br, cId, uId); } finally { _leDang = false; }
+            return;   // mỗi lượt quét làm một việc, lượt sau làm tiếp
+        }
+    }
+}
+
+async function leLam(b, cId, uId) {
+    const ref = db.ref('data/' + b + '/' + cId + '/client_uploads/' + uId + '/le');
+    const giu = () => ref.child('dang').set({ by: LE_MAY, at: Date.now() });
+    // Giữ chỗ: máy nào ghi trước máy đó làm
+    const tx = await ref.child('dang').transaction(cur => (cur && cur.by !== LE_MAY && Date.now() - (cur.at || 0) < 120000) ? undefined : { by: LE_MAY, at: Date.now() });
+    if (!tx.committed) return;
+    const le = (await ref.once('value')).val();
+    if (!le || le.xong) return;
+    try {
+        const token = await driveToken();
+        const H = { Authorization: 'Bearer ' + token };
+        if (!_leFilt[le.filter]) {
+            const rec = (await db.ref('config/filters/' + le.filter).once('value')).val();
+            if (!rec) throw new Error('bộ lọc đã bị xoá');
+            _leFilt[le.filter] = await FR.loadFilter(rec);
+        }
+        const baked = _leFilt[le.filter];
+        if (!baked) throw new Error('bộ lọc không đổi màu gì');
+        // Ảnh lẻ đã có trong thư mục lượt thì bỏ qua (khách gửi lại, hoặc lần trước làm dở)
+        const co = new Set((await driveQuery(`'${le.lot}' in parents and name contains 'PN-' and trashed=false`, 'files(id,name)')).map(f => f.name));
+        let n = 0;
+        for (const p of le.photos) {
+            const ten = `PN-${le.ten}_${String(p.name).replace(/\.[a-z0-9]+$/i, '')}.jpg`;
+            if (!co.has(ten)) {
+                const res = await fetch('https://www.googleapis.com/drive/v3/files/' + p.id + '?alt=media', { headers: H });
+                if (!res.ok) throw new Error('không tải được ảnh gốc (HTTP ' + res.status + ')');
+                const u = URL.createObjectURL(await res.blob());
+                let blob;
+                try {
+                    const im = await FR.loadImg(u);
+                    const c = document.createElement('canvas');
+                    c.width = im.naturalWidth; c.height = im.naturalHeight;
+                    c.getContext('2d').drawImage(im, 0, 0);
+                    im.src = '';
+                    FR.filterCanvas(c, baked);
+                    blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.95));
+                    c.width = c.height = 0;
+                } finally { URL.revokeObjectURL(u); }
+                const f = await FR.upload(blob, ten, token, le.lot);
+                await FR.makePublic(f.id, token).catch(() => {});
+                co.add(ten);
+            }
+            n++;
+            await ref.update({ n, dang: { by: LE_MAY, at: Date.now() } });
+        }
+        await ref.update({ xong: true, dang: null, loi: null, n });
+    } catch (e) {
+        await ref.update({ loi: String(e.message || e).slice(0, 80), dang: null }).catch(() => {});
     }
 }
 
@@ -1406,6 +1511,9 @@ function patchCard(clientId, c) {
     const search = card.getAttribute('data-search') || '';
     if (c.phone && search.indexOf(String(c.phone)) === -1) return true;
 
+    // Tiến độ ảnh lẻ màu frame đổi -> vẽ lại thẻ để hiện "đang làm 3/6", "đủ 6"
+    if ((card.getAttribute('data-le') || '') !== leChuKy(c)) return true;
+
     // Số ảnh hoặc yêu cầu in đổi -> cấu trúc thẻ khác, phải vẽ đầy đủ
     const shownLinks = card.querySelectorAll('.link-manager .link-row').length;
     const realLinks = c.links ? Object.keys(c.links).length : 0;
@@ -1567,6 +1675,7 @@ function load() {
                                     </div>
                                 </div>
                                 <div style="display:flex; flex-wrap:wrap;">${imgLinks}</div>
+                                ${up.kind === 'frame' && up.le && Array.isArray(up.le.photos) ? leDongTrangThai(client.id, uId, up.le) : ''}
                             </div>`;
                     });
                 }
@@ -1586,7 +1695,7 @@ function load() {
                 const isFree = (pVal === 'Miễn phí');
 
                 html += `
-                    <div class="client-card${(!pVal && dbPath === 'data/') ? ' card-no-price' : ''}" data-search="${client.name ? client.name.toLowerCase() : ''} ${client.phone} ${maKh}">
+                    <div class="client-card${(!pVal && dbPath === 'data/') ? ' card-no-price' : ''}" data-search="${client.name ? client.name.toLowerCase() : ''} ${client.phone} ${maKh}" data-le="${escapeHTML(leChuKy(client))}">
                         <div class="client-info">
                             ${(dbPath === 'trash/') ? `<div style="margin-bottom:10px; display:flex; align-items:center; gap:10px;"><input type="checkbox" class="trash-checkbox" value="${client.id}" style="width:16px; height:16px; cursor:pointer;"><span style="font-size:12px; font-weight:600; color:#666;">CHỌN XÓA</span></div>` : ''}
                             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
