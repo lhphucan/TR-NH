@@ -18,12 +18,12 @@
         <img src="./logo.png" alt="Logo" class="logo" onerror="this.style.display='none'">
         
         <div id="form-ui">
-            <p style="color: #666; font-size: 13px; margin-bottom: 25px; font-weight: 500;">Vui lòng nhập thông tin để tra cứu Album</p>
+            <p style="color: #666; font-size: 13px; margin-bottom: 25px; font-weight: 500;">Nhập số điện thoại để xem ảnh của bạn</p>
             <select id="branch"></select>
             <input type="text" id="name" placeholder="Họ và tên của bạn">
             <input type="tel" id="phone" placeholder="Số điện thoại (bắt buộc)" onkeypress="if(event.key === 'Enter') checkData()">
             <button id="btn-submit" class="primary-btn" onclick="checkData()">
-                <span style="display:flex; align-items:center; justify-content:center; gap:8px;"><span class="spinner" id="spinner"></span><span id="btn-text">TRA CỨU</span></span>
+                <span style="display:flex; align-items:center; justify-content:center; gap:8px;"><span class="spinner" id="spinner"></span><span id="btn-text">XEM ẢNH CỦA TÔI</span></span>
             </button>
         </div>
 
@@ -45,8 +45,8 @@
                     <!-- accept="image/*" làm iPhone mở thẳng máy ảnh, mà máy ảnh chỉ chụp được
                          một tấm nên khách không chọn nhiều ảnh được. Liệt kê đuôi ảnh cụ thể
                          thì mở đúng thư viện ảnh. Thêm HEIC vì iPhone lưu ảnh dạng này. -->
-                    <input type="file" id="cFile" multiple accept=".jpg,.jpeg,.png,.heic,.heif,.webp,image/jpeg,image/png,image/heic,image/heif,image/webp" style="display: none;" onchange="document.getElementById('cName').innerText = this.files.length > 0 ? this.files.length + ' tệp đã chọn' : 'Chưa có tệp'; chuanBiGui()">
-                    <span id="cName" style="font-size: 12px; color: #666; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Chưa có tệp</span>
+                    <input type="file" id="cFile" multiple accept=".jpg,.jpeg,.png,.heic,.heif,.webp,image/jpeg,image/png,image/heic,image/heif,image/webp" style="display: none;" onchange="document.getElementById('cName').innerText = this.files.length > 0 ? 'Đã chọn ' + this.files.length + ' ảnh' : 'Chưa chọn ảnh'; chuanBiGui()">
+                    <span id="cName" style="font-size: 12px; color: #666; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Chưa chọn ảnh</span>
                 </div>
                 <button id="btn-send" onclick="sendToShop()" class="primary-btn" style="padding: 14px; font-size: 13px;">GỬI ẢNH CHO TIỆM</button>
                 <!-- Chỉ hiện khi cơ sở có frame đang dùng -->

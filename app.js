@@ -442,7 +442,7 @@ function checkData() {
     }).catch(error => {
         showError("Lỗi kết nối máy chủ. Vui lòng thử lại.");
         document.getElementById('spinner').style.display = 'none';
-        document.getElementById('btn-text').innerText = 'TRA CỨU';
+        document.getElementById('btn-text').innerText = 'XEM ẢNH CỦA TÔI';
         document.getElementById('btn-submit').disabled = false;
     });
 }
@@ -490,7 +490,7 @@ function loadHistory(phoneDigits) {
 
 function resetSubmitBtn() {
     document.getElementById('spinner').style.display = 'none';
-    document.getElementById('btn-text').innerText = 'TRA CỨU';
+    document.getElementById('btn-text').innerText = 'XEM ẢNH CỦA TÔI';
     document.getElementById('btn-submit').disabled = false;
 }
 
@@ -586,7 +586,7 @@ function renderHistory(history, branch) {
         if (links.length) {
             links.forEach((lid, i) => {
                 const l = d.links[lid] || {};
-                inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${escapeHTML(h.branch)}', '${escapeHTML(h.id)}')">Xem &amp; lưu ảnh</button></div>`;
+                inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">${tenLuot(l, i)}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${escapeHTML(h.branch)}', '${escapeHTML(h.id)}')">Xem &amp; lưu ảnh</button></div>`;
             });
             inner += typeof frRows === 'function' ? frRows(d, h.branch) : '';
         } else {
@@ -687,8 +687,15 @@ function backToForm() {
     document.getElementById('result-ui').style.display = 'none';
     document.getElementById('form-ui').style.display = 'block';
     document.getElementById('spinner').style.display = 'none';
-    document.getElementById('btn-text').innerText = 'TRA CỨU';
+    document.getElementById('btn-text').innerText = 'XEM ẢNH CỦA TÔI';
     document.getElementById('btn-submit').disabled = false;
+}
+
+// Tên dòng ảnh trả khách: "Lượt chụp 10:15" theo giờ tiệm trả ảnh (addedAt dạng
+// "10:15 05/10"), khách nhìn giờ là nhận ra lượt nào. Không có giờ thì đánh số.
+function tenLuot(l, i) {
+    const gio = String((l && l.addedAt) || '').match(/^(\d{1,2}:\d{2})/);
+    return 'Lượt chụp ' + (gio ? gio[1] : i + 1);
 }
 
 function renderData(data, branch) {
@@ -713,14 +720,14 @@ function renderData(data, branch) {
     if (data.links && Object.keys(data.links).length > 0) {
         Object.keys(data.links).forEach((linkId, index) => {
             const l = data.links[linkId] || {};
-            html += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${index+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${safeBranch}', '${escapeHTML(data.id)}')">Xem &amp; lưu ảnh</button></div>`;
+            html += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">${tenLuot(l, index)}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${safeBranch}', '${escapeHTML(data.id)}')">Xem &amp; lưu ảnh</button></div>`;
         });
         // Ảnh khách đã ghép vào frame và gửi tiệm
         html += typeof frRows === 'function' ? frRows(data, branch) : '';
     } else {
         html += `<div style="font-size:12px; color:#888; text-align:center; padding:15px; background:#fff; border:1px dashed #d4d4d8; border-radius:8px; margin-top:10px;">
             <div style="width: 8px; height: 8px; background: #111; border-radius: 50%; animation: pulse 1.5s infinite; display:inline-block; margin-right:5px;"></div>
-            Đang đồng bộ ảnh...
+            Đang tải ảnh lên...
         </div>`;
     }
 
@@ -752,7 +759,7 @@ function renderData(data, branch) {
             if (lids.length) {
                 lids.forEach((lid, i) => {
                     const l = d.links[lid] || {};
-                    inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">Ảnh gốc ${i+1}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${escapeHTML(h.branch)}', '${escapeHTML(h.id)}')">Xem &amp; lưu ảnh</button></div>`;
+                    inner += `<div class="link-row"><span style="font-size:12px; color:#666; font-weight:600;">${tenLuot(l, i)}</span><button type="button" class="view-btn" onclick="openAlbum('${safeUrlAttr(l.url)}', '${escapeHTML(h.branch)}', '${escapeHTML(h.id)}')">Xem &amp; lưu ảnh</button></div>`;
                 });
                 inner += typeof frRows === 'function' ? frRows(d, h.branch) : '';
             } else {
@@ -885,7 +892,7 @@ async function sendToShop() {
         else alert(doneMsg);
 
         document.getElementById('cFile').value = "";
-        document.getElementById('cName').innerText = "Chưa có tệp";
+        document.getElementById('cName').innerText = "Chưa chọn ảnh";
         // Không refresh thủ công: listener realtime của phiên tự vẽ lại
     } catch (error) {
         showError("Không thể tải ảnh. Kiểm tra lại kết nối mạng!");
