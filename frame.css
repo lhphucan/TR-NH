@@ -39,6 +39,11 @@
 /* isolation: các lớp ảnh chỉ xếp chồng với nhau trong khung, không đè lên nút ✕ / ⠿ */
 .fr-fitem .fr-fimg { position: relative; isolation: isolate; }
 .fr-fdel { z-index: 5; }
+/* Frame cao cấp: nhãn bên admin, khoá bên khách */
+.fr-cao { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 6px; background: #111; color: #fff; font-size: 10px; font-weight: 700; vertical-align: middle; }
+.fr-fitem.khoa .fr-fimg img { opacity: .45; }
+.fr-lock { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; }
+.fr-lock svg { width: 34px; height: 34px; padding: 10px; border-radius: 50%; background: rgba(17,17,17,.85); stroke: #fff; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .fr-fitem .fr-fimg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
 /* Kéo ⠿ để xếp thứ tự frame khách thấy */
 .fr-fgrip { position: absolute; top: 6px; left: 6px; z-index: 3; width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e5e5e5; background: #fff;

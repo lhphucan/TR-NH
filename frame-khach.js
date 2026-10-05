@@ -13,6 +13,8 @@ let FK_LOCAL = [];      // ảnh khách chọn từ máy (đã tải về chỉn
 let FK_TAB = 'album';   // bảng chọn ảnh đang ở thẻ nào: album | may
 let FK_SESSION = null;  // lượt chụp mới nhất của phiên đang mở, cho nút ghép ở ngoài album
 let FKB = null;         // bộ lọc màu của frame đang ghép: { id, name, baked } hoặc null
+let FK_GOI = '';        // gói frame của lượt: 'cao' thì dùng được frame cao cấp
+let FK_GOI_REF = null;  // theo dõi gói: nhân viên mở khoá là máy khách mở ngay
 const FK_FILT = {};     // bộ lọc đã nạp, theo mã
 const FK_PVF = {};      // ảnh xem trước đã lọc: '<mã lọc>|<mã ảnh>' -> { url }
 
@@ -127,21 +129,37 @@ function fkFramedRef() {
 async function frOpen() {
     if (!window._albCtx || !_albCtx.clientId) return;
     fkBuild();
-    const frames = fkFramesFor(_albCtx.branch);
     document.getElementById('fk-modal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
     fkStep('pick');
-    document.getElementById('fk-list').innerHTML = frames.map(f => `
-        <button class="fr-fitem" onclick="fkOpenFrame('${fkEsc(f.id)}')">
-            <span class="fr-fimg">${FR.thumbHtml(f)}</span>
+    // Gói frame của đúng lượt này; nhân viên đổi gói thì danh sách mở khoá ngay
+    if (FK_GOI_REF) FK_GOI_REF.off();
+    FK_GOI_REF = db.ref('data/' + _albCtx.branch + '/' + _albCtx.clientId + '/goi');
+    let dau = true;
+    FK_GOI_REF.on('value', s => {
+        FK_GOI = s.val() === 'cao' ? 'cao' : '';
+        fkListRender();
+        // Chỉ có một frame dùng được thì vào luôn (lần đầu mở)
+        if (dau) { dau = false; const ok = fkFramesFor(_albCtx.branch).filter(f => !fkKhoa(f)); if (ok.length === 1 && fkFramesFor(_albCtx.branch).length === 1) fkOpenFrame(ok[0].id); }
+    }, () => { FK_GOI = ''; fkListRender(); });
+}
+
+const fkKhoa = f => !!f.cao && FK_GOI !== 'cao';
+
+function fkListRender() {
+    const box = document.getElementById('fk-list');
+    if (!box) return;
+    box.innerHTML = fkFramesFor(_albCtx.branch).map(f => `
+        <button class="fr-fitem${fkKhoa(f) ? ' khoa' : ''}" onclick="fkOpenFrame('${fkEsc(f.id)}')">
+            <span class="fr-fimg">${FR.thumbHtml(f)}${fkKhoa(f) ? `<span class="fr-lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></span>` : ''}</span>
             <b>${fkEsc(f.name)}</b>
-            <span class="fr-meta">${f.slots.length} ảnh</span>
+            <span class="fr-meta">${fkKhoa(f) ? 'Frame cao cấp · hỏi nhân viên' : f.slots.length + ' ảnh'}</span>
         </button>`).join('');
-    if (frames.length === 1) fkOpenFrame(frames[0].id);   // chỉ có một frame thì vào luôn
 }
 
 function fkClose() {
     document.getElementById('fk-modal').style.display = 'none';
+    if (FK_GOI_REF) { FK_GOI_REF.off(); FK_GOI_REF = null; }
     if (document.getElementById('fk-ed')) { document.getElementById('fk-ed').classList.remove('on'); FK_ED = -1; }
     // Album vẫn đang mở bên dưới: giữ khoá cuộn trang
     if (document.getElementById('alb-modal').style.display !== 'flex') document.body.style.overflow = '';
@@ -241,6 +259,9 @@ function fkBuild() {
 async function fkOpenFrame(id) {
     const f = (FK_FRAMES || {})[id];
     if (!f) return;
+    if (fkKhoa(f)) {
+        return Swal.fire({ title: 'Frame cao cấp', text: 'Bạn hỏi nhân viên để mở frame này nhé.', icon: 'info', confirmButtonColor: '#111' });
+    }
     FKF = Object.assign({ id }, f);
     FKP = FKF.slots.map(() => null);
     FK_SEL = -1;

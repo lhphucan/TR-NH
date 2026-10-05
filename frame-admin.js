@@ -48,6 +48,13 @@ async function openFrameManager() {
                             </div>
                         </div>
                         <div>
+                            <label class="fr-label">Loại frame</label>
+                            <div class="fr-row">
+                                <button class="fr-btn" id="fa-thuong" onclick="faSetCao(false)">Thường</button>
+                                <button class="fr-btn" id="fa-cao" onclick="faSetCao(true)">Cao cấp</button>
+                            </div>
+                        </div>
+                        <div>
                             <label class="fr-label">Cho khách dùng</label>
                             <div class="fr-row">
                                 <button class="fr-btn" id="fa-on" onclick="faSetOn(true)">Đang dùng</button>
@@ -139,7 +146,7 @@ function faRenderList() {
             <span class="fr-fgrip" title="Kéo để xếp thứ tự khách thấy">⠿</span>
             <button class="fr-fitem${f.on === false ? ' off' : ''}" onclick="faOpen('${faEsc(id)}')">
                 <span class="fr-fimg">${FR.thumbHtml(f)}</span>
-                <b>${faEsc(f.name)}</b>
+                <b>${faEsc(f.name)}${f.cao ? ' <span class="fr-cao">Cao cấp</span>' : ''}</b>
                 <span class="fr-meta">${(f.slots || []).length} ô${(f.layers || []).filter(l => l && l.k === 'fx').length ? ' · ' + (f.layers || []).filter(l => l && l.k === 'fx').length + ' lớp PNG' : ''} · ${f.on === false ? 'đang ẩn' : 'đang dùng'}${f.filter && FT_LIST[f.filter] ? ' · ' + faEsc(FT_LIST[f.filter].name) : ''}</span>
                 <span class="fr-meta">${cs.length ? faEsc(cs.join(', ')) : 'chưa chọn cơ sở'}</span>
             </button>
@@ -233,6 +240,7 @@ function faShow(src) {
     FA_TRASH = [];
     faSetAll(FA.all !== false);
     faSetOn(FA.on !== false);
+    faSetCao(!!FA.cao);
     faLayersRender();
     faRender();
     faFilterSelect();
@@ -360,6 +368,13 @@ function faToggleBranch(el) {
     const b = el.dataset.b;
     FA.branches[b] = !FA.branches[b];
     el.classList.toggle('on', !!FA.branches[b]);
+}
+
+// Frame cao cấp: khách chỉ dùng được khi nhân viên chọn "Cao cấp" cho lượt đó
+function faSetCao(v) {
+    FA.cao = !!v;
+    document.getElementById('fa-cao').classList.toggle('solid', !!v);
+    document.getElementById('fa-thuong').classList.toggle('solid', !v);
 }
 
 // Ẩn thay vì xoá: frame theo mùa, hết đợt thì ẩn, đợt sau bật lại
@@ -563,7 +578,7 @@ async function faSave() {
         name: FA.name.slice(0, 60), w: FA.w, h: FA.h, front: L.findIndex(l => l.k === 'frame') > L.findIndex(l => l.k === 'photos'),
         on: FA.on !== false, all: FA.all !== false, branches,
         slots: FA.slots.map(s => ({ cx: Math.round(s.cx), cy: Math.round(s.cy), w: Math.round(s.w), h: Math.round(s.h), rot: +s.rot || 0 })),
-        file: FA.file || '', prev: FA.prev || '', filter: FA.filter || '', at: Date.now()
+        file: FA.file || '', prev: FA.prev || '', filter: FA.filter || '', cao: !!FA.cao, at: Date.now()
     };
     if (FA_LIST[FA.id] && FA_LIST[FA.id].order != null) rec.order = FA_LIST[FA.id].order;
     try {

@@ -1589,6 +1589,12 @@ function patchCard(clientId, c) {
     const search = card.getAttribute('data-search') || '';
     if (c.phone && search.indexOf(String(c.phone)) === -1) return true;
 
+    const goiBtn = document.getElementById('goi_' + clientId);
+    if (goiBtn) {
+        goiBtn.classList.toggle('cao', c.goi === 'cao');
+        goiBtn.innerText = 'Frame: ' + (c.goi === 'cao' ? 'Cao cấp' : 'Thường');
+    }
+
     // Tiến độ ảnh lẻ màu frame đổi -> vẽ lại thẻ để hiện "đang làm 3/6", "đủ 6"
     if ((card.getAttribute('data-le') || '') !== leChuKy(c)) return true;
 
@@ -1801,6 +1807,7 @@ function load() {
                                         <option value="Miễn phí" ${isFree ? 'selected' : ''}>Miễn phí</option>
                                     </select>
                                 </div>
+                                ${dbPath === 'data/' ? `<button type="button" id="goi_${client.id}" class="goi-btn${client.goi === 'cao' ? ' cao' : ''}" onclick="doiGoi('${client.id}')" title="Bấm để đổi">Frame: ${client.goi === 'cao' ? 'Cao cấp' : 'Thường'}</button>` : ''}
                             </div>
 
                             <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #e4e4e7;">
@@ -3107,8 +3114,27 @@ function pickQuickPrice(v) {
     confirmPrice();
 }
 
+// Gói frame của lượt: '' thường, 'cao' cao cấp (khách dùng được frame cao cấp)
+let _goiChon = '';
+function selectGoi(g) {
+    _goiChon = g === 'cao' ? 'cao' : '';
+    document.querySelectorAll('#price-modal .goi-opt').forEach(b => b.classList.toggle('active', b.getAttribute('data-goi') === _goiChon));
+}
+
+// Nút "Frame: Thường / Cao cấp" trên thẻ khách: bấm để đổi
+function doiGoi(clientId) {
+    if (userRole === 'viewer') return;
+    const c = currentData && currentData[clientId];
+    if (!c) return;
+    const moi = c.goi === 'cao' ? null : 'cao';
+    db.ref(dbPath + br + '/' + clientId + '/goi').set(moi)
+        .then(() => Toast.fire({ icon: 'success', title: moi ? 'Đã mở frame cao cấp cho khách' : 'Đã về frame thường' }))
+        .catch(err => Swal.fire('Lỗi', err.message, 'error'));
+}
+
 function openPriceModal(clientId, currentPay) {
     _priceClientId = clientId;
+    selectGoi(((currentData && currentData[clientId]) || {}).goi);
     _paySelected = (currentPay === 'Chuyển khoản') ? 'Chuyển khoản' : 'Tiền mặt';
     document.getElementById('price-amount-input').value = '';
     renderQuickPrice();
@@ -3146,7 +3172,7 @@ function confirmPrice() {
     document.getElementById('price-modal').style.display = 'none';
     if (_priceResolve) { _priceResolve(true); _priceResolve = null; }
 
-    db.ref(dbPath + br + '/' + cid).update({ price, payment })
+    db.ref(dbPath + br + '/' + cid).update({ price, payment, goi: _goiChon || null })
         .catch(err => Swal.fire('Lỗi', 'Không lưu được giá: ' + err.message, 'error'));
 }
 
