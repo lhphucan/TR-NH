@@ -831,8 +831,8 @@ async function fkSend() {
     }
 }
 
-// Ảnh lẻ mang màu frame: đủ độ phân giải gốc, JPEG 95% (đổi màu thì phải lưu
-// lại file mới, 95% mắt thường không phân biệt được với ảnh gốc của máy chụp).
+// Ảnh lẻ mang màu frame: đủ độ phân giải gốc, JPEG 100% (đổi màu thì phải lưu
+// lại file mới; 100% gần như không mất gì so với ảnh gốc của máy chụp).
 // Tên PN-<tên bộ lọc>_<tên ảnh gốc> để album ghi "Ảnh 3 · Noir" và không lưu trùng.
 // Tên màu trong tên file ảnh lẻ: PN-<tên màu>_<tên ảnh gốc>.jpg (máy quán dùng đúng tên này)
 function fkTenLoc() { return String(FKB.name).replace(/[\\/:*?"<>|_]/g, ' ').trim().slice(0, 30) || 'Mau'; }
@@ -859,7 +859,7 @@ async function fkSendSingles(w, btn, bar) {
             cv.x.drawImage(im, 0, 0, cv.c.width, cv.c.height);
             im.src = '';
             FR.filterCanvas(cv.c, FKB.baked);
-            const blob = await new Promise(r => cv.c.toBlob(r, 'image/jpeg', 0.95));
+            const blob = await new Promise(r => cv.c.toBlob(r, 'image/jpeg', 1));
             cv.c.width = cv.c.height = 0;
             if (!blob) throw new Error('Không xuất được ảnh');
             const sent = await guiLenDrive([new File([blob], name, { type: 'image/jpeg' })],

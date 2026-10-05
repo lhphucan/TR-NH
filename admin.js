@@ -1166,7 +1166,8 @@ async function leLam(b, cId, uId) {
                     c.getContext('2d').drawImage(im, 0, 0);
                     im.src = '';
                     FR.filterCanvas(c, baked);
-                    blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.95));
+                    // JPEG 100%: ảnh lẻ đã đổi màu phải lưu file mới; 100% gần như không mất gì
+                    blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 1));
                     c.width = c.height = 0;
                 } finally { URL.revokeObjectURL(u); }
                 const f = await FR.upload(blob, ten, token, le.lot);
