@@ -46,7 +46,21 @@ function loadBranches() {
     }).catch(() => showError("Không tải được danh sách cơ sở."));
 }
 
+// Mất mạng (vào thang máy, sóng yếu): hiện dải nhỏ trên đầu thay vì trang đứng im.
+// Đợi 2,5 giây mới hiện để chập chờn thoáng qua không nháy; có mạng lại tự ẩn.
+function theoDoiMang() {
+    const ban = document.createElement('div');
+    ban.className = 'mat-mang';
+    ban.textContent = 'Mất kết nối, đang thử lại...';
+    document.body.appendChild(ban);
+    let t = 0, daNoi = false;
+    const hien = v => { clearTimeout(t); if (v) t = setTimeout(() => ban.classList.add('on'), 2500); else ban.classList.remove('on'); };
+    if (db) db.ref('.info/connected').on('value', s => { if (s.val()) { daNoi = true; hien(false); } else if (daNoi) hien(true); });
+    window.addEventListener('offline', () => hien(true));
+}
+
 window.onload = () => {
+    theoDoiMang();
     loadImgbbKey();
     loadDriveEndpoint();
     loadBranches().then(() => {
@@ -592,6 +606,7 @@ function renderHistory(history, branch) {
     });
 
     document.getElementById('album-list').innerHTML = html;
+    document.getElementById('hist-list').innerHTML = '';
 }
 
 function toggleHistory(idx) {
@@ -721,9 +736,12 @@ function renderData(data, branch) {
 
     html += `</div>`;
 
-    // Các lượt chụp trước của cùng SĐT, mọi cơ sở — thu gọn, bấm mới mở
+    // Các lượt chụp trước của cùng SĐT, mọi cơ sở — thu gọn, bấm mới mở.
+    // Vẽ vào khung riêng nằm DƯỚI khu gửi in / ghép frame: khách quen có cả chục
+    // lượt cũ thì nút gửi in không bị đẩy xuống tận cuối trang.
+    let lichSu = '';
     if (pastSessions.length) {
-        html += `<div class="hist-section">
+        lichSu += `<div class="hist-section">
             <p class="hist-title">Các lần chụp trước</p>`;
         pastSessions.forEach((h, idx) => {
             const d = h.data || {};
@@ -740,7 +758,7 @@ function renderData(data, branch) {
             } else {
                 inner = `<div class="hist-empty">Lượt này chưa có ảnh</div>`;
             }
-            html += `<div class="hist-group">
+            lichSu += `<div class="hist-group">
                 <button onclick="toggleHistory(${idx})" class="hist-head">
                     <span>
                         <span class="hist-date">${hDate}</span>
@@ -751,10 +769,11 @@ function renderData(data, branch) {
                 <div id="hist-body-${idx}" class="hist-body" style="display:none;">${inner}</div>
             </div>`;
         });
-        html += `</div>`;
+        lichSu += `</div>`;
     }
 
     document.getElementById('album-list').innerHTML = html;
+    document.getElementById('hist-list').innerHTML = lichSu;
     resetSubmitBtn();
     // Có frame cho cơ sở này thì hiện nút ghép ảnh vào frame ở chỗ yêu cầu in
     if (typeof frSessionReady === 'function') frSessionReady(data, branch);
@@ -880,6 +899,9 @@ async function sendToShop() {
 
 function askRating(br) {
     if (localStorage.getItem('pn_rated')) return;
+    // Mỗi lượt chụp chỉ hỏi 1 lần: khách bấm "Để sau" thì lưu thêm ảnh không bị hỏi lại
+    const k = 'pn_rate_hoi_' + (currentClientId || (window._albCtx && _albCtx.clientId) || '');
+    try { if (localStorage.getItem(k)) return; localStorage.setItem(k, '1'); } catch (e) {}
     setTimeout(() => {
         if(typeof Swal !== 'undefined') {
             Swal.fire({
@@ -906,6 +928,10 @@ function albThumb(id) { return 'https://lh3.googleusercontent.com/d/' + id + '=s
 // Bản gốc: =s0 trả đúng từng byte như file trên Drive, không nén
 function albFull(id) { return 'https://lh3.googleusercontent.com/d/' + id + '=s0'; }
 
+// Xem to: bản 1600px (~300 KB) hiện gần như ngay trên 4G; bản gốc 3-5 MB chỉ
+// tải khi bấm Lưu ảnh
+function albView(id) { return 'https://lh3.googleusercontent.com/d/' + id + '=s1600'; }
+
 async function openAlbum(url, branch, clientId) {
     const fid = (String(url || '').match(/folders\/([\w-]+)/) || [])[1];
     if (!fid) { window.open(url, '_blank', 'noopener'); return; }   // link lạ -> mở Drive như cũ
@@ -923,6 +949,7 @@ async function openAlbum(url, branch, clientId) {
     grid.innerHTML = '<p class="alb-loading">Đang mở ảnh...</p>';
     document.getElementById('alb-modal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    moLop('alb', () => closeAlbum(true));
 
     try {
         const d = await gsCall({ action: 'album', folder: fid });
@@ -989,25 +1016,53 @@ function albLabels(list) {
     });
 }
 
-function closeAlbum() {
+// tuBack: đóng do khách bấm nút Back của điện thoại (lịch sử đã lùi sẵn)
+function closeAlbum(tuBack) {
+    if (document.getElementById('alb-zoom').style.display === 'flex') albZoomClose(tuBack);
     document.getElementById('alb-modal').style.display = 'none';
-    document.getElementById('alb-zoom').style.display = 'none';
     document.body.style.overflow = '';
+    if (!tuBack) dongLop('alb');
 }
 
 // Xem ảnh to: khách nhìn kỹ rồi mới quyết định lưu
 function albZoom(i) {
     const x = _alb[i];
     if (!x) return;
-    document.getElementById('alb-zoom-img').src = albFull(x.id);
+    document.getElementById('alb-zoom-img').src = albView(x.id);
     document.getElementById('alb-save').setAttribute('data-i', i);
     document.getElementById('alb-zoom').style.display = 'flex';
+    moLop('zoom', () => albZoomClose(true));
 }
 
-function albZoomClose() {
+function albZoomClose(tuBack) {
     document.getElementById('alb-zoom').style.display = 'none';
     document.getElementById('alb-zoom-img').src = '';
+    if (!tuBack) dongLop('zoom');
 }
+
+// ===== Nút Back của điện thoại: đóng màn đang mở thay vì rời khỏi trang =====
+// Mỗi màn mở (album, xem ảnh to, ghép frame, chọn ảnh, chỉnh ô) thêm một bước
+// vào lịch sử trình duyệt. Back -> đóng màn trên cùng. Đóng bằng nút trên trang
+// thì tự lùi lịch sử một bước cho khớp.
+const _lop = [];
+let _boQuaBack = 0;
+function moLop(ten, dong) {
+    if (_lop.length && _lop[_lop.length - 1].ten === ten) return;
+    _lop.push({ ten, dong });
+    try { history.pushState({ pnLop: _lop.length }, ''); } catch (e) {}
+}
+function dongLop(ten) {
+    const i = _lop.map(l => l.ten).lastIndexOf(ten);
+    if (i < 0) return;
+    _lop.splice(i, 1);
+    _boQuaBack++;
+    history.back();
+}
+window.addEventListener('popstate', () => {
+    if (_boQuaBack > 0) { _boQuaBack--; return; }
+    const l = _lop.pop();
+    if (l) l.dong();
+});
 
 // Tên file không dấu: máy tính đời cũ và một số ứng dụng chat làm hỏng tên
 // tiếng Việt có dấu, thành ra khách lưu về mở không ra.

@@ -101,3 +101,8 @@ button.primary-btn:disabled { opacity: 0.7; cursor: not-allowed; }
 /* Nút tạo lượt mới ở trên cùng: bỏ đường kẻ và khoảng cách trên vì không còn
    ngăn cách với phần nào phía trước nữa */
 .new-session-top { margin-top: 0; padding-top: 0; border-top: none; }
+
+/* Dải báo mất mạng */
+.mat-mang { position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 10px); transform: translate(-50%, -160%); transition: transform .25s; z-index: 6000;
+            background: #111; color: #fff; padding: 8px 16px; border-radius: 20px; font: 600 12px 'Inter', sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.2); pointer-events: none; }
+.mat-mang.on { transform: translate(-50%, 0); }

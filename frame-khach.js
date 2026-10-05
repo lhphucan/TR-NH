@@ -131,6 +131,7 @@ async function frOpen() {
     fkBuild();
     document.getElementById('fk-modal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    moLop('fk', () => fkClose(true));
     fkStep('pick');
     // Gói frame của đúng lượt này; nhân viên đổi gói thì danh sách mở khoá ngay
     if (FK_GOI_REF) FK_GOI_REF.off();
@@ -157,7 +158,10 @@ function fkListRender() {
         </button>`).join('');
 }
 
-function fkClose() {
+function fkClose(tuBack) {
+    if (!tuBack) { dongLop('pk'); dongLop('ed'); dongLop('fk'); }
+    if (document.getElementById('fk-pk')) document.getElementById('fk-pk').style.display = 'none';
+    FK_PK = null;
     document.getElementById('fk-modal').style.display = 'none';
     if (FK_GOI_REF) { FK_GOI_REF.off(); FK_GOI_REF = null; }
     if (document.getElementById('fk-ed')) { document.getElementById('fk-ed').classList.remove('on'); FK_ED = -1; }
@@ -353,10 +357,12 @@ function fkEdOpen(i) {
     FK_ED = i;
     FK_SEL = i;
     document.getElementById('fk-ed').classList.add('on');
+    moLop('ed', () => fkEdClose(true));
     fkEdRender();
 }
 
-function fkEdClose() {
+function fkEdClose(tuBack) {
+    if (!tuBack) dongLop('ed');
     document.getElementById('fk-ed').classList.remove('on');
     FK_ED = -1;
     FK_SEL = -1;
@@ -513,6 +519,7 @@ function fkPkOpen(slot, mode) {
     // Mở bảng trước rồi mới vẽ frame thu nhỏ: bảng còn ẩn thì đo bề rộng ra 0,
     // các số ô dồn hết vào một góc
     document.getElementById('fk-pk').style.display = 'flex';
+    moLop('pk', () => fkPkClose(true));
     fkTab(FK_TAB);
     fkMini();
     fkPkCount();
@@ -598,7 +605,8 @@ function fkMini() {
             <b style="transform:rotate(${-s.rot}deg)">${i + 1}</b></div>`).join('');
 }
 
-function fkPkClose() {
+function fkPkClose(tuBack) {
+    if (!tuBack) dongLop('pk');
     document.getElementById('fk-pk').style.display = 'none';
     FK_PK = null;
 }
