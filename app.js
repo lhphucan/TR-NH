@@ -1028,7 +1028,15 @@ function closeAlbum(tuBack) {
 function albZoom(i) {
     const x = _alb[i];
     if (!x) return;
-    document.getElementById('alb-zoom-img').src = albView(x.id);
+    const img = document.getElementById('alb-zoom-img');
+    img.classList.remove('goc');
+    img.src = albView(x.id);
+    // Tải bản gốc ở nền rồi thay vào: khách quen giữ ngón tay lên ảnh để lưu thì
+    // cũng ra bản gốc nét. Chưa tải xong thì chặn giữ-để-lưu (xem style.css).
+    const goc = new Image();
+    goc.onload = () => { if (img.getAttribute('data-id') === x.id) { img.src = goc.src; img.classList.add('goc'); } };
+    img.setAttribute('data-id', x.id);
+    goc.src = albFull(x.id);
     document.getElementById('alb-save').setAttribute('data-i', i);
     document.getElementById('alb-zoom').style.display = 'flex';
     moLop('zoom', () => albZoomClose(true));
@@ -1037,8 +1045,19 @@ function albZoom(i) {
 function albZoomClose(tuBack) {
     document.getElementById('alb-zoom').style.display = 'none';
     document.getElementById('alb-zoom-img').src = '';
+    document.getElementById('alb-zoom-img').removeAttribute('data-id');
     if (!tuBack) dongLop('zoom');
 }
+
+// Android không có cách tắt menu giữ-để-lưu bằng CSS: chặn ở đây. Giữ lên ảnh nhỏ
+// thì mở ảnh to; ảnh to chưa phải bản gốc thì không cho hiện menu lưu.
+document.addEventListener('contextmenu', e => {
+    const t = e.target;
+    if (!t || t.tagName !== 'IMG') return;
+    const item = t.closest && t.closest('.alb-item');
+    if (item) { e.preventDefault(); item.click(); return; }
+    if (t.id === 'alb-zoom-img' && !t.classList.contains('goc')) e.preventDefault();
+});
 
 // ===== Nút Back của điện thoại: đóng màn đang mở thay vì rời khỏi trang =====
 // Mỗi màn mở (album, xem ảnh to, ghép frame, chọn ảnh, chỉnh ô) thêm một bước
