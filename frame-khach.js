@@ -153,7 +153,7 @@ function fkListRender() {
         <button class="fr-fitem${fkKhoa(f) ? ' khoa' : ''}" onclick="fkOpenFrame('${fkEsc(f.id)}')">
             <span class="fr-fimg">${FR.thumbHtml(f)}${fkKhoa(f) ? `<span class="fr-lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></span>` : ''}</span>
             <b>${fkEsc(f.name)}</b>
-            <span class="fr-meta">${fkKhoa(f) ? 'Frame cao cấp · hỏi nhân viên' : f.slots.length + ' ảnh'}</span>
+            <span class="fr-meta">${f.slots.length} ảnh</span>
         </button>`).join('');
 }
 
@@ -259,9 +259,7 @@ function fkBuild() {
 async function fkOpenFrame(id) {
     const f = (FK_FRAMES || {})[id];
     if (!f) return;
-    if (fkKhoa(f)) {
-        return Swal.fire({ title: 'Frame cao cấp', text: 'Bạn hỏi nhân viên để mở frame này nhé.', icon: 'info', confirmButtonColor: '#111' });
-    }
+    if (fkKhoa(f)) return;   // frame cao cấp chưa mở: chỉ hiện ổ khoá, bấm không làm gì
     FKF = Object.assign({ id }, f);
     FKP = FKF.slots.map(() => null);
     FK_SEL = -1;
