@@ -94,6 +94,10 @@ details summary { font-size: 14px; font-weight: 700; cursor: pointer; margin-bot
 #boi-co { display: none; flex-basis: 100%; align-items: center; gap: 8px; padding: 0 4px; color: #555; }
 @media (max-width: 430px) { #thanh-cu { gap: 3px; } .icu { width: 34px; height: 34px; border-radius: 9px; } .icu svg { width: 18px; height: 18px; } .vach-dung { height: 20px; } }
 /* đường viền tóc + chấm kéo */
+#vien-bang { display: none; flex-basis: 100%; flex-direction: column; gap: 6px; padding: 4px 2px 0; }
+.vthanh { display: grid; grid-template-columns: 70px 44px 1fr 44px; align-items: center; gap: 6px; font: 600 12px 'Inter'; color: #333; }
+.vthanh small { font: 500 11px 'Inter'; color: #888; text-align: center; }
+.vthanh input { width: 100%; min-width: 0; accent-color: #111; }
 #vien-svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; display: none; overflow: visible; }
 .icu.nho { width: 32px; height: 32px; border-radius: 9px; flex: none; }
 .icu.nho svg { width: 17px; height: 17px; }
@@ -164,6 +168,12 @@ body.suatay #khung { overflow: hidden; padding: 4px 0; touch-action: none; }
             <button type="button" class="icu" id="boi-lui" title="Hoàn tác" aria-label="Hoàn tác" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
             <button type="button" class="icu" id="boi-toi" title="Làm lại" aria-label="Làm lại" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
             <button type="button" class="icu" id="boi-het" title="Bỏ hết, về ảnh ban đầu" aria-label="Bỏ hết" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+            <div id="vien-bang">
+                <div class="vthanh"><span>Đỉnh</span><small>xẹp</small><input type="range" id="v-dinh" min="-1" max="1" step="0.05" value="0" aria-label="Đỉnh tóc xẹp hay phồng"><small>phồng</small></div>
+                <div class="vthanh"><span>Dáng đỉnh</span><small>tròn</small><input type="range" id="v-dang" min="-1" max="1" step="0.05" value="0" aria-label="Dáng đỉnh tròn hay phẳng"><small>phẳng</small></div>
+                <div class="vthanh"><span>Hai bên</span><small>gọn</small><input type="range" id="v-rong" min="-1" max="1" step="0.05" value="0" aria-label="Hai bên gọn hay rộng"><small>rộng</small></div>
+                <div class="vthanh"><span>Đuôi tóc</span><small>thu vào</small><input type="range" id="v-duoi" min="-1" max="1" step="0.05" value="0" aria-label="Đuôi tóc thu vào hay xoè ra"><small>xoè ra</small></div>
+            </div>
             <div id="boi-co"><button type="button" class="icu nho on" id="cu-lech" title="Cọ lệch lên trên ngón tay" aria-label="Cọ lệch lên trên ngón tay" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4.5"/><path d="M12 12v4" stroke-dasharray="2 2"/><circle cx="12" cy="19.5" r="2" fill="currentColor"/></svg></button><svg viewBox="0 0 24 24" class="nho" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg><input type="range" id="co-cu" min="0.4" max="2.5" step="0.05" value="1" aria-label="Cỡ cọ"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg></div>
         </div>
     </div>
@@ -600,9 +610,13 @@ function apVien(x, r, v) {
         } else {
             const muon = 1 - ss2(R - mem, R + mem, rho); if (a >= muon - 0.01) continue;
             const e = re[Math.min(M, Math.round(u * M))]; if (rho <= e) continue;
-            const rs = Math.max(e - 0.15 * fw, 2 * e - rho), ta = v.aL + th;
-            const sx = Math.round(cx + rs * Math.cos(ta)) - x0, sy = Math.round(cy + rs * Math.sin(ta)) - y0; if (sx < 0 || sy < 0 || sx >= w || sy >= h) continue;
-            const so = (sy * w + sx) * 4; if (g[so + 3] < 235 || laDa(so)) continue;
+            const ta = v.aL + th, co = Math.cos(ta), si = Math.sin(ta);
+            let so = -1;
+            for (let rs = Math.max(e - 0.15 * fw, 2 * e - rho), lan = 0; lan < 24 && rs > 0.1 * fw; lan++, rs -= 0.008 * fw) {
+                const sx = Math.round(cx + rs * co) - x0, sy = Math.round(cy + rs * si) - y0; if (sx < 0 || sy < 0 || sx >= w || sy >= h) continue;
+                const q = (sy * w + sx) * 4; if (g[q + 3] >= 235 && !laDa(q)) { so = q; break; }
+            }
+            if (so < 0) continue;
             const na = a + (muon - a) * we, them = na - a; if (them < 0.003) continue;
             for (let c = 0; c < 3; c++) d[o + c] = (g[o + c] * a + g[so + c] * them) / na;
             d[o + 3] = na * 255;
@@ -670,7 +684,7 @@ function ve() {
 let CU = '', coBoi = 1;
 const nutBoi = () => {
     for (const [id, c] of [['cu-xoa', 'xoa'], ['cu-va', 'va'], ['cu-mem', 'mem'], ['cu-vien', 'vien'], ['cu-keo', 'keo']]) { $(id).classList.toggle('on', CU === c); $(id).setAttribute('aria-pressed', CU === c); }
-    $('boi-co').style.display = CU && CU !== 'vien' ? 'flex' : 'none'; veVien(); document.body.classList.toggle('suatay', !!CU); if (!CU) anVong();
+    $('boi-co').style.display = CU && CU !== 'vien' ? 'flex' : 'none'; $('vien-bang').style.display = CU === 'vien' ? 'flex' : 'none'; veVien(); document.body.classList.toggle('suatay', !!CU); if (!CU) anVong();
     const n = k => !!(ANH && ANH[k] && ANH[k].length); $('boi-lui').disabled = !n('lui'); $('boi-toi').disabled = !n('toi'); $('boi-het').disabled = !n('tt'); if (THE) THE.classList.toggle('boi', !!CU);
 };
 // Phóng to: s = độ phóng, (x, y) = dịch (px CSS). Chỉ khi đang sửa tay; tắt công cụ là về như cũ.
@@ -678,9 +692,14 @@ let ZOOM = { s: 1, x: 0, y: 0 };
 const apZoom = cv => { if (cv) cv.style.transform = ZOOM.s > 1.001 ? `translate(${ZOOM.x}px, ${ZOOM.y}px) scale(${ZOOM.s})` : ''; if (CU === 'vien') veVien(); };
 const boZoom = () => { ZOOM = { s: 1, x: 0, y: 0 }; apZoom(THE); };
 const chonCu = c => { if (!ANH || !ANH.r) return; const cu = CU; CU = CU === c ? '' : c; if (CU) hienTen(TEN_CU[CU][0] + ' · ' + TEN_CU[CU][1], 2600); else hienTen('Đã tắt ' + TEN_CU[c][0].toLowerCase(), 1200); ANH.vaLech = null; anNguon(); if (!CU) boZoom(); if (!cu !== !CU) ve(); nutBoi(); };
-$('cu-xoa').onclick = () => chonCu('xoa'); $('cu-va').onclick = () => chonCu('va'); $('cu-mem').onclick = () => chonCu('mem'); $('cu-vien').onclick = () => { if (CU !== 'vien' && ANH && ANH.r) napVien(); chonCu('vien'); }; $('cu-keo').onclick = () => chonCu('keo');
+$('cu-xoa').onclick = () => chonCu('xoa'); $('cu-va').onclick = () => chonCu('va'); $('cu-mem').onclick = () => chonCu('mem'); $('cu-vien').onclick = () => { if (!ANH || !ANH.r) return; const moi = CU !== 'vien' && napVien(); chonCu('vien'); if (moi && CU === 'vien') apDungVien(); };
+// kéo thanh: đường đi theo ngay; buông tay mới áp vào ảnh
+for (const [id, key] of [['v-dinh', 'dinh'], ['v-dang', 'dang'], ['v-rong', 'rong'], ['v-duoi', 'duoi']]) {
+    $(id).oninput = () => { const v = ANH && ANH.vien; if (!v) return; v.p[key] = +$(id).value; Object.assign(v, dungVien(v.k, v.p, v.C)); veVien(); };
+    $(id).onchange = () => { if (ANH && ANH.vien && CU === 'vien') apDungVien(); };
+} $('cu-keo').onclick = () => chonCu('keo');
 // Tên + cách dùng hiện trên ảnh khi bấm nút (điện thoại không có chữ khi rê chuột)
-const TEN_CU = { xoa: ['Xoá tóc', 'tô lên chỗ viền chưa sạch'], va: ['Tô tóc', 'tô chỗ thiếu tóc · giữ ngón để chọn chỗ lấy tóc'], mem: ['Làm mềm viền', 'tô dọc viền tóc bị gắt'], vien: ['Viền tóc', 'kéo chấm vào / ra để chỉnh dáng tóc'], keo: ['Kéo tóc', 'vuốt lọn tóc chỉa vào trong'] };
+const TEN_CU = { xoa: ['Xoá tóc', 'tô lên chỗ viền chưa sạch'], va: ['Tô tóc', 'tô chỗ thiếu tóc · giữ ngón để chọn chỗ lấy tóc'], mem: ['Làm mềm viền', 'tô dọc viền tóc bị gắt'], vien: ['Viền tóc', 'đã dựng dáng gọn · chỉnh các thanh bên dưới'], keo: ['Kéo tóc', 'vuốt lọn tóc chỉa vào trong'] };
 let henTen = 0;
 function hienTen(t, ms) { const e = $('ten-cu'); e.innerText = t; e.classList.add('on'); clearTimeout(henTen); henTen = setTimeout(() => e.classList.remove('on'), ms || 1800); }
 // Bán kính cọ theo toạ độ lớp người (theo cỡ mặt nên ảnh to nhỏ nào cũng như nhau)
@@ -740,11 +759,50 @@ $('co-cu').oninput = () => {
 };
 // Lịch sử: lui = các trạng thái trước (để hoàn tác), toi = các trạng thái đã hoàn tác (để làm lại). Bỏ hết cũng hoàn tác được.
 // Đường viền đang chỉnh: lấy từ lần chỉnh viền gần nhất, chưa có thì dò từ ảnh tự động
+// DÁNG TÓC: mỗi bên = vòm đỉnh (siêu elip, đến ngang lông mày thì dựng đứng) + thân hai bên (cong bậc 2, khởi đầu
+// thẳng đứng nên nối khớp, không gấp). Khớp từ đường tóc thật từng bên (giữ được rẽ ngôi lệch), khách chỉnh 4 thanh.
+function khopDang(r, v0) {
+    const fw = fwCua(r), cx = r.mat.x, yE = v0.yE, P = [];
+    for (let i = 0; i <= 300; i++) { const u = i / 300, R = rCua(v0, u), th = v0.aL + u * v0.span; P.push([v0.C[0] + R * Math.cos(th), v0.C[1] + R * Math.sin(th)]); }
+    const giua = P.filter(p => Math.abs(p[0] - cx) < 0.25 * fw), yTop = Math.min(...(giua.length ? giua : P).map(p => p[1]));
+    const yS = Math.min(yE - 0.02 * fw, Math.max(yTop + 0.2 * fw, r.mat.y - 0.1 * fw));
+    // nửa bề rộng tóc tại độ cao y ở bên s (-1 trái, 1 phải)
+    const nua = (y, sd) => { let b = 0, bd = 1e9; for (const p of P) if ((p[0] - cx) * sd > 0) { const dd = Math.abs(p[1] - y); if (dd < bd) { bd = dd; b = Math.abs(p[0] - cx); } } return b; };
+    const ben = sd => {
+        const Wt = nua(yS, sd), Wb = nua(yE - 0.01 * fw, sd), H = yS - yTop;
+        // độ vuông của vòm: thử n, chọn n khớp nhất với đường thật phía trên
+        let nTot = 2, eTot = 1e18;
+        for (let n = 1.6; n <= 4.01; n += 0.1) { let e = 0; for (const p of P) { if ((p[0] - cx) * sd <= 0 || p[1] > yS) continue; const t = Math.min(1, Math.max(0, (yS - p[1]) / H)); e += (Math.abs(p[0] - cx) - Wt * Math.pow(1 - Math.pow(t, n), 1 / n)) ** 2; } if (e < eTot) { eTot = e; nTot = n; } }
+        return { Wt, Wb, n: nTot };
+    };
+    return { cx, yTop, yS, yE, T: ben(-1), P: ben(1), fw };
+}
+function dungVien(k, p, C) {
+    const fw = k.fw, yTop = k.yTop - p.dinh * 0.045 * fw, H = k.yS - yTop, pts = [];
+    const nuaBen = (b, y) => {
+        const Wt = Math.max(0.3 * fw, b.Wt + p.rong * 0.05 * fw), Wb = Math.max(0.25 * fw, b.Wb + p.rong * 0.05 * fw + p.duoi * 0.07 * fw), n = Math.max(1.6, Math.min(3.6, b.n * Math.pow(1.5, p.dang)));
+        if (y <= k.yS) { const t = Math.min(1, Math.max(0, (k.yS - y) / H)); return Wt * Math.pow(1 - Math.pow(t, n), 1 / n); }
+        const t = (y - k.yS) / Math.max(1, k.yE - k.yS); return Wt + (Wb - Wt) * t * t;
+    };
+    // trái từ dưới lên đỉnh, rồi phải từ đỉnh xuống (dày ở vòm cho tròn mượt)
+    const ys = []; for (let i = 0; i <= 80; i++) { const t = i / 80; ys.push(yTop + (k.yE - yTop) * (1 - Math.cos(t * Math.PI / 2))); }
+    for (let i = ys.length - 1; i >= 0; i--) pts.push([k.cx - nuaBen(k.T, ys[i]), ys[i]]);
+    for (let i = 1; i < ys.length; i++) pts.push([k.cx + nuaBen(k.P, ys[i]), ys[i]]);
+    // đổi sang bán kính theo hướng quanh C (để áp như đường viền cũ)
+    const goc = pts.map(q => Math.atan2(q[1] - C[1], q[0] - C[0])), aL = goc[0];
+    const uw = goc.map(g => { let d = g - aL; while (d < 0) d += 2 * Math.PI; return d; });
+    const span = uw[uw.length - 1], ban = pts.map(q => Math.hypot(q[0] - C[0], q[1] - C[1])), M = 64, rr = [];
+    for (let i = 0; i <= M; i++) { const g = i / M * span; let j = 1; while (j < uw.length - 1 && uw[j] < g) j++; const f = (g - uw[j - 1]) / Math.max(1e-6, uw[j] - uw[j - 1]); rr.push(ban[j - 1] + (ban[j] - ban[j - 1]) * Math.max(0, Math.min(1, f))); }
+    return { C, aL, span, yE: k.yE, rr };
+}
+// Đường viền đang chỉnh: theo lần chỉnh gần nhất, chưa có thì khớp dáng từ tóc thật
 function napVien() {
     const t = (ANH.tt || []).filter(t => t.loai === 'vien').pop();
-    if (!ANH.vien0 || ANH.vien0.base !== ANH.r) { ANH.vien0 = layVien(ANH.r, ANH.r.nguoi, ANH.kieu); ANH.vien0.base = ANH.r; }
-    const g = ANH.vien0;
-    ANH.vien = t ? { C: t.C, aL: t.aL, span: t.span, yE: t.yE, rr: t.rr.slice(), r0: g.r0, dang: -1 } : { C: g.C, aL: g.aL, span: g.span, yE: g.yE, rr: g.rr.slice(), r0: g.r0, dang: -1 };
+    if (!ANH.vien0 || ANH.vien0.base !== ANH.r) { const v0 = layVien(ANH.r, ANH.r.nguoi, ANH.kieu); ANH.vien0 = { base: ANH.r, v0, k: khopDang(ANH.r, v0) }; }
+    const p = t && t.p ? Object.assign({}, t.p) : { dinh: 0, dang: 0, rong: 0, duoi: 0 };
+    ANH.vien = Object.assign(dungVien(ANH.vien0.k, p, ANH.vien0.v0.C), { p, k: ANH.vien0.k });
+    for (const [id, key] of [['v-dinh', 'dinh'], ['v-dang', 'dang'], ['v-rong', 'rong'], ['v-duoi', 'duoi']]) $(id).value = p[key];
+    return !t;
 }
 // Vẽ đường viền + chấm lên ảnh (toạ độ lớp người -> khung, theo cả độ phóng)
 function veVien() {
@@ -753,15 +811,14 @@ function veVien() {
     const v = ANH.vien, { k, ox, oy } = THE.__hinh(), rc = THE.getBoundingClientRect(), kr = $('khung').getBoundingClientRect(), sc = rc.width / THE.width;
     const diem = u => { const R = rCua(v, u), th = v.aL + u * v.span; return [rc.left - kr.left + (ox + (v.C[0] + R * Math.cos(th)) * k) * sc, rc.top - kr.top + (oy + (v.C[1] + R * Math.sin(th)) * k) * sc]; };
     let dd = ''; for (let i = 0; i <= 120; i++) { const [a, b] = diem(i / 120); dd += (i ? 'L' : 'M') + a.toFixed(1) + ' ' + b.toFixed(1); }
-    const n = v.rr.length - 1; v._css = v.rr.map((_, i) => diem(i / n));
     sv.innerHTML = `<path d="${dd}" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="4"/><path d="${dd}" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="6 4"/>`
-        + v._css.map(([a, b], i) => `<circle cx="${a.toFixed(1)}" cy="${b.toFixed(1)}" r="${i === v.dang ? 11 : 8}" fill="${i === v.dang ? '#e0245e' : '#fff'}" stroke="#111" stroke-width="2"/>`).join('');
+;
     sv.style.display = 'block';
 }
 // Thả chấm: lưu đường mới (hoàn tác được), làm lại ảnh
 function apDungVien() {
     const v = ANH.vien; ANH.tt = ANH.tt || []; (ANH.lui = ANH.lui || []).push(ANH.tt.slice()); ANH.toi = [];
-    ANH.tt.push({ loai: 'vien', C: v.C.slice(), aL: v.aL, span: v.span, yE: v.yE, rr: v.rr.slice() });
+    ANH.tt.push({ loai: 'vien', C: v.C.slice(), aL: v.aL, span: v.span, yE: v.yE, rr: v.rr.slice(), p: Object.assign({}, v.p) });
     ANH._xoa = null; ve(); nutBoi(); veToSau();
 }
 // Tờ in (nặng) vẽ lại khi khách ngừng bấm một lúc; ảnh thẻ vẽ đủ nét lại cùng lúc
@@ -948,11 +1005,7 @@ function ganBoi(cv) {
         }
         if (choHetNgon || performance.now() < khoaDen) return;
         if (CU === 'vien') {
-            const v = ANH.vien; if (!v || !v._css) return;
-            const kr = kh.getBoundingClientRect(), qx = e.clientX - kr.left, qy = e.clientY - kr.top;
-            let i0 = -1, bd = 30; v._css.forEach(([a, b], i) => { const dd = Math.hypot(a - qx, b - qy); if (dd < bd) { bd = dd; i0 = i; } });
-            if (i0 < 0) return;
-            keoCham = { i: i0, id: e.pointerId }; v.dang = i0; veVien(); return;
+            return;
         }
         // chưa tô ngay: đợi ngón nhích (tô), nhấc (chấm), ngón thứ 2 (chụm) hay giữ yên (vá tóc: chọn chỗ lấy tóc)
         const ea = dichE(e);
