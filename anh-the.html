@@ -8,7 +8,8 @@
 <style>
 :root { --bd: #e5e5e5; --mu: #666; }
 * { box-sizing: border-box; }
-body { margin: 0; font-family: 'Inter', sans-serif; color: #111; background: #fafafa; }
+body { margin: 0; font-family: 'Inter', sans-serif; color: #111; background: #fafafa; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+button, input { touch-action: manipulation; }
 header { padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--bd); display: flex; align-items: center; gap: 12px; }
 header h1 { font-size: 15px; margin: 0; letter-spacing: .5px; text-transform: uppercase; flex: 1; }
 #dong { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--bd); background: #fff; font: 400 24px/1 'Inter'; color: #111; cursor: pointer; display: none; }
@@ -371,27 +372,51 @@ let NHANH = false;
 const matKhoa = r => { const ex = Math.hypot(r.matP.x - r.matT.x, r.matP.y - r.matT.y); return { cx: r.mat.x, cy: (r.tran + r.cam) / 2, rx: ex * 1.05, ry: (r.cam - r.tran) / 2 * 1.1 }; };
 const chamCo = (x, X, Y, R) => { const g = x.createRadialGradient(X, Y, R * 0.35, X, Y, R); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.beginPath(); x.arc(X, Y, R, 0, 2 * Math.PI); x.fill(); };
 const khoaMat = (x, r) => { const f = matKhoa(r); x.save(); x.beginPath(); x.rect(0, 0, x.canvas.width, x.canvas.height); x.ellipse(f.cx, f.cy, f.rx, f.ry, 0, 0, 2 * Math.PI); x.clip('evenodd'); x.globalCompositeOperation = 'destination-out'; };
-// Kéo một bước (dx,dy): điểm trong vòng cọ lấy màu từ chỗ lùi lại theo hướng kéo, mạnh ở tâm nhẹ dần ra mép; trong mặt đứng yên
-function keoDiem(x, r, X, Y, dx, dy, R) {
-    const f = matKhoa(r), W = x.canvas.width, H = x.canvas.height;
-    const x0 = Math.max(0, Math.floor(X - R - 2)), y0 = Math.max(0, Math.floor(Y - R - 2));
-    const w = Math.min(W, Math.ceil(X + R + 2)) - x0, h = Math.min(H, Math.ceil(Y + R + 2)) - y0;
-    if (w < 3 || h < 3) return;
-    const anh = x.getImageData(x0, y0, w, h), s = anh.data, d = new Uint8ClampedArray(s);
-    for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) {
-        const px = x0 + xx, py = y0 + yy, q = Math.hypot(px - X, py - Y) / R; if (q >= 1) continue;
+// KÉO (kiểu Liquify): mỗi bước chỉ cộng dồn độ dịch chuyển (lưới thưa 2 điểm ảnh, trơn nên nội suy được),
+// ảnh vẽ ra luôn lấy mẫu MỘT lần từ ảnh trước nét -> kéo bao lâu cũng không mờ. Trong mặt đứng yên.
+function taoKeo(x) {
+    const W = x.canvas.width, H = x.canvas.height, G = 2, gw = Math.ceil(W / G) + 2, gh = Math.ceil(H / G) + 2;
+    return { goc: x.getImageData(0, 0, W, H).data, W, H, G, gw, gh, dx: new Float32Array(gw * gh), dy: new Float32Array(gw * gh) };
+}
+// đọc độ dịch tại (px, py) điểm ảnh, nội suy song tuyến trên lưới
+const docD = (K, A, px, py) => {
+    const gx = Math.max(0, Math.min(K.gw - 1.001, px / K.G - (K.ox || 0))), gy = Math.max(0, Math.min(K.gh - 1.001, py / K.G - (K.oy || 0)));
+    const i = Math.floor(gx), j = Math.floor(gy), u = gx - i, v = gy - j, o = j * K.gw + i;
+    return A[o] * (1 - u) * (1 - v) + A[o + 1] * u * (1 - v) + A[o + K.gw] * (1 - u) * v + A[o + K.gw + 1] * u * v;
+};
+function buocKeo(K, r, X, Y, vx, vy, R) {
+    const f = matKhoa(r), G = K.G, gw = K.gw;
+    const i0 = Math.max(0, Math.floor((X - R) / G)), i1 = Math.min(gw - 1, Math.ceil((X + R) / G));
+    const j0 = Math.max(0, Math.floor((Y - R) / G)), j1 = Math.min(K.gh - 1, Math.ceil((Y + R) / G));
+    // trường mới D'(p) = D(p - w·v) + w·v : đọc từ bản cũ (chép vùng) để không đọc phải ô vừa ghi
+    const m = Math.ceil(Math.hypot(vx, vy) / G) + 2, a0 = Math.max(0, i0 - m), b0 = Math.max(0, j0 - m), a1 = Math.min(gw - 1, i1 + m), b1 = Math.min(K.gh - 1, j1 + m);
+    const cu = { ox: a0, oy: b0, gw: a1 - a0 + 1, gh: b1 - b0 + 1, G, dx: new Float32Array((a1 - a0 + 1) * (b1 - b0 + 1)), dy: new Float32Array((a1 - a0 + 1) * (b1 - b0 + 1)) };
+    for (let j = b0; j <= b1; j++) { const o = j * gw, p = (j - b0) * cu.gw; cu.dx.set(K.dx.subarray(o + a0, o + a1 + 1), p); cu.dy.set(K.dy.subarray(o + a0, o + a1 + 1), p); }
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const px = i * G, py = j * G, q = Math.hypot(px - X, py - Y) / R; if (q >= 1) continue;
         const e = Math.hypot((px - f.cx) / f.rx, (py - f.cy) / f.ry);
-        const wg = (1 - q * q) ** 2 * Math.max(0, Math.min(1, (e - 0.95) / 0.15)); if (wg < 0.002) continue;
-        const sx = xx - dx * wg, sy = yy - dy * wg;
-        const ix = Math.max(0, Math.min(w - 2, Math.floor(sx))), iy = Math.max(0, Math.min(h - 2, Math.floor(sy)));
-        const tx = Math.max(0, Math.min(1, sx - ix)), ty = Math.max(0, Math.min(1, sy - iy));
-        const a = (iy * w + ix) * 4, b = a + 4, c = a + w * 4, g = c + 4, o = (yy * w + xx) * 4;
-        // trộn theo độ phủ: phần trong suốt không kéo màu đen vào viền tóc
-        const wa = (1 - tx) * (1 - ty) * s[a + 3], wb = tx * (1 - ty) * s[b + 3], wc = (1 - tx) * ty * s[c + 3], wd = tx * ty * s[g + 3], sw = wa + wb + wc + wd;
-        d[o + 3] = sw;
-        if (sw > 0) for (let k = 0; k < 3; k++) d[o + k] = (s[a + k] * wa + s[b + k] * wb + s[c + k] * wc + s[g + k] * wd) / sw;
+        const w = (1 - q * q) ** 2 * Math.max(0, Math.min(1, (e - 0.95) / 0.15)); if (w < 0.002) continue;
+        const sx = px - w * vx, sy = py - w * vy, o = j * gw + i;
+        K.dx[o] = docD(cu, cu.dx, sx, sy) + w * vx; K.dy[o] = docD(cu, cu.dy, sx, sy) + w * vy;
     }
-    x.putImageData(new ImageData(d, w, h), x0, y0);
+}
+// vẽ lại vùng (x0..x1, y0..y1): mỗi điểm lấy mẫu một lần từ ảnh trước nét theo độ dịch đã cộng dồn
+function veKeo(x, K, x0, y0, x1, y1) {
+    const W = K.W, H = K.H, s = K.goc;
+    x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0)); x1 = Math.min(W, Math.ceil(x1)); y1 = Math.min(H, Math.ceil(y1));
+    const w = x1 - x0, h = y1 - y0; if (w < 1 || h < 1) return;
+    const out = new ImageData(w, h), d = out.data;
+    for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) {
+        const px = x0 + xx, py = y0 + yy, o = (yy * w + xx) * 4;
+        const sx = Math.max(0, Math.min(W - 1.001, px - docD(K, K.dx, px, py))), sy = Math.max(0, Math.min(H - 1.001, py - docD(K, K.dy, px, py)));
+        const ix = Math.floor(sx), iy = Math.floor(sy), tx = sx - ix, ty = sy - iy;
+        const A = (iy * W + ix) * 4, B = A + 4, C = A + W * 4, D = C + 4;
+        // trộn theo độ phủ: phần trong suốt không kéo màu đen vào viền tóc
+        const wa = (1 - tx) * (1 - ty) * s[A + 3], wb = tx * (1 - ty) * s[B + 3], wc = (1 - tx) * ty * s[C + 3], wd = tx * ty * s[D + 3], sw = wa + wb + wc + wd;
+        d[o + 3] = sw;
+        if (sw > 0) for (let k = 0; k < 3; k++) d[o + k] = (s[A + k] * wa + s[B + k] * wb + s[C + k] * wc + s[D + k] * wd) / sw;
+    }
+    x.putImageData(out, x0, y0);
 }
 // VÁ TÓC (kiểu Clone Stamp): chép tóc THẬT từ chỗ tóc chắc sang chỗ thiếu, cả nét dùng chung một khoảng lệch
 // nên sợi tóc chạy liền. Nguồn = ảnh tự động (không có phông). Tóc vá nằm DƯỚI ảnh đang có: chỉ lấp chỗ trống,
@@ -450,7 +475,16 @@ function vaDiem(x, r, X, Y, R, o) {
 // Làm thao tác t từ điểm thứ tu (vẽ dần khi đang kéo tay, hoặc làm lại cả nét)
 function lamThaoTac(x, r, t, tu) {
     if (t.loai === 'va') { if (t.o) for (let i = tu; i < t.d.length; i++) vaDiem(x, r, t.d[i][0], t.d[i][1], t.R, t.o); return; }
-    if (t.loai === 'keo') { for (let i = Math.max(1, tu); i < t.d.length; i++) { const [a, b] = t.d[i - 1], [c, e] = t.d[i]; keoDiem(x, r, c, e, c - a, e - b, t.R); } return; }
+    if (t.loai === 'keo') {
+        const K = (tu === 0 || !t._k) ? (t._k = taoKeo(x)) : t._k;
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (let i = Math.max(1, tu); i < t.d.length; i++) {
+            const [a, b] = t.d[i - 1], [c, e] = t.d[i]; buocKeo(K, r, c, e, c - a, e - b, t.R);
+            x0 = Math.min(x0, c - t.R - 3); y0 = Math.min(y0, e - t.R - 3); x1 = Math.max(x1, c + t.R + 3); y1 = Math.max(y1, e + t.R + 3);
+        }
+        if (x1 > x0) veKeo(x, K, x0, y0, x1, y1);
+        return;
+    }
     khoaMat(x, r); for (let i = tu; i < t.d.length; i++) chamCo(x, t.d[i][0], t.d[i][1], t.R); x.restore();
 }
 function rHien() {
@@ -460,7 +494,7 @@ function rHien() {
     if (ANH._xoa && ANH._xoa.base === ANH.r && ANH._xoa.so === tt.length) return ANH._xoa.r;
     const c = document.createElement('canvas'); c.width = ANH.r.nguoi.width; c.height = ANH.r.nguoi.height;
     const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(ANH.r.nguoi, 0, 0);
-    for (const t of tt) lamThaoTac(x, ANH.r, t, 0);
+    for (const t of tt) { lamThaoTac(x, ANH.r, t, 0); delete t._k; }
     ANH._xoa = { base: ANH.r, so: tt.length, r: Object.assign({}, ANH.r, { nguoi: c }), x };
     return ANH._xoa.r;
 }
@@ -539,7 +573,40 @@ $('co-cu').oninput = () => {
     clearTimeout(henAn); henAn = setTimeout(anVong, 900);
 };
 // Lịch sử: lui = các trạng thái trước (để hoàn tác), toi = các trạng thái đã hoàn tác (để làm lại). Bỏ hết cũng hoàn tác được.
-const doiTT = moi => { ANH.tt = moi; ANH._xoa = null; ve(); nutBoi(); };
+// Tờ in (nặng) vẽ lại khi khách ngừng bấm một lúc; ảnh thẻ vẽ đủ nét lại cùng lúc
+let henVeTo = 0;
+const veToSau = () => { clearTimeout(henVeTo); henVeTo = setTimeout(() => { if (!dangChay && ANH && ANH.r && THE) { veTheNhanh(); veTo(); } }, 450); };
+// Bớt / thêm đúng 1 nét so với ảnh đang có: dán lại mảnh đã lưu của nét đó, khỏi làm lại cả loạt nét
+const doiTT = moi => {
+    const cu = ANH.tt || [], x = ANH._xoa;
+    let nhanh = false;
+    if (x && x.base === ANH.r && x.so === cu.length) {
+        const bot = moi.length === cu.length - 1 && moi.every((t, i) => t === cu[i]);
+        const them = moi.length === cu.length + 1 && cu.every((t, i) => t === moi[i]);
+        const t = bot ? cu[cu.length - 1] : them ? moi[moi.length - 1] : null;
+        const manh = t && t.base === ANH.r ? (bot ? t.truoc : t.sau) : null;
+        if (manh) { x.x.putImageData(manh, t.bx, t.by); x.so = moi.length; nhanh = true; }
+    }
+    ANH.tt = moi;
+    if (nhanh) { NHANH = true; veTheNhanh(); NHANH = false; veToSau(); }
+    else { ANH._xoa = null; ve(); }
+    nutBoi();
+};
+// Nét vừa xong: cắt mảnh ảnh trước (từ bản chụp lúc đặt ngón) và sau, trong khung bao quanh nét
+function luuManh(t) {
+    const c0 = t._chup; t._chup = null;
+    if (!c0 || !t.d.length || !ANH._xoa) { if (c0) c0.width = c0.height = 0; return; }
+    const W = c0.width, H = c0.height, p = t.R + 4;
+    let x0 = W, y0 = H, x1 = 0, y1 = 0;
+    for (const [X, Y] of t.d) { x0 = Math.min(x0, X - p); y0 = Math.min(y0, Y - p); x1 = Math.max(x1, X + p); y1 = Math.max(y1, Y + p); }
+    x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0)); x1 = Math.min(W, Math.ceil(x1)); y1 = Math.min(H, Math.ceil(y1));
+    if (x1 > x0 && y1 > y0) {
+        t.bx = x0; t.by = y0; t.base = ANH._xoa.base;
+        t.truoc = c0.getContext('2d').getImageData(x0, y0, x1 - x0, y1 - y0);
+        t.sau = ANH._xoa.x.getImageData(x0, y0, x1 - x0, y1 - y0);
+    }
+    c0.width = c0.height = 0;
+}
 $('boi-lui').onclick = () => { if (!ANH || !ANH.lui || !ANH.lui.length) return; (ANH.toi = ANH.toi || []).push(ANH.tt || []); doiTT(ANH.lui.pop()); };
 $('boi-toi').onclick = () => { if (!ANH || !ANH.toi || !ANH.toi.length) return; (ANH.lui = ANH.lui || []).push(ANH.tt || []); doiTT(ANH.toi.pop()); };
 $('boi-het').onclick = () => { if (!ANH || !ANH.tt || !ANH.tt.length) return; (ANH.lui = ANH.lui || []).push(ANH.tt); ANH.toi = []; doiTT([]); };
@@ -557,7 +624,19 @@ function ganBoi(cv) {
         const X = (e.clientX - rc.left) / rc.width * cv.width, Y = (e.clientY - rc.top) / rc.height * cv.height;
         return [(X - ox) / k, (Y - oy) / k];
     };
-    let viTri = null;
+    let viTri = null, ban = null, giuYen = null, cho = null;
+    // Đang tô: chỉ vẽ lại mảnh vừa đổi (nền + lớp người trong khung bao), không vẽ lại cả ảnh thẻ mỗi lần ngón nhích
+    const veManh = () => {
+        const x = ANH && ANH._xoa; if (!ban || !x) return;
+        const { k, ox, oy } = hinh(), c = cv.getContext('2d'), p = x.x.canvas;
+        const X0 = Math.max(0, Math.floor(ox + ban[0] * k) - 2), Y0 = Math.max(0, Math.floor(oy + ban[1] * k) - 2);
+        const X1 = Math.min(cv.width, Math.ceil(ox + ban[2] * k) + 2), Y1 = Math.min(cv.height, Math.ceil(oy + ban[3] * k) + 2);
+        ban = null; if (X1 <= X0 || Y1 <= Y0) return;
+        c.save(); c.beginPath(); c.rect(X0, Y0, X1 - X0, Y1 - Y0); c.clip();
+        c.fillStyle = ANH.r.nenGoc || nen; c.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
+        c.imageSmoothingQuality = 'high'; c.drawImage(p, ox, oy, p.width * k, p.height * k);
+        c.restore();
+    };
     const them = e => {
         const rc = cv.getBoundingClientRect(); viTri = [e.clientX - rc.left, e.clientY - rc.top]; hienVong(cv, viTri[0], viTri[1]);
         const [X, Y] = doiToaDo(e), d = net.d, q = d[d.length - 1], tu = d.length;
@@ -566,13 +645,39 @@ function ganBoi(cv) {
         if (q && Math.hypot(X - q[0], Y - q[1]) < 0.5) return;
         for (let s = 1; s <= buoc; s++) d.push(q ? [q[0] + (X - q[0]) * s / buoc, q[1] + (Y - q[1]) * s / buoc] : [X, Y]);
         rHien(); lamThaoTac(ANH._xoa.x, ANH.r, net, tu);
+        const p = net.R + 3;
+        for (let i = Math.max(0, tu - 1); i < d.length; i++) { const [u, v] = d[i]; ban = ban ? [Math.min(ban[0], u - p), Math.min(ban[1], v - p), Math.max(ban[2], u + p), Math.max(ban[3], v + p)] : [u - p, v - p, u + p, v + p]; }
         if (net.loai === 'va' && net.o) hienNguon(X + net.o[0], Y + net.o[1]);
-        if (!raf) raf = requestAnimationFrame(() => { raf = 0; NHANH = true; veTheNhanh(); NHANH = false; if (net && viTri) veKinh(cv, viTri[0], viTri[1]); });
+        if (!raf) raf = requestAnimationFrame(() => { raf = 0; veManh(); if (net && viTri) veKinh(cv, viTri[0], viTri[1]); });
     };
+    // Bắt đầu nét thật (ngón đã nhích, hoặc chạm nhấc = chấm một cái)
+    const batDau = e0 => {
+        clearTimeout(henAn);
+        ANH.tt = ANH.tt || []; (ANH.lui = ANH.lui || []).push(ANH.tt.slice()); ANH.toi = [];
+        net = { loai: CU, R: banKinh(CU), d: [] }; ANH.tt.push(net);
+        if (ANH._xoa && ANH._xoa.base === ANH.r && ANH._xoa.so === ANH.tt.length - 1) ANH._xoa.so++; else rHien();   // nét mới rỗng: khỏi làm lại các nét cũ
+        { const c0 = document.createElement('canvas'), x0 = ANH._xoa.x.canvas; c0.width = x0.width; c0.height = x0.height; c0.getContext('2d', { willReadFrequently: true }).drawImage(x0, 0, 0); net._chup = c0; }
+        if (CU === 'va') {
+            const [X, Y] = doiToaDo(e0);
+            // đã chọn tay chỗ lấy tóc: nét đầu tiên đặt khoảng lệch, các nét sau dùng lại (như Clone Stamp)
+            if (ANH.vaNguon) { ANH.vaLech = [ANH.vaNguon[0] - X, ANH.vaNguon[1] - Y]; ANH.vaNguon = null; }
+            net.o = ANH.vaLech || timNguon(ANH.r, X, Y, net.R);
+            if (!net.o) nhac('Chưa thấy tóc gần đó để lấy. Giữ ngón tay lên chỗ tóc muốn lấy rồi tô lại.');
+        }
+        them(e0);
+    };
+    const ketThuc = () => { if (!net) return; luuManh(net); delete net._k; net = null; anVong(); if (!ANH.vaNguon) anNguon(); veToSau(); nutBoi(); };
     const ngon = new Map(); let chum = null, choHetNgon = false;
-    const huyNet = () => {   // ngón thứ 2 chạm vào: nét của ngón 1 là lỡ, bỏ đi
-        if (!net) return; net = null; ANH.tt.pop(); ANH.lui.pop(); ANH._xoa = null; anVong(); veTheNhanh(); nutBoi();
+    // Bỏ nét lỡ (ngón thứ 2 chạm vào giữa chừng): chép lại bản chụp lúc đặt ngón, không làm lại cả loạt nét
+    const huyNet = () => {
+        if (!net) return;
+        const c0 = net._chup, x = ANH._xoa; net = null; ANH.tt.pop(); ANH.lui.pop();
+        if (c0 && x) { x.x.globalCompositeOperation = 'copy'; x.x.drawImage(c0, 0, 0); x.x.globalCompositeOperation = 'source-over'; x.so = ANH.tt.length; }
+        else ANH._xoa = null;
+        if (c0) c0.width = c0.height = 0;
+        anVong(); NHANH = true; veTheNhanh(); NHANH = false; nutBoi();
     };
+    const boCho = () => { cho = null; if (giuYen) { clearTimeout(giuYen.hen); giuYen = null; } };
     // giữ ảnh luôn phủ kín khung khi đã phóng
     const gioiHan = () => { const w = cv.offsetWidth, h = cv.offsetHeight; ZOOM.x = Math.min(0, Math.max(w * (1 - ZOOM.s), ZOOM.x)); ZOOM.y = Math.min(0, Math.max(h * (1 - ZOOM.s), ZOOM.y)); };
     const phongTai = (s, mx, my, m0x, m0y, s0, x0, y0) => {
@@ -587,31 +692,22 @@ function ganBoi(cv) {
         if (!CU || !ANH || !ANH.r) return; e.preventDefault();
         phongTai(ZOOM.s * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY, e.clientX, e.clientY, ZOOM.s, ZOOM.x, ZOOM.y);
     }, { passive: false });
+    cv.addEventListener('contextmenu', e => { if (CU) e.preventDefault(); });
     cv.addEventListener('pointerdown', e => {
         if (!CU || !ANH || !ANH.r || dangChay) return;
         e.preventDefault(); cv.setPointerCapture(e.pointerId);
         ngon.set(e.pointerId, [e.clientX, e.clientY]);
-        if (ngon.size >= 2) { huyNet(); const g = giua(); chum = { ...g, s0: ZOOM.s, x0: ZOOM.x, y0: ZOOM.y }; choHetNgon = true; return; }
+        if (ngon.size >= 2) { boCho(); huyNet(); anVong(); const g = giua(); chum = { ...g, s0: ZOOM.s, x0: ZOOM.x, y0: ZOOM.y }; choHetNgon = true; return; }
         if (choHetNgon) return;
-        clearTimeout(henAn);
-        ANH.tt = ANH.tt || []; (ANH.lui = ANH.lui || []).push(ANH.tt.slice()); ANH.toi = [];
-        net = { loai: CU, R: banKinh(CU), d: [] }; ANH.tt.push(net);
-        if (ANH._xoa && ANH._xoa.base === ANH.r && ANH._xoa.so === ANH.tt.length - 1) ANH._xoa.so++; else rHien();   // nét mới rỗng: khỏi làm lại các nét cũ
-        if (CU === 'va') {
-            const [X, Y] = doiToaDo(e);
-            // đã chọn tay chỗ lấy tóc: nét đầu tiên đặt khoảng lệch, các nét sau dùng lại (như Clone Stamp)
-            if (ANH.vaNguon) { ANH.vaLech = [ANH.vaNguon[0] - X, ANH.vaNguon[1] - Y]; ANH.vaNguon = null; }
-            net.o = ANH.vaLech || timNguon(ANH.r, X, Y, net.R);
-            giuYen = { x: e.clientX, y: e.clientY, X, Y, hen: setTimeout(() => chonNguon(), 450) };
-            if (!net.o) { nhac('Chưa thấy tóc gần đó để lấy. Giữ ngón tay lên chỗ tóc muốn lấy rồi tô lại.'); }
-        }
-        them(e);
+        // chưa tô ngay: đợi ngón nhích (tô), nhấc (chấm), ngón thứ 2 (chụm) hay giữ yên (vá tóc: chọn chỗ lấy tóc)
+        cho = { id: e.pointerId, clientX: e.clientX, clientY: e.clientY };
+        const rc = cv.getBoundingClientRect(); hienVong(cv, e.clientX - rc.left, e.clientY - rc.top);
+        if (CU === 'va') { const [X, Y] = doiToaDo(e); giuYen = { X, Y, hen: setTimeout(() => chonNguon(), 450) }; }
     });
-    // giữ yên ngón tay: bỏ nét vừa chấm, lấy chỗ đó làm nguồn tóc
-    let giuYen = null;
+    // giữ yên ngón tay (vá tóc): lấy chỗ đó làm nguồn tóc
     const chonNguon = () => {
-        if (!giuYen || !net || net.loai !== 'va') return;
-        const { X, Y } = giuYen; giuYen = null; huyNet();
+        if (!giuYen || !cho) return;
+        const { X, Y } = giuYen; giuYen = null; cho = null; anVong();
         ANH.vaNguon = [X, Y]; ANH.vaLech = null; hienNguon(X, Y, true);
         try { navigator.vibrate && navigator.vibrate(15); } catch (er) {}
         nhac('Đã chọn chỗ lấy tóc. Giờ tô lên chỗ thiếu.');
@@ -619,18 +715,23 @@ function ganBoi(cv) {
     cv.addEventListener('pointermove', e => {
         if (ngon.has(e.pointerId)) ngon.set(e.pointerId, [e.clientX, e.clientY]);
         if (chum) { if (ngon.size >= 2) { const g = giua(); phongTai(chum.s0 * g.d / Math.max(1, chum.d), g.x, g.y, chum.x, chum.y, chum.s0, chum.x0, chum.y0); } return; }
-        if (giuYen && Math.hypot(e.clientX - giuYen.x, e.clientY - giuYen.y) > 8) { clearTimeout(giuYen.hen); giuYen = null; }
+        if (cho && e.pointerId === cho.id) {
+            if (Math.hypot(e.clientX - cho.clientX, e.clientY - cho.clientY) < 6) return;
+            const e0 = cho; boCho(); batDau(e0);
+        }
         if (net) return them(e);
         // chuột trên máy tính: vòng cọ đi theo con trỏ
-        if (CU && e.pointerType === 'mouse' && ANH && ANH.r) { const rc = cv.getBoundingClientRect(); hienVong(cv, e.clientX - rc.left, e.clientY - rc.top); }
+        if (CU && e.pointerType === 'mouse' && ANH && ANH.r && !ngon.size) { const rc = cv.getBoundingClientRect(); hienVong(cv, e.clientX - rc.left, e.clientY - rc.top); }
     });
-    cv.addEventListener('pointerleave', () => { if (!net) anVong(); });
+    cv.addEventListener('pointerleave', () => { if (!net && !cho) anVong(); });
     const tha = e => {
         ngon.delete(e.pointerId);
         if (ngon.size < 2) chum = null;
         if (!ngon.size) choHetNgon = false;
+        // chạm rồi nhấc, không nhích: chấm một cái
+        if (cho && e.pointerId === cho.id) { const e0 = cho; boCho(); if (e.type === 'pointerup') batDau(e0); else anVong(); }
         if (giuYen) { clearTimeout(giuYen.hen); giuYen = null; }
-        if (!net) return; net = null; anVong(); if (!ANH.vaNguon) anNguon(); veTo(); nutBoi();
+        ketThuc();
     };
     cv.addEventListener('pointerup', tha); cv.addEventListener('pointercancel', tha);
 }
