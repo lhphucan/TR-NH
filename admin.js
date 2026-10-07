@@ -1595,6 +1595,11 @@ function patchCard(clientId, c) {
         goiBtn.classList.toggle('cao', c.goi === 'cao');
         goiBtn.innerText = 'Frame: ' + (c.goi === 'cao' ? 'Cao cấp' : 'Thường');
     }
+    const theBtn = document.getElementById('the_' + clientId);
+    if (theBtn) {
+        theBtn.classList.toggle('cao', c.the === true);
+        theBtn.innerText = 'Ảnh thẻ: ' + (c.the === true ? 'Bật' : 'Tắt');
+    }
 
     // Tiến độ ảnh lẻ màu frame đổi -> vẽ lại thẻ để hiện "đang làm 3/6", "đủ 6"
     if ((card.getAttribute('data-le') || '') !== leChuKy(c)) return true;
@@ -1751,7 +1756,7 @@ function load() {
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:10px;">
                                     <span style="font-size:12px; font-weight:700; color:#111; display:flex; align-items:center; gap:6px; text-transform:uppercase;">
                                         <svg class="icon-sm" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
-                                        ${up.kind === 'frame' ? 'Ảnh ghép frame' : 'Yêu cầu in'} ${gioGui(up.time)}
+                                        ${up.kind === 'frame' ? 'Ảnh ghép frame' : up.kind === 'anhthe' ? 'Ảnh thẻ' : 'Yêu cầu in'} ${gioGui(up.time)}
                                         ${up.took != null ? `<span class="up-meta" title="Thời gian khách gửi, dung lượng, đường đi">${+up.took || 0}s · ${+up.mb || 0} MB${/script|cu/.test(up.via || '') ? ' · dự phòng' : ''}</span>` : ''}
                                     </span>
                                     <div style="display:flex; gap:8px;">
@@ -1808,7 +1813,8 @@ function load() {
                                         <option value="Miễn phí" ${isFree ? 'selected' : ''}>Miễn phí</option>
                                     </select>
                                 </div>
-                                ${dbPath === 'data/' ? `<button type="button" id="goi_${client.id}" class="goi-btn${client.goi === 'cao' ? ' cao' : ''}" onclick="doiGoi('${client.id}')" title="Bấm để đổi">Frame: ${client.goi === 'cao' ? 'Cao cấp' : 'Thường'}</button>` : ''}
+                                ${dbPath === 'data/' ? `<button type="button" id="goi_${client.id}" class="goi-btn${client.goi === 'cao' ? ' cao' : ''}" onclick="doiGoi('${client.id}')" title="Bấm để đổi">Frame: ${client.goi === 'cao' ? 'Cao cấp' : 'Thường'}</button>
+                                    <button type="button" id="the_${client.id}" class="goi-btn${client.the === true ? ' cao' : ''}" onclick="doiThe('${client.id}')" title="Bấm để đổi">Ảnh thẻ: ${client.the === true ? 'Bật' : 'Tắt'}</button>` : ''}
                             </div>
 
                             <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #e4e4e7;">
@@ -3119,7 +3125,25 @@ function pickQuickPrice(v) {
 let _goiChon = '';
 function selectGoi(g) {
     _goiChon = g === 'cao' ? 'cao' : '';
-    document.querySelectorAll('#price-modal .goi-opt').forEach(b => b.classList.toggle('active', b.getAttribute('data-goi') === _goiChon));
+    document.querySelectorAll('#price-modal .goi-opt[data-goi]').forEach(b => b.classList.toggle('active', b.getAttribute('data-goi') === _goiChon));
+}
+
+// Ảnh thẻ của lượt: bật thì khách thấy nút LÀM ẢNH THẺ (tự xoá phông, chỉnh, gửi tờ in cho tiệm)
+let _theChon = false;
+function selectThe(on) {
+    _theChon = !!on;
+    document.querySelectorAll('#price-modal .the-opt').forEach(b => b.classList.toggle('active', (b.getAttribute('data-the') === '1') === _theChon));
+}
+
+// Nút "Ảnh thẻ: Tắt / Bật" trên thẻ khách: bấm để đổi
+function doiThe(clientId) {
+    if (userRole === 'viewer') return;
+    const c = currentData && currentData[clientId];
+    if (!c) return;
+    const moi = c.the === true ? null : true;
+    db.ref(dbPath + br + '/' + clientId + '/the').set(moi)
+        .then(() => Toast.fire({ icon: 'success', title: moi ? 'Đã mở ảnh thẻ cho khách' : 'Đã tắt ảnh thẻ' }))
+        .catch(err => Swal.fire('Lỗi', err.message, 'error'));
 }
 
 // Nút "Frame: Thường / Cao cấp" trên thẻ khách: bấm để đổi
@@ -3136,6 +3160,7 @@ function doiGoi(clientId) {
 function openPriceModal(clientId, currentPay) {
     _priceClientId = clientId;
     selectGoi(((currentData && currentData[clientId]) || {}).goi);
+    selectThe(((currentData && currentData[clientId]) || {}).the === true);
     _paySelected = (currentPay === 'Chuyển khoản') ? 'Chuyển khoản' : 'Tiền mặt';
     document.getElementById('price-amount-input').value = '';
     renderQuickPrice();
@@ -3173,7 +3198,7 @@ function confirmPrice() {
     document.getElementById('price-modal').style.display = 'none';
     if (_priceResolve) { _priceResolve(true); _priceResolve = null; }
 
-    db.ref(dbPath + br + '/' + cid).update({ price, payment, goi: _goiChon || null })
+    db.ref(dbPath + br + '/' + cid).update({ price, payment, goi: _goiChon || null, the: _theChon || null })
         .catch(err => Swal.fire('Lỗi', 'Không lưu được giá: ' + err.message, 'error'));
 }
 

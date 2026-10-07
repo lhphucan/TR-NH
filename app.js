@@ -784,6 +784,8 @@ function renderData(data, branch) {
     resetSubmitBtn();
     // Có frame cho cơ sở này thì hiện nút ghép ảnh vào frame ở chỗ yêu cầu in
     if (typeof frSessionReady === 'function') frSessionReady(data, branch);
+    // Nhân viên bật ảnh thẻ cho khách thì hiện nút làm ảnh thẻ (và tải ngầm phần mềm)
+    if (typeof atSessionReady === 'function') atSessionReady(data, branch);
 }
 
 async function sendToShop() {

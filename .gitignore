@@ -13,6 +13,10 @@
 !frame-admin.js
 !frame-khach.js
 !frame.css
+!anh-the.html
+!anh-the-khach.js
+!anhthe-core.js
+!anhthe-ai.js
 !.gitignore
 !database.rules.json
 !firebase.json
