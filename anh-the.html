@@ -387,6 +387,7 @@ const chamCo = (x, X, Y, R) => { const g = x.createRadialGradient(X, Y, R * 0.35
 const khoaMat = (x, r) => { const f = matKhoa(r); x.save(); x.beginPath(); x.rect(0, 0, x.canvas.width, x.canvas.height); x.ellipse(f.cx, f.cy, f.rx, f.ry, 0, 0, 2 * Math.PI); x.clip('evenodd'); x.globalCompositeOperation = 'destination-out'; };
 // KÉO (kiểu Liquify): mỗi bước chỉ cộng dồn độ dịch chuyển (lưới thưa 2 điểm ảnh, trơn nên nội suy được),
 // ảnh vẽ ra luôn lấy mẫu MỘT lần từ ảnh trước nét -> kéo bao lâu cũng không mờ. Trong mặt đứng yên.
+const LUC_KEO = 0.6;   // tóc dịch 60% quãng ngón đi: kéo nhẹ tay, khó móp
 function taoKeo(x) {
     const W = x.canvas.width, H = x.canvas.height, G = 2, gw = Math.ceil(W / G) + 2, gh = Math.ceil(H / G) + 2;
     return { goc: x.getImageData(0, 0, W, H).data, W, H, G, gw, gh, dx: new Float32Array(gw * gh), dy: new Float32Array(gw * gh) };
@@ -539,7 +540,7 @@ function lamThaoTac(x, r, t, tu) {
         const K = (tu === 0 || !t._k) ? (t._k = taoKeo(x)) : t._k;
         let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
         for (let i = Math.max(1, tu); i < t.d.length; i++) {
-            const [a, b] = t.d[i - 1], [c, e] = t.d[i]; buocKeo(K, r, c, e, c - a, e - b, t.R);
+            const [a, b] = t.d[i - 1], [c, e] = t.d[i]; buocKeo(K, r, c, e, (c - a) * LUC_KEO, (e - b) * LUC_KEO, t.R);
             x0 = Math.min(x0, c - t.R - 3); y0 = Math.min(y0, e - t.R - 3); x1 = Math.max(x1, c + t.R + 3); y1 = Math.max(y1, e + t.R + 3);
         }
         if (x1 > x0) veKeo(x, K, x0, y0, x1, y1);
@@ -647,7 +648,9 @@ const anVong = () => { clearTimeout(henAn); $('vong').style.display = 'none'; $(
 // Kéo thanh cỡ cọ: hiện vòng giữa ảnh cho thấy cọ to bao nhiêu
 $('co-cu').oninput = () => {
     coBoi = +$('co-cu').value; if (!CU || !THE || !ANH || !ANH.r) return;
-    const rc = THE.getBoundingClientRect(); hienVong(THE, rc.width / 2, rc.height / 2);
+    const rc = THE.getBoundingClientRect(), kr = $('khung').getBoundingClientRect();
+    const x0 = Math.max(rc.left, kr.left), x1 = Math.min(rc.right, kr.right), y0 = Math.max(rc.top, kr.top), y1 = Math.min(rc.bottom, kr.bottom);
+    hienVong(THE, (x0 + x1) / 2 - rc.left, (y0 + y1) / 2 - rc.top);
     clearTimeout(henAn); henAn = setTimeout(anVong, 900);
 };
 // Lịch sử: lui = các trạng thái trước (để hoàn tác), toi = các trạng thái đã hoàn tác (để làm lại). Bỏ hết cũng hoàn tác được.
@@ -741,7 +744,6 @@ function ganBoi(cv) {
     // điểm cọ -> ĐƯỜNG CONG TRƠN (bậc 2 qua trung điểm các điểm), không gãy góc khi vuốt nhanh
     const them = e => {
         const rc = cv.getBoundingClientRect(); viTri = [e.clientX - rc.left, e.clientY - rc.top]; hienVong(cv, viTri[0], viTri[1]); hienDay(e);
-        if (net.daNan) return;
         const [X, Y] = doiToaDo(e), raw = net.raw, q = raw[raw.length - 1], tu = net.d.length;
         if (q && Math.hypot(X - q[0], Y - q[1]) < 0.5) return;
         raw.push([X, Y]); const n = raw.length;
@@ -755,54 +757,28 @@ function ganBoi(cv) {
         veTu(tu);
         if (net.loai === 'va' && net.o) hienNguon(X + net.o[0], Y + net.o[1]);
     };
-    // DÂY CHỐNG RUN: cọ chỉ đi khi ngón ra xa quá L px rồi trượt theo hướng ngón -> rung tay nhỏ bị lọc, nét trơn
-    let Bc = null, Fc = null, henNan = 0, giuCuoi = null;
+    // DÂY CHỐNG RUN: cọ chỉ đi khi ngón ra xa quá L px rồi trượt theo hướng ngón -> rung tay nhỏ bị lọc, nét trơn.
+    // Chỉ cho cọ vẽ đường (Xoá tóc, Làm mềm viền); Tô tóc và Kéo tóc cần bám sát ngón nên dây rất ngắn
+    let Bc = null, Fc = null, ngonCu = null, lucNgon = 0, dungTruoc = null;
+    // LỌC NHẤC TAY: đã dừng tay rồi nhấc mà ngón trượt nhẹ -> bỏ đoạn trượt đó, nét về đúng chỗ đã dừng
+    const catVe = m => {
+        const x = ANH._xoa && ANH._xoa.x; if (!x || !net._chup || net.d.length <= m.dLen) return;
+        x.globalCompositeOperation = 'copy'; x.drawImage(net._chup, 0, 0); x.globalCompositeOperation = 'source-over';
+        net.d.length = m.dLen; net.raw.length = m.rawLen; delete net._k;
+        if (net.d.length) lamThaoTac(x, ANH.r, net, 0);
+        NHANH = true; veTheNhanh(); NHANH = false;
+    };
     const keoDay = e => {
         Fc = e; if (!Bc) Bc = { x: e.clientX, y: e.clientY };
-        const L = e.pointerType === 'mouse' ? 3 : 14, dx = e.clientX - Bc.x, dy = e.clientY - Bc.y, d = Math.hypot(dx, dy), di = d > L;
+        const L = e.pointerType === 'mouse' || (net && (net.loai === 'keo' || net.loai === 'va')) ? 3 : 14, dx = e.clientX - Bc.x, dy = e.clientY - Bc.y, d = Math.hypot(dx, dy), di = d > L;
         if (di) { Bc.x += dx * (d - L) / d; Bc.y += dy * (d - L) / d; }
         return { clientX: Bc.x, clientY: Bc.y, ngon: e.ngon || null, pointerType: e.pointerType, di };
     };
-    // nhấc tay: nối nốt tới chỗ ngón dừng
+    // nhấc tay: nét dừng ĐÚNG chỗ vòng cọ đang đứng (không nối tới ngón tay, không ăn lố); chỉ vẽ nốt nửa đoạn
+    // cong còn thiếu tới vòng cọ. Kéo tóc thì thôi luôn (đẩy thêm là móp).
     const noiNot = () => {
-        if (!net || net.daNan || !net.raw.length) return;
-        const tu = net.d.length;
-        if (Fc) { const [X, Y] = doiToaDo(Fc), q = net.raw[net.raw.length - 1]; if (Math.hypot(X - q[0], Y - q[1]) > 0.5) net.raw.push([X, Y]); }
-        const L = net.raw[net.raw.length - 1]; dayDiem(L[0], L[1]); veTu(tu);
-    };
-    // GIỮ NGÓN CUỐI NÉT ~0,6s: nét gần thẳng -> thẳng tắp, nét cong -> cong đều (vẽ lại từ ảnh lúc đặt ngón)
-    const nan = () => {
-        if (!net || net.daNan || chum || !ANH._xoa || !net._chup) return;
-        const raw = net.raw.slice(); if (Fc) raw.push(doiToaDo(Fc));
-        let dai = 0; for (let i = 1; i < raw.length; i++) dai += Math.hypot(raw[i][0] - raw[i - 1][0], raw[i][1] - raw[i - 1][1]);
-        if (raw.length < 3 || dai < 3 * net.R) return;
-        const A = raw[0], Z = raw[raw.length - 1], thang = Math.hypot(Z[0] - A[0], Z[1] - A[1]) / dai > 0.9;
-        let pts;
-        if (thang) pts = [A, Z];
-        else {
-            // lấy mẫu đều dọc nét rồi làm trơn mạnh, giữ hai đầu
-            const bu = net.R * 0.5; pts = [A]; let du = 0;
-            for (let i = 1; i < raw.length; i++) {
-                const p = raw[i - 1], q = raw[i], l = Math.hypot(q[0] - p[0], q[1] - p[1]); let t = bu - du;
-                while (t <= l) { pts.push([p[0] + (q[0] - p[0]) * t / l, p[1] + (q[1] - p[1]) * t / l]); t += bu; }
-                du = l - (t - bu);
-            }
-            pts.push(Z);
-            const w = Math.max(2, Math.round(pts.length / 6));
-            for (let lap = 0; lap < 3; lap++) pts = pts.map((p, i) => {
-                if (i === 0 || i === pts.length - 1) return p;
-                let sx = 0, sy = 0, n = 0; for (let j = Math.max(0, i - w); j <= Math.min(pts.length - 1, i + w); j++) { sx += pts[j][0]; sy += pts[j][1]; n++; }
-                return [sx / n, sy / n];
-            });
-        }
-        const x = ANH._xoa.x;
-        x.globalCompositeOperation = 'copy'; x.drawImage(net._chup, 0, 0); x.globalCompositeOperation = 'source-over';
-        delete net._k; net.d = []; net.raw = pts.slice(); net.daNan = true;
-        for (const p of pts) dayDiem(p[0], p[1]);
-        lamThaoTac(x, ANH.r, net, 0);
-        NHANH = true; veTheNhanh(); NHANH = false;
-        try { navigator.vibrate && navigator.vibrate(15); } catch (er) {}
-        hienTen(thang ? 'Nắn thẳng' : 'Nắn cong đều', 1200);
+        if (!net || !net.raw.length || net.loai === 'keo') return;
+        const tu = net.d.length, L = net.raw[net.raw.length - 1]; dayDiem(L[0], L[1]); veTu(tu);
     };
     // Bắt đầu nét thật (ngón đã nhích, hoặc chạm nhấc = chấm một cái)
     const batDau = e0 => {
@@ -818,14 +794,14 @@ function ganBoi(cv) {
             net.o = ANH.vaLech || timNguon(ANH.r, X, Y, net.R);
             if (!net.o) nhac('Chưa thấy tóc gần đó để lấy. Giữ ngón tay lên chỗ tóc muốn lấy rồi tô lại.');
         }
-        Bc = { x: e0.clientX, y: e0.clientY }; Fc = e0; giuCuoi = null;
+        Bc = { x: e0.clientX, y: e0.clientY }; Fc = e0; ngonCu = [e0.rx || e0.clientX, e0.ry || e0.clientY]; lucNgon = performance.now(); dungTruoc = null;
         them(e0);
     };
-    const ketThuc = () => { clearTimeout(henNan); giuCuoi = null; if (!net) return; noiNot(); Bc = Fc = null; luuManh(net); delete net._k; net = null; anVong(); if (!ANH.vaNguon) anNguon(); veToSau(); nutBoi(); };
+    const ketThuc = () => { if (!net) return; noiNot(); Bc = Fc = null; luuManh(net); delete net._k; net = null; anVong(); if (!ANH.vaNguon) anNguon(); veToSau(); nutBoi(); };
     const ngon = new Map(); let chum = null, choHetNgon = false;
     // Bỏ nét lỡ (ngón thứ 2 chạm vào giữa chừng): chép lại bản chụp lúc đặt ngón, không làm lại cả loạt nét
     const huyNet = () => {
-        clearTimeout(henNan); giuCuoi = null; Bc = Fc = null;
+        Bc = Fc = null;
         if (!net) return;
         const c0 = net._chup, x = ANH._xoa; net = null; ANH.tt.pop(); ANH.lui.pop();
         if (c0 && x) { x.x.globalCompositeOperation = 'copy'; x.x.drawImage(c0, 0, 0); x.x.globalCompositeOperation = 'source-over'; x.so = ANH.tt.length; }
@@ -882,8 +858,13 @@ function ganBoi(cv) {
             const e0 = cho; boCho(); batDau(e0);
         }
         if (net) {
+            const bay = performance.now();
+            if (!ngonCu || Math.hypot(e.clientX - ngonCu[0], e.clientY - ngonCu[1]) > 2) {
+                // ngón vừa đi tiếp sau một lúc đứng yên: nhớ trạng thái nét lúc đứng
+                if (ngonCu && bay - lucNgon > 120) dungTruoc = { dLen: net.d.length, rawLen: net.raw.length, t: bay };
+                ngonCu = [e.clientX, e.clientY]; lucNgon = bay;
+            }
             const bc = keoDay(dichE(e));
-            if (!giuCuoi || Math.hypot(e.clientX - giuCuoi[0], e.clientY - giuCuoi[1]) > 5) { giuCuoi = [e.clientX, e.clientY]; clearTimeout(henNan); henNan = setTimeout(nan, 600); }
             if (bc.di) them(bc); else hienDay(bc);
             return;
         }
@@ -897,8 +878,8 @@ function ganBoi(cv) {
         if (!ngon.size && choHetNgon) { choHetNgon = false; khoaDen = performance.now() + 250; }
         // chạm rồi nhấc, không nhích: chấm một cái
         if (cho && e.pointerId === cho.id) { const e0 = cho; boCho(); if (e.type === 'pointerup') { batDau(e0); if (e0.cuoi) Fc = e0.cuoi; } else anVong(); }
-        else if (net && e.type === 'pointerup' && !ngon.size) Fc = dichE(e);
         if (giuYen) { clearTimeout(giuYen.hen); giuYen = null; }
+        if (net && !ngon.size && dungTruoc && performance.now() - dungTruoc.t < 150) catVe(dungTruoc);
         ketThuc();
     };
     kh.addEventListener('pointerup', tha, sig); kh.addEventListener('pointercancel', tha, sig);
