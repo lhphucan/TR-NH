@@ -197,6 +197,7 @@ body.suatay #khung { overflow: hidden; padding: 4px 0; touch-action: none; }
 </div>
     <div class="card to-wrap" id="to-card" style="display:none;">
         <h3>Tờ in 10×15</h3>
+        <button type="button" class="lon phu" id="to-nut">Xem tờ in 10×15</button>
         <div class="to-so" id="to-so"></div>
         <div id="to-o"></div>
         <p class="nhan" id="to-nhan"></p>
@@ -353,7 +354,7 @@ async function chay() {
     // Hiện ảnh gốc mờ phía sau vòng xoay để khách thấy đúng ảnh đang làm
     const im = new Image(); im.className = 'goc'; im.src = a.url; $('khung').prepend(im);
     $('cho').classList.remove('toi');
-    nutBat(false); $('to-card').style.display = 'none'; $('nhan').innerText = '';
+    nutBat(false); $('to-card').style.display = 'none'; $('nhan').innerText = ''; TO_DA_XEM = false; TO_MO = false; TO = null;
     buoc = 'tai'; tai = null; duKien = 0; cho(true); veCho();
     try {
         await napSan();
@@ -398,9 +399,9 @@ const khoaMat = (x, r) => { const f = matKhoa(r); x.save(); x.beginPath(); x.rec
 // KÉO (kiểu Liquify): mỗi bước chỉ cộng dồn độ dịch chuyển (lưới thưa 2 điểm ảnh, trơn nên nội suy được),
 // ảnh vẽ ra luôn lấy mẫu MỘT lần từ ảnh trước nét -> kéo bao lâu cũng không mờ. Trong mặt đứng yên.
 const LUC_KEO = 0.6;   // tóc dịch 60% quãng ngón đi: kéo nhẹ tay, khó móp
-function taoKeo(x) {
+function taoKeo(x, san) {
     const W = x.canvas.width, H = x.canvas.height, G = 2, gw = Math.ceil(W / G) + 2, gh = Math.ceil(H / G) + 2;
-    return { goc: x.getImageData(0, 0, W, H).data, W, H, G, gw, gh, dx: new Float32Array(gw * gh), dy: new Float32Array(gw * gh) };
+    return { goc: san || x.getImageData(0, 0, W, H).data, W, H, G, gw, gh, dx: new Float32Array(gw * gh), dy: new Float32Array(gw * gh) };
 }
 // đọc độ dịch tại (px, py) điểm ảnh, nội suy song tuyến trên lưới
 const docD = (K, A, px, py) => {
@@ -507,7 +508,7 @@ function boxMo(a, w, h, r) {
         for (let y = 0; y < h; y++) { o[y * w + x] = s / n; const yo = y - r, yi = y + r + 1; if (yo >= 0) { s -= t[yo * w + x]; n--; } if (yi < h) { s += t[yi * w + x]; n++; } } }
     return o;
 }
-function taoMem(x, r) { const W = x.canvas.width, H = x.canvas.height; return { goc: x.getImageData(0, 0, W, H).data, W, H, wm: new Uint8Array(W * H), rb: Math.max(2, Math.round(fwCua(r) * 0.008)) }; }
+function taoMem(x, r, san) { const W = x.canvas.width, H = x.canvas.height; return { goc: san || x.getImageData(0, 0, W, H).data, W, H, wm: new Uint8Array(W * H), rb: Math.max(2, Math.round(fwCua(r) * 0.008)) }; }
 function buocMem(x, K, r, X, Y, R) {
     const f = matKhoa(r), W = K.W, H = K.H, g = K.goc, rh = Math.max(1, Math.ceil(K.rb * 0.6));
     const x0 = Math.max(0, Math.floor(X - R)), y0 = Math.max(0, Math.floor(Y - R)), x1 = Math.min(W, Math.ceil(X + R)), y1 = Math.min(H, Math.ceil(Y + R));
@@ -656,12 +657,12 @@ function lamThaoTac(x, r, t, tu) {
     if (t.loai === 'vien') { apVien(x, r, t); return; }
     if (t.loai === 'va') { if (t.o) for (let i = tu; i < t.d.length; i++) vaDiem(x, r, t.d[i][0], t.d[i][1], t.R, t.o); return; }
     if (t.loai === 'mem') {
-        const K = (tu === 0 || !t._k) ? (t._k = taoMem(x, r)) : t._k;
+        const K = (tu === 0 || !t._k) ? (t._k = taoMem(x, r, t._san)) : t._k;
         for (let i = tu; i < t.d.length; i++) buocMem(x, K, r, t.d[i][0], t.d[i][1], t.R);
         return;
     }
     if (t.loai === 'keo') {
-        const K = (tu === 0 || !t._k) ? (t._k = taoKeo(x)) : t._k;
+        const K = (tu === 0 || !t._k) ? (t._k = taoKeo(x, t._san)) : t._k;
         let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
         for (let i = Math.max(1, tu); i < t.d.length; i++) {
             const [a, b] = t.d[i - 1], [c, e] = t.d[i]; buocKeo(K, r, c, e, (c - a) * LUC_KEO, (e - b) * LUC_KEO, t.R);
@@ -728,6 +729,7 @@ function theXuat(k, nn) {
     return catThe(r, KHO[k], nen, t.dau, t.tren, 600);
 }
 async function toXuat(nn) {
+    tinhSo();
     const tu = !nn; nn = nn || await nguoiNet();
     const cache = {}, ds = Object.entries(SO).filter(([, v]) => v > 0).map(([k, v]) => ({ c: cache[k] || (cache[k] = theXuat(k, nn)), so: v }));
     const t = xepTo(ds, 600); Object.values(cache).forEach(c => { c.width = c.height = 0; }); if (tu && nn) nn.hr.width = nn.hr.height = 0; return t.c;
@@ -753,7 +755,7 @@ function ve() {
     $('khung').prepend(THE);
     if (CU === 'vien') requestAnimationFrame(veVien);
     $('nhan').innerText = `Ảnh thẻ ${kho}`;
-    veTo();
+    dongTo();
     nutBat(true);
 }
 
@@ -773,7 +775,7 @@ const nutBoi = () => {
 let ZOOM = { s: 1, x: 0, y: 0 };
 const apZoom = cv => { if (cv) cv.style.transform = ZOOM.s > 1.001 ? `translate(${ZOOM.x}px, ${ZOOM.y}px) scale(${ZOOM.s})` : ''; if (CU === 'vien') veVien(); };
 const boZoom = () => { ZOOM = { s: 1, x: 0, y: 0 }; apZoom(THE); };
-const chonCu = c => { if (!ANH || !ANH.r) return; const cu = CU; CU = CU === c ? '' : c; if (CU && COCU[CU] != null) { $('co-cu').value = COCU[CU]; coBoi = coTu(COCU[CU]); } if (CU) hienTen(TEN_CU[CU][0] + ' · ' + TEN_CU[CU][1], 2600); else hienTen('Đã tắt ' + TEN_CU[c][0].toLowerCase(), 1200); ANH.vaLech = null; anNguon(); if (!CU) boZoom(); if (!cu !== !CU) ve(); nutBoi(); };
+const chonCu = c => { if (!ANH || !ANH.r) return; const cu = CU; CU = CU === c ? '' : c; if (CU) henChuanBi(); else boSan(); if (CU && COCU[CU] != null) { $('co-cu').value = COCU[CU]; coBoi = coTu(COCU[CU]); } if (CU) hienTen(TEN_CU[CU][0] + ' · ' + TEN_CU[CU][1], 2600); else hienTen('Đã tắt ' + TEN_CU[c][0].toLowerCase(), 1200); ANH.vaLech = null; anNguon(); if (!CU) boZoom(); if (!cu !== !CU) ve(); nutBoi(); };
 $('cu-xoa').onclick = () => chonCu('xoa'); $('cu-va').onclick = () => chonCu('va'); $('cu-mem').onclick = () => chonCu('mem'); $('cu-vien').onclick = () => { if (!ANH || !ANH.r) return; const moi = CU !== 'vien' && napVien(); chonCu('vien'); if (moi && CU === 'vien') apDungVien(); };
 $('v-lai').onclick = () => { if (!ANH || !ANH.r || CU !== 'vien') return; napVien(true); apDungVien(); hienTen('Đã dựng lại dáng gọn', 1200); };
  $('cu-keo').onclick = () => chonCu('keo');
@@ -946,9 +948,29 @@ function apDungVien() {
 }
 // Tờ in (nặng) vẽ lại khi khách ngừng bấm một lúc; ảnh thẻ vẽ đủ nét lại cùng lúc
 let henVeTo = 0;
-const veToSau = () => { clearTimeout(henVeTo); henVeTo = setTimeout(() => { if (!dangChay && ANH && ANH.r && THE) { veTheNhanh(); veTo(); } }, 450); };
+// Tờ in vẽ lại khi đã ngừng tô một lúc (đang tô thì hoãn, tránh khựng đầu nét sau); xong thì chụp sẵn cho nét sau
+let DANG_TO = false;
+const veToSau = () => { clearTimeout(henVeTo); henVeTo = setTimeout(() => { if (DANG_TO) return veToSau(); if (!dangChay && ANH && ANH.r && THE) { veTheNhanh(); dongTo(); } henChuanBi(); }, 700); };
+// CHỤP SẴN: bản sao ảnh đang có + điểm ảnh của nó, làm lúc rảnh -> đặt ngón là tô ngay, không phải chụp (khựng)
+let SAN = null, henSan = 0;
+function chuanBi() {
+    if (!ANH || !ANH.r || dangChay || DANG_TO || !CU) return;
+    // chưa có lớp sửa tay (chưa tô nét nào): dựng sẵn luôn, nét đầu tiên khỏi phải dựng
+    if (!ANH._xoa || ANH._xoa.base !== ANH.r || ANH._xoa.so !== (ANH.tt || []).length) {
+        if ((ANH.tt || []).length) rHien();
+        else { const c = document.createElement('canvas'); c.width = ANH.r.nguoi.width; c.height = ANH.r.nguoi.height; const xx = c.getContext('2d', { willReadFrequently: true }); xx.drawImage(ANH.r.nguoi, 0, 0); ANH._xoa = { base: ANH.r, so: 0, r: Object.assign({}, ANH.r, { nguoi: c }), x: xx }; }
+    }
+    const x = ANH._xoa; if (!x) return;
+    if (SAN && SAN.x === x && SAN.so === x.so && SAN.base === x.base) return;
+    const c = document.createElement('canvas'), cx = c.getContext('2d', { willReadFrequently: true }); c.width = x.x.canvas.width; c.height = x.x.canvas.height; cx.drawImage(x.x.canvas, 0, 0);
+    if (SAN && SAN.c) SAN.c.width = SAN.c.height = 0;
+    SAN = { x, so: x.so, base: x.base, c, d: cx.getImageData(0, 0, c.width, c.height).data };
+}
+const henChuanBi = () => { clearTimeout(henSan); henSan = setTimeout(() => (window.requestIdleCallback || (f => f()))(chuanBi), 250); };
+const boSan = () => { if (SAN && SAN.c) SAN.c.width = SAN.c.height = 0; SAN = null; };
 // Bớt / thêm đúng 1 nét so với ảnh đang có: dán lại mảnh đã lưu của nét đó, khỏi làm lại cả loạt nét
 const doiTT = moi => {
+    boSan(); henChuanBi();
     const cu = ANH.tt || [], x = ANH._xoa;
     let nhanh = false;
     if (x && x.base === ANH.r && x.so === cu.length) {
@@ -1084,7 +1106,10 @@ function ganBoi(cv) {
         ANH.tt = ANH.tt || []; (ANH.lui = ANH.lui || []).push(ANH.tt.slice()); ANH.toi = [];
         net = { loai: CU, R: banKinh(CU), d: [], raw: [] }; ANH.tt.push(net);
         if (ANH._xoa && ANH._xoa.base === ANH.r && ANH._xoa.so === ANH.tt.length - 1) ANH._xoa.so++; else rHien();   // nét mới rỗng: khỏi làm lại các nét cũ
-        { const c0 = document.createElement('canvas'), x0 = ANH._xoa.x.canvas; c0.width = x0.width; c0.height = x0.height; c0.getContext('2d', { willReadFrequently: true }).drawImage(x0, 0, 0); net._chup = c0; }
+        DANG_TO = true; clearTimeout(henSan);
+        const xa = ANH._xoa;
+        if (SAN && SAN.x === xa && SAN.so === xa.so - 1 && SAN.base === xa.base) { net._chup = SAN.c; net._san = SAN.d; SAN = null; }   // so đã +1 cho nét mới
+        else { boSan(); const c0 = document.createElement('canvas'), x0 = xa.x.canvas; c0.width = x0.width; c0.height = x0.height; c0.getContext('2d', { willReadFrequently: true }).drawImage(x0, 0, 0); net._chup = c0; }
         if (CU === 'va') {
             const [X, Y] = doiToaDo(e0);
             // đã chọn tay chỗ lấy tóc: nét đầu tiên đặt khoảng lệch, các nét sau dùng lại (như Clone Stamp)
@@ -1095,13 +1120,13 @@ function ganBoi(cv) {
         Bc = { x: e0.clientX, y: e0.clientY }; Fc = e0; Fcu = e0; diQua = 0; ngonCu = [e0.rx || e0.clientX, e0.ry || e0.clientY]; lucNgon = e0.t || performance.now(); dungTruoc = null;
         them(e0);
     };
-    const ketThuc = () => { if (!net) return; noiNot(); Bc = Fc = null; luuManh(net); delete net._k; net = null; anVong(); if (!ANH.vaNguon) anNguon(); veToSau(); nutBoi(); };
+    const ketThuc = () => { DANG_TO = false; if (!net) return; noiNot(); Bc = Fc = null; luuManh(net); delete net._k; delete net._san; net = null; anVong(); if (!ANH.vaNguon) anNguon(); veToSau(); nutBoi(); };
     const ngon = new Map(); let chum = null, choHetNgon = false;
     // Bỏ nét lỡ (ngón thứ 2 chạm vào giữa chừng): chép lại bản chụp lúc đặt ngón, không làm lại cả loạt nét
     const huyNet = () => {
         Bc = Fc = null;
         if (!net) return;
-        const c0 = net._chup, x = ANH._xoa; net = null; ANH.tt.pop(); ANH.lui.pop();
+        DANG_TO = false; const c0 = net._chup, x = ANH._xoa; net = null; ANH.tt.pop(); ANH.lui.pop();
         if (c0 && x) { x.x.globalCompositeOperation = 'copy'; x.x.drawImage(c0, 0, 0); x.x.globalCompositeOperation = 'source-over'; x.so = ANH.tt.length; }
         else ANH._xoa = null;
         if (c0) c0.width = c0.height = 0;
@@ -1156,7 +1181,7 @@ function ganBoi(cv) {
         const ea = dichE(e);
         // Tô tóc đang chọn chỗ lấy tóc: chạm này là chọn, không tô
         if (CU === 'va' && CHON_NGUON) {
-            const [X, Y] = doiToaDo(ea); CHON_NGUON = false; nutNguon();
+            const [X, Y] = doiToaDo(e); CHON_NGUON = false; nutNguon();   // đúng chỗ ngón chạm (không lệch như cọ)
             ANH.vaNguon = [X, Y]; ANH.vaLech = null; hienNguon(X, Y, true);
             try { navigator.vibrate && navigator.vibrate(15); } catch (er) {}
             nhac('Đã chọn chỗ lấy tóc. Giờ tô lên chỗ thiếu.'); return;
@@ -1264,6 +1289,25 @@ function veTo() {
     Object.values(cache).forEach(c => { if (c !== THE) c.width = c.height = 0; });
     $('to-card').style.display = '';
 }
+// Tờ in: bấm mới tạo; ảnh đổi sau đó thì thu lại thành nút "Cập nhật tờ in"
+let TO_MO = false, TO_DA_XEM = false;
+const hienTo = on => { for (const id of ['to-so', 'to-o', 'to-nhan']) $(id).style.display = on ? '' : 'none'; $('to-nut').style.display = on ? 'none' : ''; $('to-card').style.display = ''; };
+function dongTo() {
+    if (TO_MO) { TO_MO = false; TO = null; $('to-o').innerHTML = ''; }
+    $('to-nut').innerText = TO_DA_XEM ? 'Cập nhật tờ in' : 'Xem tờ in 10×15';
+    hienTo(false);
+}
+$('to-nut').onclick = () => {
+    if (!ANH || !ANH.r || dangChay) return;
+    const b = $('to-nut'); b.disabled = true; b.innerText = 'Đang xếp tờ in...';
+    setTimeout(() => { try { veTo(); TO_MO = TO_DA_XEM = true; hienTo(true); } finally { b.disabled = false; } }, 30);
+};
+// Số tấm khi chưa mở tờ in (lưu / gửi): khổ đang chọn, xếp tối đa — chỉ cần cỡ ảnh, không phải vẽ
+function tinhSo() {
+    if (!TU_DONG && Object.values(SO).some(v => v > 0)) return;
+    const K = KHO[kho], c = document.createElement('canvas'); c.width = Math.round(K.w / 25.4 * 300); c.height = Math.round(K.h / 25.4 * 300);
+    SO = { [kho]: xepTo([{ c, so: 99 }]).xep }; c.width = c.height = 0;
+}
 $('to-so').onclick = e => {
     const b = e.target.closest('button[data-k]'); if (!b || b.disabled) return;
     TU_DONG = false;
@@ -1281,7 +1325,7 @@ const nhanThanh = () => {
 let rafThanh = 0;
 ['dau', 'tren'].forEach(k => {
     $(k).oninput = () => { nhanThanh(); if (!rafThanh) rafThanh = requestAnimationFrame(() => { rafThanh = 0; veTheNhanh(); }); };
-    $(k).onchange = () => { if (ANH && ANH.r && !dangChay) veTo(); };
+    $(k).onchange = () => { if (ANH && ANH.r && !dangChay) dongTo(); };
 });
 function veMacDinh() { $('dau').value = 0; $('tren').value = 0; nhanThanh(); }
 nhanThanh();
@@ -1296,10 +1340,10 @@ const luu = (c, ten) => c.toBlob(async b => {
 }, 'image/jpeg', 1);
 const tenKho = () => kho.replace('×', 'x');
 $('tai-the').onclick = () => { if (ANH && ANH.r && THE) xuatVoiNut('tai-the', async () => { const nn = await nguoiNet(); const c = theXuat(kho, nn); if (nn) nn.hr.width = nn.hr.height = 0; luu(c, `anh-the-${tenKho()}.jpg`); }); };
-$('tai-to').onclick = () => { if (ANH && ANH.r && TO) xuatVoiNut('tai-to', async () => luu(await toXuat(), 'to-in-10x15.jpg')); };
+$('tai-to').onclick = () => { if (ANH && ANH.r) xuatVoiNut('tai-to', async () => luu(await toXuat(), 'to-in-10x15.jpg')); };
 if (!NHUNG) $('gui').style.display = 'none';
 $('gui').onclick = async () => {
-    if (!TO || !NHUNG || choGui) return;
+    if (!ANH || !ANH.r || !NHUNG || choGui) return;
     const btn = $('gui'), cu = btn.innerText;
     btn.disabled = true; btn.innerText = 'Đang chuẩn bị ảnh...';
     try {
