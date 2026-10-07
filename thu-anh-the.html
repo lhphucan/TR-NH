@@ -171,7 +171,7 @@ body.suatay #khung { overflow: hidden; padding: 4px 0; touch-action: none; }
             <button type="button" class="icu" id="boi-toi" title="Làm lại" aria-label="Làm lại" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
             <button type="button" class="icu" id="boi-het" title="Bỏ hết, về ảnh ban đầu" aria-label="Bỏ hết" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
             <div id="vien-bang"><button type="button" class="chip" id="v-lai">Dáng gọn lại từ đầu</button><span>Kéo điểm để chỉnh · chạm lên đường để thêm điểm · chạm đúp điểm để xoá</span></div>
-            <div id="boi-co"><button type="button" class="icu nho on" id="cu-lech" title="Cọ lệch lên trên ngón tay" aria-label="Cọ lệch lên trên ngón tay" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4.5"/><path d="M12 12v4" stroke-dasharray="2 2"/><circle cx="12" cy="19.5" r="2" fill="currentColor"/></svg></button><svg viewBox="0 0 24 24" class="nho" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg><input type="range" id="co-cu" min="0.4" max="2.5" step="0.05" value="1" aria-label="Cỡ cọ"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg></div>
+            <div id="boi-co"><button type="button" class="icu nho" id="cu-nguon" title="Chọn chỗ lấy tóc" aria-label="Chọn chỗ lấy tóc" aria-pressed="false" style="display:none"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></button><button type="button" class="icu nho on" id="cu-lech" title="Cọ lệch lên trên ngón tay" aria-label="Cọ lệch lên trên ngón tay" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4.5"/><path d="M12 12v4" stroke-dasharray="2 2"/><circle cx="12" cy="19.5" r="2" fill="currentColor"/></svg></button><svg viewBox="0 0 24 24" class="nho" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg><input type="range" id="co-cu" min="0.4" max="2.5" step="0.05" value="1" aria-label="Cỡ cọ"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg></div>
         </div>
     </div>
 
@@ -712,7 +712,7 @@ function ve() {
 let CU = '', coBoi = 1;
 const nutBoi = () => {
     for (const [id, c] of [['cu-xoa', 'xoa'], ['cu-va', 'va'], ['cu-mem', 'mem'], ['cu-vien', 'vien'], ['cu-keo', 'keo']]) { $(id).classList.toggle('on', CU === c); $(id).setAttribute('aria-pressed', CU === c); }
-    $('boi-co').style.display = CU && CU !== 'vien' ? 'flex' : 'none'; $('vien-bang').style.display = CU === 'vien' ? 'flex' : 'none'; veVien(); document.body.classList.toggle('suatay', !!CU); if (!CU) anVong();
+    $('boi-co').style.display = CU && CU !== 'vien' ? 'flex' : 'none'; $('vien-bang').style.display = CU === 'vien' ? 'flex' : 'none'; if (CU !== 'va') CHON_NGUON = false; nutNguon(); veVien(); document.body.classList.toggle('suatay', !!CU); if (!CU) anVong();
     const n = k => !!(ANH && ANH[k] && ANH[k].length); $('boi-lui').disabled = !n('lui'); $('boi-toi').disabled = !n('toi'); $('boi-het').disabled = !n('tt'); if (THE) THE.classList.toggle('boi', !!CU);
 };
 // Phóng to: s = độ phóng, (x, y) = dịch (px CSS). Chỉ khi đang sửa tay; tắt công cụ là về như cũ.
@@ -724,7 +724,7 @@ $('cu-xoa').onclick = () => chonCu('xoa'); $('cu-va').onclick = () => chonCu('va
 $('v-lai').onclick = () => { if (!ANH || !ANH.r || CU !== 'vien') return; napVien(true); apDungVien(); hienTen('Đã dựng lại dáng gọn', 1200); };
  $('cu-keo').onclick = () => chonCu('keo');
 // Tên + cách dùng hiện trên ảnh khi bấm nút (điện thoại không có chữ khi rê chuột)
-const TEN_CU = { xoa: ['Xoá tóc', 'tô lên chỗ viền chưa sạch'], va: ['Tô tóc', 'tô chỗ thiếu tóc · giữ ngón để chọn chỗ lấy tóc'], mem: ['Làm mềm viền', 'tô dọc viền tóc bị gắt'], vien: ['Viền tóc', 'đã dựng dáng gọn · kéo điểm để chỉnh'], keo: ['Kéo tóc', 'vuốt lọn tóc chỉa vào trong'] };
+const TEN_CU = { xoa: ['Xoá tóc', 'tô lên chỗ viền chưa sạch'], va: ['Tô tóc', 'tô chỗ thiếu tóc · nút tâm ngắm để chọn chỗ lấy tóc'], mem: ['Làm mềm viền', 'tô dọc viền tóc bị gắt'], vien: ['Viền tóc', 'đã dựng dáng gọn · kéo điểm để chỉnh'], keo: ['Kéo tóc', 'vuốt lọn tóc chỉa vào trong'] };
 let henTen = 0;
 function hienTen(t, ms) { const e = $('ten-cu'); e.innerText = t; e.classList.add('on'); clearTimeout(henTen); henTen = setTimeout(() => e.classList.remove('on'), ms || 1800); }
 // Bán kính cọ theo toạ độ lớp người (theo cỡ mặt nên ảnh to nhỏ nào cũng như nhau)
@@ -734,6 +734,10 @@ const LECH_PX = 64;
 let LECH = true; try { LECH = localStorage.getItem('pn_the_lech') !== '0'; } catch (e) {}
 const nutLech = () => { $('cu-lech').classList.toggle('on', LECH); $('cu-lech').setAttribute('aria-pressed', LECH); };
 nutLech();
+// Tô tóc: bấm nút tâm ngắm rồi chạm vào chỗ tóc muốn lấy (không bấm thì máy tự tìm)
+let CHON_NGUON = false;
+const nutNguon = () => { $('cu-nguon').style.display = CU === 'va' ? '' : 'none'; $('cu-nguon').classList.toggle('on', CHON_NGUON); $('cu-nguon').setAttribute('aria-pressed', CHON_NGUON); };
+$('cu-nguon').onclick = () => { CHON_NGUON = !CHON_NGUON; nutNguon(); hienTen(CHON_NGUON ? 'Chạm vào chỗ tóc muốn lấy' : 'Để máy tự tìm chỗ lấy tóc', 1600); };
 $('cu-lech').onclick = () => { LECH = !LECH; nutLech(); try { localStorage.setItem('pn_the_lech', LECH ? '1' : '0'); } catch (e) {} hienTen(LECH ? 'Cọ lệch lên trên ngón tay' : 'Cọ ngay dưới ngón tay', 1400); };
 const dichE = e => LECH && e.pointerType !== 'mouse' ? { clientX: e.clientX, clientY: e.clientY - LECH_PX, ngon: [e.clientX, e.clientY], pointerType: e.pointerType } : e;
 // dây nối ngón tay -> vòng cọ
@@ -999,9 +1003,12 @@ function ganBoi(cv) {
         if (net.d.length) lamThaoTac(x, ANH.r, net, 0);
         NHANH = true; veTheNhanh(); NHANH = false;
     };
+    let Fcu = null, diQua = 0;
     const keoDay = e => {
+        if (Fcu) diQua += Math.hypot(e.clientX - Fcu.clientX, e.clientY - Fcu.clientY); Fcu = e;
         Fc = e; if (!Bc) Bc = { x: e.clientX, y: e.clientY };
-        const L = e.pointerType === 'mouse' || (net && (net.loai === 'keo' || net.loai === 'va')) ? 3 : 14, dx = e.clientX - Bc.x, dy = e.clientY - Bc.y, d = Math.hypot(dx, dy), di = d > L;
+        const Lmax = e.pointerType === 'mouse' || (net && (net.loai === 'keo' || net.loai === 'va')) ? 3 : 14;
+        const L = Math.min(Lmax, diQua * 0.3), dx = e.clientX - Bc.x, dy = e.clientY - Bc.y, d = Math.hypot(dx, dy), di = d > L;
         if (di) { Bc.x += dx * (d - L) / d; Bc.y += dy * (d - L) / d; }
         return { clientX: Bc.x, clientY: Bc.y, ngon: e.ngon || null, pointerType: e.pointerType, di };
     };
@@ -1025,7 +1032,7 @@ function ganBoi(cv) {
             net.o = ANH.vaLech || timNguon(ANH.r, X, Y, net.R);
             if (!net.o) nhac('Chưa thấy tóc gần đó để lấy. Giữ ngón tay lên chỗ tóc muốn lấy rồi tô lại.');
         }
-        Bc = { x: e0.clientX, y: e0.clientY }; Fc = e0; ngonCu = [e0.rx || e0.clientX, e0.ry || e0.clientY]; lucNgon = performance.now(); dungTruoc = null;
+        Bc = { x: e0.clientX, y: e0.clientY }; Fc = e0; Fcu = e0; diQua = 0; ngonCu = [e0.rx || e0.clientX, e0.ry || e0.clientY]; lucNgon = performance.now(); dungTruoc = null;
         them(e0);
     };
     const ketThuc = () => { if (!net) return; noiNot(); Bc = Fc = null; luuManh(net); delete net._k; net = null; anVong(); if (!ANH.vaNguon) anNguon(); veToSau(); nutBoi(); };
@@ -1086,11 +1093,16 @@ function ganBoi(cv) {
             }
             v.dang = keoCham.i; veVien(); return;
         }
-        // chưa tô ngay: đợi ngón nhích (tô), nhấc (chấm), ngón thứ 2 (chụm) hay giữ yên (vá tóc: chọn chỗ lấy tóc)
         const ea = dichE(e);
-        cho = { id: e.pointerId, clientX: ea.clientX, clientY: ea.clientY, ngon: ea.ngon, rx: e.clientX, ry: e.clientY, t: performance.now() };
-        const rc = cv.getBoundingClientRect(); hienVong(cv, ea.clientX - rc.left, ea.clientY - rc.top); hienDay(ea);
-        if (CU === 'va') { const [X, Y] = doiToaDo(ea); giuYen = { X, Y, hen: setTimeout(() => chonNguon(), 450) }; }
+        // Tô tóc đang chọn chỗ lấy tóc: chạm này là chọn, không tô
+        if (CU === 'va' && CHON_NGUON) {
+            const [X, Y] = doiToaDo(ea); CHON_NGUON = false; nutNguon();
+            ANH.vaNguon = [X, Y]; ANH.vaLech = null; hienNguon(X, Y, true);
+            try { navigator.vibrate && navigator.vibrate(15); } catch (er) {}
+            nhac('Đã chọn chỗ lấy tóc. Giờ tô lên chỗ thiếu.'); return;
+        }
+        // chạm là tô ngay (ngón thứ 2 chạm tới thì nét này huỷ tức thì)
+        batDau({ clientX: ea.clientX, clientY: ea.clientY, ngon: ea.ngon, rx: e.clientX, ry: e.clientY, pointerType: e.pointerType });
     }, sig);
     // giữ yên ngón tay (vá tóc): lấy chỗ đó làm nguồn tóc
     const chonNguon = () => {
