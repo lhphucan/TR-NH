@@ -362,10 +362,11 @@ export async function xuLy(blob, opt, bao) {
     const gocGiua = Math.atan2(-(m.cam.x - m.tran.x), m.cam.y - m.tran.y);
     const MAX = 10 * Math.PI / 180, gocDo = (gocMat + gocGiua) / 2;
     const goc0 = Math.max(-MAX, Math.min(MAX, gocDo)), nghieng = Math.abs(gocDo) > MAX;
-    let anh = goc;
+    let anh = goc, tamXoay = null;   // tâm xoay (toạ độ ảnh gốc): để lúc xuất dựng lại đúng ở độ phân giải đầy đủ
     if (Math.abs(goc0) > 0.3 * Math.PI / 180) {
         const c = veCanvas(W, H), x = c.getContext('2d');
         const cx = (m.matT.x + m.matP.x) / 2, cy = (m.matT.y + m.matP.y) / 2;
+        tamXoay = [cx, cy];
         if (nenGoc) { x.fillStyle = nenGoc; x.fillRect(0, 0, W, H); }
         x.translate(cx, cy); x.rotate(-goc0); x.translate(-cx, -cy); x.drawImage(goc, 0, 0);
         anh = c;
@@ -423,7 +424,7 @@ export async function xuLy(blob, opt, bao) {
 
     moc('ai');
     // Giữ lại kết quả AI: đổi mức gọn tóc chỉ làm lại phần sau, không chạy AI lại
-    const B = { g0: g, aAI, VW, VH, sc, X0: vx0, Y0: vy0, m, mat, fh, goc0, nghieng, vung: opt.dbg ? vung : null };
+    const B = { g0: g, aAI, VW, VH, sc, X0: vx0, Y0: vy0, m, mat, fh, goc0, nghieng, vung: opt.dbg ? vung : null, tam: tamXoay };
     const r = await hoanThien(B, opt, bao, TG, moc);
     r.ms = Math.round(performance.now() - t0);
     return r;

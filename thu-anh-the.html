@@ -171,7 +171,7 @@ body.suatay #khung { overflow: hidden; padding: 4px 0; touch-action: none; }
             <button type="button" class="icu" id="boi-toi" title="Làm lại" aria-label="Làm lại" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
             <button type="button" class="icu" id="boi-het" title="Bỏ hết, về ảnh ban đầu" aria-label="Bỏ hết" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
             <div id="vien-bang"><button type="button" class="chip" id="v-lai">Dáng gọn lại từ đầu</button><span>Kéo điểm để chỉnh · chạm lên đường để thêm điểm · chạm đúp điểm để xoá</span></div>
-            <div id="boi-co"><button type="button" class="icu nho" id="cu-nguon" title="Chọn chỗ lấy tóc" aria-label="Chọn chỗ lấy tóc" aria-pressed="false" style="display:none"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></button><button type="button" class="icu nho on" id="cu-lech" title="Cọ lệch lên trên ngón tay" aria-label="Cọ lệch lên trên ngón tay" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4.5"/><path d="M12 12v4" stroke-dasharray="2 2"/><circle cx="12" cy="19.5" r="2" fill="currentColor"/></svg></button><svg viewBox="0 0 24 24" class="nho" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg><input type="range" id="co-cu" min="0.4" max="2.5" step="0.05" value="1" aria-label="Cỡ cọ"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg></div>
+            <div id="boi-co"><button type="button" class="icu nho" id="cu-nguon" title="Chọn chỗ lấy tóc" aria-label="Chọn chỗ lấy tóc" aria-pressed="false" style="display:none"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></button><button type="button" class="icu nho on" id="cu-lech" title="Cọ lệch lên trên ngón tay" aria-label="Cọ lệch lên trên ngón tay" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4.5"/><path d="M12 12v4" stroke-dasharray="2 2"/><circle cx="12" cy="19.5" r="2" fill="currentColor"/></svg></button><svg viewBox="0 0 24 24" class="nho" aria-hidden="true"><circle cx="12" cy="12" r="3"/></svg><input type="range" id="co-cu" min="0" max="1" step="0.01" value="0.5" aria-label="Cỡ cọ"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg></div>
         </div>
     </div>
 
@@ -686,7 +686,58 @@ function rHien() {
     return ANH._xoa.r;
 }
 // Ảnh thẻ đang xem: 300dpi; lúc sửa tay vẽ 600dpi để phóng to vẫn nét. Tờ in luôn 300dpi.
-const dpiXem = () => CU ? 600 : 300;
+// Ảnh xem: đủ nét cho màn hình (điện thoại nét gấp 2-3 lần) — lúc sửa tay 600 để phóng to vẫn nét
+const dpiXem = () => {
+    if (CU) return 600;
+    const K = KHO[kho], kw = ($('khung') && $('khung').clientWidth) || 340, mh = innerHeight * (innerWidth <= 800 ? 0.34 : 0.6);
+    const cssW = Math.min(kw, mh * K.w / K.h);
+    return Math.max(300, Math.min(600, Math.ceil(cssW * (devicePixelRatio || 1) / (K.w / 25.4) / 50) * 50));
+};
+// Ảnh xuất NÉT NHƯ GỐC: dựng lại lớp người ở độ phân giải ảnh gốc (cùng xoay, cùng khung đầu vai).
+// Chỗ chưa bị sửa (mặt, áo, lõi tóc) lấy điểm ảnh gốc; chỗ đã xử lý (viền tóc đã tách màu phông, nét xoá / tô / kéo /
+// mềm viền, sửa tóc tự động) lấy bản đã xử lý phóng lên; hai phần nối mềm.
+async function nguoiNet() {
+    const r = ANH && ANH.r, B = r && r.B; if (!B || !ANH.file) return null;
+    const E = rHien().nguoi, VW = E.width, VH = E.height;
+    if (!B.g0 || B.g0.width !== VW || B.g0.height !== VH) return null;
+    // phóng tối đa tới cỡ ảnh gốc, không quá 2,5 lần, không quá ~7 triệu điểm (điện thoại)
+    const up = Math.min(1 / B.sc, 2.5, Math.sqrt(7e6 / (VW * VH)));
+    if (up < 1.1) return null;   // ảnh đã gần cỡ gốc: không cần dựng lại
+    let goc; try { goc = await createImageBitmap(ANH.file, { imageOrientation: 'from-image' }); } catch (e) { return null; }
+    const HW = Math.round(VW * up), HH = Math.round(VH * up), moi = () => { const c = document.createElement('canvas'); c.width = HW; c.height = HH; return c; };
+    const hr = moi(), hx = hr.getContext('2d', { willReadFrequently: true }), s = up * B.sc;
+    hx.imageSmoothingQuality = 'high';
+    hx.setTransform(s, 0, 0, s, -B.X0 * s, -B.Y0 * s);
+    if (B.tam) { hx.translate(B.tam[0], B.tam[1]); hx.rotate(-B.goc0); hx.translate(-B.tam[0], -B.tam[1]); }
+    hx.drawImage(goc, 0, 0); goc.close(); hx.setTransform(1, 0, 0, 1, 0, 0);
+    // chỗ chưa bị sửa: đặc hẳn và màu gần như ảnh gốc ở cỡ nhỏ
+    const e = E.getContext('2d').getImageData(0, 0, VW, VH).data, g = B.g0.data, wl = new ImageData(VW, VH), w = wl.data;
+    for (let i = 0; i < VW * VH; i++) { const o = i * 4; if (e[o + 3] >= 250 && Math.abs(e[o] - g[o]) + Math.abs(e[o + 1] - g[o + 1]) + Math.abs(e[o + 2] - g[o + 2]) < 36) w[o + 3] = 255; }
+    const wc = document.createElement('canvas'); wc.width = VW; wc.height = VH; wc.getContext('2d').putImageData(wl, 0, 0);
+    const wu = moi(), wx = wu.getContext('2d', { willReadFrequently: true }); wx.imageSmoothingQuality = 'high'; wx.drawImage(wc, 0, 0, HW, HH); wc.width = wc.height = 0;
+    const eu = moi(), ex = eu.getContext('2d', { willReadFrequently: true }); ex.imageSmoothingQuality = 'high'; ex.drawImage(E, 0, 0, HW, HH);
+    const H = hx.getImageData(0, 0, HW, HH), hd = H.data, U = ex.getImageData(0, 0, HW, HH).data, Wd = wx.getImageData(0, 0, HW, HH).data;
+    wu.width = wu.height = eu.width = eu.height = 0;
+    for (let o = 0; o < hd.length; o += 4) { const t = Wd[o + 3] / 255; for (let c = 0; c < 3; c++) hd[o + c] = hd[o + c] * t + U[o + c] * (1 - t); hd[o + 3] = U[o + 3]; }
+    hx.putImageData(H, 0, 0);
+    return { hr, up };
+}
+// Ảnh xuất (lưu, gửi tiệm in): 600dpi từ lớp người nét như gốc (dựng được thì dùng, không thì bản đã xử lý)
+function theXuat(k, nn) {
+    const t = thamSo(k); let r = rHien();
+    if (nn) r = Object.assign({}, r, { nguoi: nn.hr, mat: { x: r.mat.x * nn.up, y: r.mat.y * nn.up }, dinh: r.dinh * nn.up, cam: r.cam * nn.up });
+    return catThe(r, KHO[k], nen, t.dau, t.tren, 600);
+}
+async function toXuat(nn) {
+    const tu = !nn; nn = nn || await nguoiNet();
+    const cache = {}, ds = Object.entries(SO).filter(([, v]) => v > 0).map(([k, v]) => ({ c: cache[k] || (cache[k] = theXuat(k, nn)), so: v }));
+    const t = xepTo(ds, 600); Object.values(cache).forEach(c => { c.width = c.height = 0; }); if (tu && nn) nn.hr.width = nn.hr.height = 0; return t.c;
+}
+// nút lưu: đang dựng ảnh nét thì báo trên nút
+async function xuatVoiNut(id, lam) {
+    const b = $(id), cu = b.innerText; b.disabled = true; b.innerText = 'Đang xuất ảnh nét...';
+    try { await new Promise(r => setTimeout(r, 30)); await lam(); } finally { b.disabled = false; b.innerText = cu; }
+}
 const theCua = (k, dpi) => { const t = thamSo(k); let r = rHien(); if (NHANH || ANH.r._nhanh) r = Object.assign({}, r, { _nhanh: true }); return catThe(r, KHO[k], nen, t.dau, t.tren, dpi || 300); };
 
 function ve() {
@@ -710,6 +761,10 @@ function ve() {
 // Chỉ vẽ lại ảnh thẻ (lúc đang kéo thanh): nhanh, tờ in vẽ sau khi buông tay
 // Công cụ đang bật ('' | 'xoa' | 'keo'): thao tác trên ảnh thẻ (toạ độ màn hình -> ảnh thẻ -> lớp người theo đúng cách catThe đặt người vào khung)
 let CU = '', coBoi = 1;
+// Cỡ cọ: thanh 0..1 -> 0,25x..4x (cấp số nhân: kéo đoạn nào cũng thấy đổi rõ). Mỗi cọ nhớ cỡ riêng, máy nhớ cho lần sau.
+const coTu = v => 0.25 * Math.pow(16, v);
+const COCU = { xoa: 0.5, va: 0.5, mem: 0.5, keo: 0.5 };
+try { Object.assign(COCU, JSON.parse(localStorage.getItem('pn_the_co') || '{}')); } catch (e) {}
 const nutBoi = () => {
     for (const [id, c] of [['cu-xoa', 'xoa'], ['cu-va', 'va'], ['cu-mem', 'mem'], ['cu-vien', 'vien'], ['cu-keo', 'keo']]) { $(id).classList.toggle('on', CU === c); $(id).setAttribute('aria-pressed', CU === c); }
     $('boi-co').style.display = CU && CU !== 'vien' ? 'flex' : 'none'; $('vien-bang').style.display = CU === 'vien' ? 'flex' : 'none'; if (CU !== 'va') CHON_NGUON = false; nutNguon(); veVien(); document.body.classList.toggle('suatay', !!CU); if (!CU) anVong();
@@ -719,7 +774,7 @@ const nutBoi = () => {
 let ZOOM = { s: 1, x: 0, y: 0 };
 const apZoom = cv => { if (cv) cv.style.transform = ZOOM.s > 1.001 ? `translate(${ZOOM.x}px, ${ZOOM.y}px) scale(${ZOOM.s})` : ''; if (CU === 'vien') veVien(); };
 const boZoom = () => { ZOOM = { s: 1, x: 0, y: 0 }; apZoom(THE); };
-const chonCu = c => { if (!ANH || !ANH.r) return; const cu = CU; CU = CU === c ? '' : c; if (CU) hienTen(TEN_CU[CU][0] + ' · ' + TEN_CU[CU][1], 2600); else hienTen('Đã tắt ' + TEN_CU[c][0].toLowerCase(), 1200); ANH.vaLech = null; anNguon(); if (!CU) boZoom(); if (!cu !== !CU) ve(); nutBoi(); };
+const chonCu = c => { if (!ANH || !ANH.r) return; const cu = CU; CU = CU === c ? '' : c; if (CU && COCU[CU] != null) { $('co-cu').value = COCU[CU]; coBoi = coTu(COCU[CU]); } if (CU) hienTen(TEN_CU[CU][0] + ' · ' + TEN_CU[CU][1], 2600); else hienTen('Đã tắt ' + TEN_CU[c][0].toLowerCase(), 1200); ANH.vaLech = null; anNguon(); if (!CU) boZoom(); if (!cu !== !CU) ve(); nutBoi(); };
 $('cu-xoa').onclick = () => chonCu('xoa'); $('cu-va').onclick = () => chonCu('va'); $('cu-mem').onclick = () => chonCu('mem'); $('cu-vien').onclick = () => { if (!ANH || !ANH.r) return; const moi = CU !== 'vien' && napVien(); chonCu('vien'); if (moi && CU === 'vien') apDungVien(); };
 $('v-lai').onclick = () => { if (!ANH || !ANH.r || CU !== 'vien') return; napVien(true); apDungVien(); hienTen('Đã dựng lại dáng gọn', 1200); };
  $('cu-keo').onclick = () => chonCu('keo');
@@ -780,7 +835,9 @@ const nhac = t => { $('nhan').innerText = t; clearTimeout(henNhac); henNhac = se
 const anVong = () => { clearTimeout(henAn); $('vong').style.display = 'none'; $('kinh').style.display = 'none'; $('day').style.display = 'none'; };
 // Kéo thanh cỡ cọ: hiện vòng giữa ảnh cho thấy cọ to bao nhiêu
 $('co-cu').oninput = () => {
-    coBoi = +$('co-cu').value; if (!CU || !THE || !ANH || !ANH.r) return;
+    const v = +$('co-cu').value; coBoi = coTu(v);
+    if (CU) { COCU[CU] = v; try { localStorage.setItem('pn_the_co', JSON.stringify(COCU)); } catch (e) {} }
+    if (!CU || !THE || !ANH || !ANH.r) return;
     const rc = THE.getBoundingClientRect(), kr = $('khung').getBoundingClientRect();
     const x0 = Math.max(rc.left, kr.left), x1 = Math.min(rc.right, kr.right), y0 = Math.max(rc.top, kr.top), y1 = Math.min(rc.bottom, kr.bottom);
     hienVong(THE, (x0 + x1) / 2 - rc.left, (y0 + y1) / 2 - rc.top);
@@ -957,7 +1014,11 @@ function ganBoi(cv) {
         ban = null; if (X1 <= X0 || Y1 <= Y0) return;
         c.save(); c.beginPath(); c.rect(X0, Y0, X1 - X0, Y1 - Y0); c.clip();
         c.fillStyle = ANH.r.nenGoc || nen; c.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
-        c.imageSmoothingQuality = 'high'; c.drawImage(p, ox, oy, p.width * k, p.height * k);
+        // chỉ lấy đúng phần lớp người nằm trong mảnh (trước: đưa cả lớp người qua mỗi lần ngón nhích)
+        const sx0 = Math.max(0, Math.floor((X0 - ox) / k) - 1), sy0 = Math.max(0, Math.floor((Y0 - oy) / k) - 1);
+        const sx1 = Math.min(p.width, Math.ceil((X1 - ox) / k) + 1), sy1 = Math.min(p.height, Math.ceil((Y1 - oy) / k) + 1);
+        c.imageSmoothingQuality = 'high';
+        if (sx1 > sx0 && sy1 > sy0) c.drawImage(p, sx0, sy0, sx1 - sx0, sy1 - sy0, ox + sx0 * k, oy + sy0 * k, (sx1 - sx0) * k, (sy1 - sy0) * k);
         c.restore();
     };
     // thêm điểm vào nét (chia bước nhỏ: xoá thì nét đều, kéo thì mỗi bước không quá 1/4 cọ)
@@ -1032,7 +1093,7 @@ function ganBoi(cv) {
             net.o = ANH.vaLech || timNguon(ANH.r, X, Y, net.R);
             if (!net.o) nhac('Chưa thấy tóc gần đó để lấy. Giữ ngón tay lên chỗ tóc muốn lấy rồi tô lại.');
         }
-        Bc = { x: e0.clientX, y: e0.clientY }; Fc = e0; Fcu = e0; diQua = 0; ngonCu = [e0.rx || e0.clientX, e0.ry || e0.clientY]; lucNgon = performance.now(); dungTruoc = null;
+        Bc = { x: e0.clientX, y: e0.clientY }; Fc = e0; Fcu = e0; diQua = 0; ngonCu = [e0.rx || e0.clientX, e0.ry || e0.clientY]; lucNgon = e0.t || performance.now(); dungTruoc = null;
         them(e0);
     };
     const ketThuc = () => { if (!net) return; noiNot(); Bc = Fc = null; luuManh(net); delete net._k; net = null; anVong(); if (!ANH.vaNguon) anNguon(); veToSau(); nutBoi(); };
@@ -1102,7 +1163,7 @@ function ganBoi(cv) {
             nhac('Đã chọn chỗ lấy tóc. Giờ tô lên chỗ thiếu.'); return;
         }
         // chạm là tô ngay (ngón thứ 2 chạm tới thì nét này huỷ tức thì)
-        batDau({ clientX: ea.clientX, clientY: ea.clientY, ngon: ea.ngon, rx: e.clientX, ry: e.clientY, pointerType: e.pointerType });
+        batDau({ clientX: ea.clientX, clientY: ea.clientY, ngon: ea.ngon, rx: e.clientX, ry: e.clientY, pointerType: e.pointerType, t: e.timeStamp });
     }, sig);
     // giữ yên ngón tay (vá tóc): lấy chỗ đó làm nguồn tóc
     const chonNguon = () => {
@@ -1128,14 +1189,18 @@ function ganBoi(cv) {
             const e0 = cho; boCho(); batDau(e0);
         }
         if (net) {
-            const bay = performance.now();
-            if (!ngonCu || Math.hypot(e.clientX - ngonCu[0], e.clientY - ngonCu[1]) > 2) {
-                // ngón vừa đi tiếp sau một lúc đứng yên: nhớ trạng thái nét lúc đứng
-                if (ngonCu && bay - lucNgon > 120) dungTruoc = { dLen: net.d.length, rawLen: net.raw.length, t: bay };
-                ngonCu = [e.clientX, e.clientY]; lucNgon = bay;
+            // điện thoại gom nhiều điểm chạm giữa 2 khung hình: lấy đủ để nét bám ngón, dày điểm, mượt
+            const ds = (e.getCoalescedEvents && e.getCoalescedEvents()) || []; let bc = null;
+            for (const ce of (ds.length ? ds : [e])) {
+                // ngón vừa đi tiếp sau một lúc đứng yên THẬT (theo giờ chạm của máy, không theo lúc trang kịp xử lý)
+                const bay = ce.timeStamp;
+                if (!ngonCu || Math.hypot(ce.clientX - ngonCu[0], ce.clientY - ngonCu[1]) > 2) {
+                    if (ngonCu && bay - lucNgon > 120) dungTruoc = { dLen: net.d.length, rawLen: net.raw.length, t: bay, x: ce.clientX, y: ce.clientY };
+                    ngonCu = [ce.clientX, ce.clientY]; lucNgon = bay;
+                }
+                bc = keoDay(dichE(ce)); if (bc.di) them(bc);
             }
-            const bc = keoDay(dichE(e));
-            if (bc.di) them(bc); else hienDay(bc);
+            if (bc && !bc.di) hienDay(bc);
             return;
         }
         // chuột trên máy tính: vòng cọ đi theo con trỏ
@@ -1154,7 +1219,7 @@ function ganBoi(cv) {
             if (kc.di) { chamTruoc = null; apDungVien(); } else { chamTruoc = { i: kc.i, t: performance.now() }; veVien(); }
             return;
         }
-        if (net && !ngon.size && dungTruoc && performance.now() - dungTruoc.t < 150) catVe(dungTruoc);
+        if (net && !ngon.size && dungTruoc && e.timeStamp - dungTruoc.t < 150 && Math.hypot(e.clientX - dungTruoc.x, e.clientY - dungTruoc.y) < 16) catVe(dungTruoc);
         ketThuc();
     };
     kh.addEventListener('pointerup', tha, sig); kh.addEventListener('pointercancel', tha, sig);
@@ -1164,7 +1229,7 @@ function hienTruoc(on) {
     if (!ANH || !ANH.goc || !THE || dangChay) return;
     $('khung').classList.toggle('truoc', on); $('so-sanh').classList.toggle('on', on);
     if (!on) return veTheNhanh();
-    const t = thamSo(kho), m = catThe(ANH.goc, KHO[kho], nen, t.dau, t.tren, dpiXem());
+    const t = thamSo(kho), m = catThe(ANH.goc, KHO[kho], nen, t.dau, t.tren, THE.__dpi || dpiXem());
     THE.getContext('2d').drawImage(m, 0, 0); m.width = m.height = 0;
 }
 {
@@ -1231,15 +1296,15 @@ const luu = (c, ten) => c.toBlob(async b => {
     const u = URL.createObjectURL(b); const l = document.createElement('a'); l.href = u; l.download = ten; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 10000);
 }, 'image/jpeg', 1);
 const tenKho = () => kho.replace('×', 'x');
-$('tai-the').onclick = () => THE && luu(THE, `anh-the-${tenKho()}.jpg`);
-$('tai-to').onclick = () => TO && luu(TO.c, 'to-in-10x15.jpg');
+$('tai-the').onclick = () => { if (ANH && ANH.r && THE) xuatVoiNut('tai-the', async () => { const nn = await nguoiNet(); const c = theXuat(kho, nn); if (nn) nn.hr.width = nn.hr.height = 0; luu(c, `anh-the-${tenKho()}.jpg`); }); };
+$('tai-to').onclick = () => { if (ANH && ANH.r && TO) xuatVoiNut('tai-to', async () => luu(await toXuat(), 'to-in-10x15.jpg')); };
 if (!NHUNG) $('gui').style.display = 'none';
 $('gui').onclick = async () => {
     if (!TO || !NHUNG || choGui) return;
     const btn = $('gui'), cu = btn.innerText;
     btn.disabled = true; btn.innerText = 'Đang chuẩn bị ảnh...';
     try {
-        const blob = await new Promise(r => TO.c.toBlob(r, 'image/jpeg', 1));
+        const tx = await toXuat(), blob = await new Promise(r => tx.toBlob(r, 'image/jpeg', 0.95));   // tờ in 600dpi, nét như gốc; 95% cho gửi nhanh trên 4G
         if (!blob) throw new Error('Không xuất được tờ in');
         const so = Object.entries(SO).filter(([, v]) => v > 0).map(([k, v]) => `${v} ảnh ${k}`).join(', ');
         btn.innerText = 'Đang gửi...';
