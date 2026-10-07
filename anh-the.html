@@ -103,7 +103,7 @@ details summary { font-size: 14px; font-weight: 700; cursor: pointer; margin-bot
 #boi-co input { flex: 1; min-width: 0; accent-color: #111; }
 body.suatay #khung canvas { max-height: 55vh; }
 /* phóng to bằng 2 ngón: chỉ trong lúc sửa tay, ảnh không tràn ra ngoài khung */
-body.suatay #khung { overflow: hidden; padding: 4px 0; }
+body.suatay #khung { overflow: hidden; padding: 4px 0; touch-action: none; }
 #khung > canvas { transform-origin: 0 0; }
 /* Bảng số ảnh từng khổ trên tờ in */
 .to-so { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
@@ -692,6 +692,10 @@ $('boi-toi').onclick = () => { if (!ANH || !ANH.toi || !ANH.toi.length) return; 
 $('boi-het').onclick = () => { if (!ANH || !ANH.tt || !ANH.tt.length) return; (ANH.lui = ANH.lui || []).push(ANH.tt); ANH.toi = []; doiTT([]); };
 function ganBoi(cv) {
     cv.classList.toggle('boi', !!CU);
+    // nghe ngón tay trên cả khung ảnh; ảnh thẻ vẽ lại thì gỡ bộ nghe cũ
+    const kh = $('khung');
+    if (ganBoi.ac) ganBoi.ac.abort();
+    const sig = { signal: (ganBoi.ac = new AbortController()).signal };
     let net = null, raf = 0;
     const hinh = () => {
         const r = ANH.r, K = KHO[kho], t = thamSo(kho);
@@ -768,23 +772,27 @@ function ganBoi(cv) {
         if (ZOOM.s <= 1.001) ZOOM = { s: 1, x: 0, y: 0 }; else gioiHan(); apZoom(cv);
     };
     const giua = () => { const [a, b] = [...ngon.values()]; return { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, d: Math.hypot(a[0] - b[0], a[1] - b[1]) }; };
-    cv.addEventListener('wheel', e => {
+    kh.addEventListener('wheel', e => {
         if (!CU || !ANH || !ANH.r) return; e.preventDefault();
         phongTai(ZOOM.s * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY, e.clientX, e.clientY, ZOOM.s, ZOOM.x, ZOOM.y);
-    }, { passive: false });
-    cv.addEventListener('contextmenu', e => { if (CU) e.preventDefault(); });
-    cv.addEventListener('pointerdown', e => {
+    }, { passive: false, signal: sig.signal });
+    kh.addEventListener('contextmenu', e => { if (CU) e.preventDefault(); }, sig);
+    let khoaDen = 0;   // vừa chụm xong: chưa cho tô (tránh ngón nhấc sau quệt nhầm)
+    kh.addEventListener('pointerdown', e => {
         if (!CU || !ANH || !ANH.r || dangChay) return;
-        e.preventDefault(); cv.setPointerCapture(e.pointerId);
+        e.preventDefault(); try { kh.setPointerCapture(e.pointerId); } catch (er) {}
         ngon.set(e.pointerId, [e.clientX, e.clientY]);
-        if (ngon.size >= 2) { boCho(); huyNet(); anVong(); const g = giua(); chum = { ...g, s0: ZOOM.s, x0: ZOOM.x, y0: ZOOM.y }; choHetNgon = true; return; }
-        if (choHetNgon) return;
+        if (ngon.size >= 2) {
+            boCho(); huyNet(); anVong(); anNguon();
+            const g = giua(); chum = { ...g, s0: ZOOM.s, x0: ZOOM.x, y0: ZOOM.y }; choHetNgon = true; return;
+        }
+        if (choHetNgon || performance.now() < khoaDen) return;
         // chưa tô ngay: đợi ngón nhích (tô), nhấc (chấm), ngón thứ 2 (chụm) hay giữ yên (vá tóc: chọn chỗ lấy tóc)
         const ea = dichE(e);
-        cho = { id: e.pointerId, clientX: ea.clientX, clientY: ea.clientY, ngon: ea.ngon, rx: e.clientX, ry: e.clientY };
+        cho = { id: e.pointerId, clientX: ea.clientX, clientY: ea.clientY, ngon: ea.ngon, rx: e.clientX, ry: e.clientY, t: performance.now() };
         const rc = cv.getBoundingClientRect(); hienVong(cv, ea.clientX - rc.left, ea.clientY - rc.top); hienDay(ea);
         if (CU === 'va') { const [X, Y] = doiToaDo(ea); giuYen = { X, Y, hen: setTimeout(() => chonNguon(), 450) }; }
-    });
+    }, sig);
     // giữ yên ngón tay (vá tóc): lấy chỗ đó làm nguồn tóc
     const chonNguon = () => {
         if (!giuYen || !cho) return;
@@ -793,28 +801,29 @@ function ganBoi(cv) {
         try { navigator.vibrate && navigator.vibrate(15); } catch (er) {}
         nhac('Đã chọn chỗ lấy tóc. Giờ tô lên chỗ thiếu.');
     };
-    cv.addEventListener('pointermove', e => {
+    kh.addEventListener('pointermove', e => {
         if (ngon.has(e.pointerId)) ngon.set(e.pointerId, [e.clientX, e.clientY]);
         if (chum) { if (ngon.size >= 2) { const g = giua(); phongTai(chum.s0 * g.d / Math.max(1, chum.d), g.x, g.y, chum.x, chum.y, chum.s0, chum.x0, chum.y0); } return; }
         if (cho && e.pointerId === cho.id) {
             if (Math.hypot(e.clientX - cho.rx, e.clientY - cho.ry) < 6) return;
+            if (performance.now() - cho.t < 70) { cho.cuoi = dichE(e); return; }
             const e0 = cho; boCho(); batDau(e0);
         }
         if (net) return them(dichE(e));
         // chuột trên máy tính: vòng cọ đi theo con trỏ
         if (CU && e.pointerType === 'mouse' && ANH && ANH.r && !ngon.size) { const rc = cv.getBoundingClientRect(); hienVong(cv, e.clientX - rc.left, e.clientY - rc.top); }
-    });
-    cv.addEventListener('pointerleave', () => { if (!net && !cho) anVong(); });
+    }, sig);
+    kh.addEventListener('pointerleave', () => { if (!net && !cho) anVong(); }, sig);
     const tha = e => {
         ngon.delete(e.pointerId);
         if (ngon.size < 2) chum = null;
-        if (!ngon.size) choHetNgon = false;
+        if (!ngon.size && choHetNgon) { choHetNgon = false; khoaDen = performance.now() + 250; }
         // chạm rồi nhấc, không nhích: chấm một cái
-        if (cho && e.pointerId === cho.id) { const e0 = cho; boCho(); if (e.type === 'pointerup') batDau(e0); else anVong(); }
+        if (cho && e.pointerId === cho.id) { const e0 = cho; boCho(); if (e.type === 'pointerup') { batDau(e0); if (e0.cuoi) them(e0.cuoi); } else anVong(); }
         if (giuYen) { clearTimeout(giuYen.hen); giuYen = null; }
         ketThuc();
     };
-    cv.addEventListener('pointerup', tha); cv.addEventListener('pointercancel', tha);
+    kh.addEventListener('pointerup', tha, sig); kh.addEventListener('pointercancel', tha, sig);
 }
 // Giữ nút so sánh: hiện ảnh lúc vừa xoá phông (chưa sửa tóc, chưa sửa tay), cùng nền cùng khung; buông tay về lại ảnh đã làm
 function hienTruoc(on) {
