@@ -43,7 +43,8 @@ async function atOpen() {
     atTao();
     document.getElementById('at-lop').classList.add('on');
     document.body.classList.add('at-mo');
-    try { history.pushState({ at: 1 }, ''); } catch (e) {}
+    // nút Back của điện thoại đóng màn ảnh thẻ: dùng chung cơ chế "màn đang mở" của trang khách (app.js)
+    if (typeof moLop === 'function') moLop('anhthe', atDong);
     if (AT_SAN) { await atNapAlbum(); atGui({ t: 'mo' }); }
 }
 
@@ -53,8 +54,6 @@ function atDong() {
     lop.classList.remove('on');
     document.body.classList.remove('at-mo');
 }
-// Nút Back của điện thoại đóng màn ảnh thẻ (không rời trang)
-window.addEventListener('popstate', () => atDong());
 
 // Ảnh của lượt chụp (bỏ bản ghép khung có sẵn và ảnh lẻ màu frame), gửi danh sách cho trang ảnh thẻ
 async function atNapAlbum() {
@@ -75,7 +74,8 @@ window.addEventListener('message', async e => {
         AT_SAN = true;
         if (document.getElementById('at-lop').classList.contains('on')) { await atNapAlbum(); atGui({ t: 'mo' }); }
     } else if (m.t === 'dong') {
-        if (history.state && history.state.at) history.back(); else atDong();
+        // đóng ngay (không đợi trình duyệt lùi trang: iPhone có lúc bỏ qua lệnh lùi gửi từ trong khung), rồi dọn lịch sử
+        atDong(); if (typeof dongLop === 'function') dongLop('anhthe');
     } else if (m.t === 'lay') {
         // Ảnh gốc của máy chụp (nét nhất) để làm ảnh thẻ
         try {
