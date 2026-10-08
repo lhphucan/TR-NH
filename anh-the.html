@@ -188,6 +188,7 @@ body.suatay #khung { overflow: hidden; padding: 4px 0; touch-action: none; }
             <summary>Chỉnh thêm</summary>
             <div class="dong"><label>Cỡ khuôn mặt <b id="v-dau"></b></label><input type="range" id="dau" min="-10" max="10" step="1" value="0"></div>
             <div class="dong"><label>Khoảng trống trên đầu <b id="v-tren"></b></label><input type="range" id="tren" min="-8" max="10" step="1" value="0"></div>
+            <div class="dong"><label>Lệch trái phải <b id="v-ngang"></b></label><input type="range" id="ngang" min="-15" max="15" step="1" value="0"></div>
             <div class="dong"><label>Độ mềm viền vai áo <b id="v-mem"></b></label><input type="range" id="mem" min="0" max="100" step="10" value="30"></div>
             <button type="button" class="chip" id="mac-dinh">Về mặc định</button>
         </details>
@@ -388,7 +389,7 @@ let THE = null, TO = null;
 // Thanh có giới hạn để khách không chỉnh lệch khỏi chuẩn ảnh giấy tờ.
 function thamSo(k) {
     const K = KHO[k];
-    return { dau: (K.dau + +$('dau').value) / 100, tren: Math.max(2, K.tren + +$('tren').value) / 100 };
+    return { dau: (K.dau + +$('dau').value) / 100, tren: Math.max(2, K.tren + +$('tren').value) / 100, lech: { x: +$('ngang').value / 100 } };
 }
 // ---------- Sửa tay: XOÁ VIỀN (bôi để xoá) và KÉO TÓC VÀO (đẩy điểm ảnh kiểu Liquify) ----------
 // Các thao tác lưu theo toạ độ lớp người; đổi kiểu tóc / khổ ảnh thì làm lại lên ảnh mới. Khuôn mặt luôn được khoá.
@@ -726,7 +727,7 @@ async function nguoiNet() {
 function theXuat(k, nn) {
     const t = thamSo(k); let r = rHien();
     if (nn) r = Object.assign({}, r, { nguoi: nn.hr, mat: { x: r.mat.x * nn.up, y: r.mat.y * nn.up }, dinh: r.dinh * nn.up, cam: r.cam * nn.up });
-    return catThe(r, KHO[k], nen, t.dau, t.tren, 600);
+    return catThe(r, KHO[k], nen, t.dau, t.tren, 600, t.lech);
 }
 async function toXuat(nn) {
     tinhSo();
@@ -739,7 +740,7 @@ async function xuatVoiNut(id, lam) {
     const b = $(id), cu = b.innerText; b.disabled = true; b.innerText = 'Đang xuất ảnh nét...';
     try { await new Promise(r => setTimeout(r, 30)); await lam(); } finally { b.disabled = false; b.innerText = cu; }
 }
-const theCua = (k, dpi) => { const t = thamSo(k); let r = rHien(); if (NHANH || ANH.r._nhanh) r = Object.assign({}, r, { _nhanh: true }); return catThe(r, KHO[k], nen, t.dau, t.tren, dpi || 300); };
+const theCua = (k, dpi) => { const t = thamSo(k); let r = rHien(); if (NHANH || ANH.r._nhanh) r = Object.assign({}, r, { _nhanh: true }); return catThe(r, KHO[k], nen, t.dau, t.tren, dpi || 300, t.lech); };
 
 function ve() {
     if (!ANH || dangChay) return;
@@ -1017,7 +1018,7 @@ function ganBoi(cv) {
     const hinh = () => {
         const r = ANH.r, K = KHO[kho], t = thamSo(kho);
         const OW = cv.width, OH = cv.height;   // đúng cỡ ảnh thẻ đang xem (300 hoặc 600dpi)
-        const k = (t.dau * OH) / (r.cam - r.dinh); return { k, ox: OW / 2 - r.mat.x * k, oy: t.tren * OH - r.dinh * k };
+        const k = (t.dau * OH) / (r.cam - r.dinh); return { k, ox: OW / 2 + t.lech.x * OW - r.mat.x * k, oy: t.tren * OH - r.dinh * k };
     };
     cv.__hinh = hinh;   // cho bài kiểm thử
     const doiToaDo = e => {
@@ -1253,7 +1254,7 @@ function hienTruoc(on) {
     if (!ANH || !ANH.goc || !THE || dangChay) return;
     $('khung').classList.toggle('truoc', on); $('so-sanh').classList.toggle('on', on);
     if (!on) return veTheNhanh();
-    const t = thamSo(kho), m = catThe(ANH.goc, KHO[kho], nen, t.dau, t.tren, THE.__dpi || dpiXem());
+    const t = thamSo(kho), m = catThe(ANH.goc, KHO[kho], nen, t.dau, t.tren, THE.__dpi || dpiXem(), t.lech);
     THE.getContext('2d').drawImage(m, 0, 0); m.width = m.height = 0;
 }
 {
@@ -1321,13 +1322,14 @@ const nhanThanh = () => {
     const ten = (v, t) => v < -2 ? t[0] : v > 2 ? t[2] : t[1];
     $('v-dau').innerText = ten(+$('dau').value, ['Nhỏ', 'Vừa', 'To']);
     $('v-tren').innerText = ten(+$('tren').value, ['Ít', 'Vừa', 'Nhiều']);
+    const ng = +$('ngang').value; $('v-ngang').innerText = ng < 0 ? 'Sang trái' : ng > 0 ? 'Sang phải' : 'Giữa';
 };
 let rafThanh = 0;
-['dau', 'tren'].forEach(k => {
+['dau', 'tren', 'ngang'].forEach(k => {
     $(k).oninput = () => { nhanThanh(); if (!rafThanh) rafThanh = requestAnimationFrame(() => { rafThanh = 0; veTheNhanh(); }); };
     $(k).onchange = () => { if (ANH && ANH.r && !dangChay) dongTo(); };
 });
-function veMacDinh() { $('dau').value = 0; $('tren').value = 0; nhanThanh(); }
+function veMacDinh() { $('dau').value = 0; $('tren').value = 0; $('ngang').value = 0; nhanThanh(); }
 nhanThanh();
 $('mac-dinh').onclick = () => { veMacDinh(); ve(); };
 
