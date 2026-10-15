@@ -732,11 +732,15 @@ function renderData(data, branch) {
     }
 
     if (data.client_uploads && Object.keys(data.client_uploads).length > 0) {
-        html += `<div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e5e5e5;"><b style="font-size: 12px; color: #111; text-transform: uppercase;">Ảnh bạn đã yêu cầu in:</b>`;
+        html += `<div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e5e5e5;"><b style="font-size: 12px; color: #111; text-transform: uppercase;">Ảnh bạn đã gửi tiệm:</b>`;
+        // Ghi rõ loại: ảnh gửi in, ảnh ghép frame hay ảnh thẻ (trước đây dòng nào cũng
+        // "Gửi lúc ... 1 ảnh", khách không biết dòng nào là gì). Ngày đã có ở đầu khung.
         Object.keys(data.client_uploads).forEach((uploadId) => {
             const u = data.client_uploads[uploadId] || {};
             const n = (Array.isArray(u.links) ? u.links.length : 0) + (Array.isArray(u.drive) ? u.drive.length : 0);
-            html += `<div class="link-row" style="background: #fff;"><span style="font-size:12px; color:#666;">Gửi lúc: ${escapeHTML(u.time)}</span><span style="font-size: 12px; color: #111; font-weight: 600;">${n} ảnh</span></div>`;
+            const loai = u.kind === 'frame' ? 'Ảnh ghép frame' : u.kind === 'anhthe' ? 'Ảnh thẻ' : 'Ảnh gửi in';
+            const gio = String(u.time || '').trim().split(/\s+/)[0];
+            html += `<div class="link-row" style="background: #fff;"><span style="font-size:12px; color:#666;">${loai}${gio ? ' · ' + escapeHTML(gio) : ''}</span><span style="font-size: 12px; color: #111; font-weight: 600;">${n} ảnh</span></div>`;
         });
         html += `</div>`;
     }

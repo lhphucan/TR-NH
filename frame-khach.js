@@ -209,9 +209,10 @@ function fkBuild() {
                 <p class="fr-hint" id="fk-res-info"></p>
                 <div class="fr-bar fr-hidden" id="fk-bar"><span></span></div>
                 <button class="fr-btn solid fr-big" id="fk-send" style="margin-top:12px;" onclick="fkSend()">Gửi cho tiệm in</button>
+                <!-- Không có nút lưu về máy: khách lưu về máy rồi gửi qua "Gửi ảnh in" thì ảnh
+                     nằm ở thư mục ảnh gửi in, không vào album. Gửi tiệm xong ảnh có trong album, lưu từ đó. -->
                 <div class="fr-row" style="margin-top:8px;">
                     <button class="fr-btn" style="flex:1;" onclick="fkStep('comp'); fkRender();">‹ Sửa tiếp</button>
-                    <button class="fr-btn" style="flex:1;" onclick="fkSave()">Lưu về máy</button>
                 </div>
             </div>
         </div></div>
@@ -763,9 +764,8 @@ async function fkExport() {
         if (FK_RES) URL.revokeObjectURL(FK_RES.view);
         FK_RES = { blob, view: URL.createObjectURL(pvBlob), w: W, h: H };
         document.getElementById('fk-res-img').src = FK_RES.view;
-        document.getElementById('fk-res-info').innerText = cv.s < 1
-            ? `Máy bạn giới hạn bộ nhớ nên ảnh ghép cỡ ${W} × ${H} (${Math.round(cv.s * 100)}% cỡ frame), vẫn đủ nét để in.`
-            : 'Bạn xem kỹ rồi hãy gửi nhé.';
+        // Máy thiếu bộ nhớ phải ghép nhỏ: không báo khách, tiệm tự ghép lại bản đủ cỡ (rec.du)
+        document.getElementById('fk-res-info').innerText = 'Bạn xem kỹ rồi hãy gửi nhé.';
         // Nhân viên chỉnh lại: lưu luôn thành bản tiệm chỉnh, không qua màn xem lại
         if (window.FK_NV) { btn.innerText = 'Đang lưu...'; await nvLuu(btn); return; }
         fkStep('res');
@@ -824,6 +824,9 @@ async function fkSend() {
         const rec = { time, drive: [{ id: up.id, name: up.name }], folder: info.folderUrl, kind: 'frame', bo,
                       took: Math.round((Date.now() - batDau) / 1000), mb: Math.round(size / 104857.6) / 10, via: sent.via || '' };
         if (FKB && anhDrive.length) rec.le = { filter: FKB.id, ten: fkTenLoc(), lot: _albCtx.fid, photos: anhDrive };
+        // Máy khách thiếu bộ nhớ phải ghép nhỏ (iPhone chỉ ghép được ~70% frame 27 triệu
+        // điểm): máy tính quán tự ghép lại bản đủ nét theo bản xếp (frame-nv.js, duLam)
+        if (FK_RES.w < FKF.w) rec.du = { pt: Math.round(FK_RES.w / FKF.w * 100) };
         // Yêu cầu in: bên nhân viên hiện như ảnh khách gửi, có giờ và nút tải bản gốc
         await db.ref('data/' + branch + '/' + clientId + '/client_uploads/U_' + Date.now()).set(rec);
         // Ghi để ảnh ghép hiện trong album khách; ghi sau cùng để lỡ hỏng thì tiệm vẫn nhận được ảnh
@@ -930,20 +933,6 @@ async function fkSendSingles(w, btn, bar) {
     }
     bar.firstElementChild.style.width = '100%';
     return { ok, err };
-}
-
-async function fkSave() {
-    if (!FK_RES) return;
-    const name = 'PHOTONOIR Anh ghep frame' + (FK_RES.blob.type === 'image/png' ? '.png' : '.jpg');
-    const file = new File([FK_RES.blob], name, { type: FK_RES.blob.type });
-    try {
-        if (laDienThoai() && navigator.canShare && navigator.canShare({ files: [file] })) return await navigator.share({ files: [file] });
-    } catch (e) { if (e.name === 'AbortError') return; }
-    const u = URL.createObjectURL(FK_RES.blob);
-    const a = document.createElement('a');
-    a.href = u; a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(u), 10000);
 }
 
 // ---------- Nút ghép ngay ở trang phiên, ngoài album ----------

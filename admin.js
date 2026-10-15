@@ -8,7 +8,13 @@ let GS_URL = '';
 const GS_KEY = '0vRhkkYveiToxF9yK4sG4rWacTaMbfNl';
 
 // Máy đồng bộ ảnh chụp của từng cơ sở (thư mục trong mục "Máy tính" của Drive)
+// Cơ sở mới: điền "Thư mục máy chụp" trong Cơ sở & Tài khoản (branches/<mã>/booth).
+// Ba cơ sở đầu chưa điền thì dùng tên cũ dưới đây.
 const BOOTH_BY_BRANCH = { phucyen: 'SelfboothPY', vinhyen: 'SelfboothVY', xuanhoa: 'SelfboothXH' };
+function boothOf(branchId) {
+    const b = (typeof branchesCache !== 'undefined' && branchesCache[branchId]) || {};
+    return String(b.booth || BOOTH_BY_BRANCH[branchId] || '').trim();
+}
 const PHOTO_ROOT = '用户照片文件';   // thư mục chứa các lượt chụp
 const EDITED_NAME = '实时精修';      // thư mục ảnh đã tinh chỉnh, gửi cho khách
 
@@ -747,13 +753,14 @@ async function loadLinkThumbs() {
 
 // Thư mục ảnh gốc của mỗi cơ sở không bao giờ đổi, nhưng tìm nó tốn 2 lần hỏi
 // Drive nối tiếp (~950ms). Nhớ lại để chỉ tìm một lần duy nhất.
-const _rootCache = _cached.roots || {};   // { branchId: folderId }
+const _rootCache = _cached.roots || {};   // { 'branchId|tên thư mục máy chụp': folderId }
 
 async function photoRoot(branchId) {
-    if (_rootCache[branchId]) return _rootCache[branchId];
-
-    const boothName = BOOTH_BY_BRANCH[branchId];
-    if (!boothName) throw new Error('Chưa biết máy chụp của cơ sở này');
+    const boothName = boothOf(branchId);
+    if (!boothName) throw new Error('Chưa điền thư mục máy chụp cho cơ sở này (Cơ sở & Tài khoản)');
+    // Nhớ theo cả tên thư mục: admin sửa tên thì tìm lại
+    const key = branchId + '|' + boothName;
+    if (_rootCache[key]) return _rootCache[key];
 
     // Có thể tồn tại nhiều thư mục trùng tên -> lấy cái thật sự chứa ảnh
     const booths = await driveQuery(`name='${boothName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
@@ -764,7 +771,7 @@ async function photoRoot(branchId) {
     }
     if (!rootId) throw new Error('Không tìm thấy thư mục ảnh của ' + boothName);
 
-    _rootCache[branchId] = rootId;
+    _rootCache[key] = rootId;
     saveCache({ roots: _rootCache });
     return rootId;
 }
@@ -1092,27 +1099,52 @@ const _leFilt = {};
 // khoản, giữ chỗ theo tài khoản thì máy nào cũng tưởng là của mình rồi làm trùng
 const LE_MAY = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-// Dấu tiến độ ảnh lẻ của một khách: đổi là biết phải vẽ lại thẻ
+// Dấu của một khách: đổi là biết phải vẽ lại thẻ. Việc ngầm chỉ hiện khi hỏng
+// hẳn nên chỉ cần biết xong / hỏng hẳn, tiến độ từng ảnh không cần vẽ lại.
 function leChuKy(c) {
-    // Kèm bản tiệm chỉnh và giờ tải của ảnh ghép frame (dòng ảnh ghép đổi theo)
-    return JSON.stringify(Object.values((c && c.client_uploads) || {}).map(u => u ? [u.le ? [u.le.n || 0, !!u.le.xong, u.le.loi || '', !!u.le.dang] : 0,
-        u.nv ? [u.nv.id, u.nv.tai || 0] : 0, u.tai || 0] : 0));
+    return JSON.stringify(Object.values((c && c.client_uploads) || {}).map(u => u ? [u.le ? [!!u.le.xong, !!u.le.hong] : 0,
+        u.nv ? [u.nv.id, u.nv.tai || 0] : 0, u.tai || 0,
+        u.du ? [!!u.du.xong, !!u.du.hong] : 0, Array.isArray(u.drive) && u.drive[0] ? u.drive[0].id : 0] : 0));
+}
+
+// ===== Việc ngầm tự lo: chưa làm thì làm, làm dở thì làm tiếp, hỏng thì thử lại =====
+// Hỏng: hẹn thử lại sau 1, 3, 10, 30, 60 phút (máy nào đang mở trang cũng nhận,
+// máy thiếu bộ nhớ thì máy khác có cơ hội làm). Hỏng 6 lần mới thôi và hiện một
+// dòng cho nhân viên bấm THỬ LẠI. Còn lại nhân viên không phải nhìn gì.
+const VIEC_HEN = [1, 3, 10, 30, 60];
+const VIEC_THOI = 6;
+async function viecLoi(ref, cur, e) {
+    const thu = ((cur && cur.thu) || 0) + 1;
+    const o = { loi: String((e && e.message) || e).slice(0, 80), dang: null, thu,
+                sau: Date.now() + VIEC_HEN[Math.min(thu, VIEC_HEN.length) - 1] * 60000 };
+    if (thu >= VIEC_THOI) o.hong = true;
+    await ref.update(o).catch(() => {});
+}
+const VIEC_SACH = { loi: null, thu: null, sau: null, hong: null, dang: null };
+// Việc này đến lượt máy này chưa
+function viecToiLuot(v) {
+    if (!v || v.xong || v.hong) return false;
+    if (v.sau && Date.now() < v.sau) return false;
+    // Máy khác đang làm (còn báo trong 2 phút) thì để nó làm; quá 2 phút là bỏ dở -> làm tiếp
+    if (v.dang && Date.now() - (v.dang.at || 0) < 120000 && v.dang.by !== LE_MAY) return false;
+    return true;
+}
+function viecDongHong(ten, v, nut) {
+    return `<div class="le-row" style="margin-top:8px; font-size:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span style="font-weight:600;">${ten}: <span style="color:#b91c1c;">lỗi – ${escapeHTML(v.loi || 'không rõ')}</span></span>
+        <button type="button" class="up-btn ghost" onclick="${nut}">THỬ LẠI</button>
+    </div>`;
 }
 
 function leDongTrangThai(cId, uId, le) {
-    const tong = le.photos.length, n = Math.min(le.n || 0, tong);
-    const ten = escapeHTML(le.ten || 'màu frame');
-    const st = le.xong ? `đủ ${tong}` : (le.loi ? `lỗi: ${escapeHTML(le.loi)}` : (le.dang ? `đang làm ${n}/${tong}` : `chờ máy quán ${n}/${tong}`));
-    return `<div class="le-row" style="margin-top:8px; font-size:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-        <span style="font-weight:600;">Ảnh lẻ màu ${ten}: <span style="color:${le.xong ? '#16a34a' : '#a16207'};">${st}</span></span>
-        <button type="button" class="up-btn ghost" onclick="leLamLai('${cId}', '${uId}')">LÀM LẠI</button>
-    </div>`;
+    if (!le.hong || le.xong) return '';
+    return viecDongHong('Ảnh lẻ màu ' + escapeHTML(le.ten || 'frame'), le, `leLamLai('${cId}', '${uId}')`);
 }
 
 async function leLamLai(cId, uId) {
     if (userRole === 'viewer') return;
-    await db.ref(dbPath + br + '/' + cId + '/client_uploads/' + uId + '/le').update({ xong: null, n: 0, loi: null, dang: null });
-    Toast.fire({ icon: 'info', title: 'Máy này sẽ làm lại ảnh lẻ' });
+    await db.ref(dbPath + br + '/' + cId + '/client_uploads/' + uId + '/le').update(Object.assign({ xong: null, n: 0, xongAt: null, daThu: null }, VIEC_SACH));
+    Toast.fire({ icon: 'info', title: 'Đang làm lại' });
     setTimeout(leQuet, 500);
 }
 
@@ -1122,14 +1154,17 @@ async function leQuet() {
     for (const [cId, c] of Object.entries(currentData)) {
         for (const [uId, up] of Object.entries((c && c.client_uploads) || {})) {
             const le = up && up.kind === 'frame' && up.le;
-            // Đã xong, hoặc lỗi (chờ nhân viên bấm Làm lại, khỏi thử mãi vô ích)
-            if (!le || le.xong || le.loi || !Array.isArray(le.photos) || !le.photos.length) continue;
-            // Máy khác đang làm (còn báo trong 2 phút) thì để nó làm
-            if (le.dang && Date.now() - (le.dang.at || 0) < 120000 && le.dang.by !== LE_MAY) continue;
+            if (!le || !Array.isArray(le.photos) || !le.photos.length || !viecToiLuot(le)) continue;
             _leDang = true;
             try { await leLam(br, cId, uId); } finally { _leDang = false; }
             return;   // mỗi lượt quét làm một việc, lượt sau làm tiếp
         }
+    }
+    // Hết ảnh lẻ: ghép lại bản đủ nét cho ảnh ghép máy khách phải ghép nhỏ (frame-nv.js)
+    const v = typeof duViec === 'function' ? duViec() : null;
+    if (v) {
+        _leDang = true;
+        try { await duLam(br, v.cId, v.uId); } finally { _leDang = false; }
     }
 }
 
@@ -1179,9 +1214,10 @@ async function leLam(b, cId, uId) {
             n++;
             await ref.update({ n, dang: { by: LE_MAY, at: Date.now() } });
         }
-        await ref.update({ xong: true, dang: null, loi: null, n });
+        // Giữ giờ xong và số lần đã hỏng trước đó cho trang theo dõi của admin
+        await ref.update(Object.assign({}, VIEC_SACH, { xong: true, n, xongAt: Date.now(), daThu: le.thu || null }));
     } catch (e) {
-        await ref.update({ loi: String(e.message || e).slice(0, 80), dang: null }).catch(() => {});
+        await viecLoi(ref, le, e);
     }
 }
 
@@ -2848,6 +2884,7 @@ function resetBranchForm() {
     document.getElementById('new-branch-ig').value = '';
     document.getElementById('new-branch-tk').value = '';
     document.getElementById('new-branch-map').value = '';
+    document.getElementById('new-branch-booth').value = '';
     document.getElementById('new-branch-id').disabled = false;
     document.getElementById('branch-form-label').innerText = 'Thêm cơ sở mới';
     document.getElementById('branch-submit-btn').innerText = 'Tạo cơ sở';
@@ -2868,6 +2905,7 @@ function editBranch(branchId) {
     document.getElementById('new-branch-ig').value = s.ig || '';
     document.getElementById('new-branch-tk').value = s.tk || '';
     document.getElementById('new-branch-map').value = s.map || '';
+    document.getElementById('new-branch-booth').value = boothOf(branchId);
     document.getElementById('branch-form-label').innerText = 'Sửa cơ sở: ' + (b.name || branchId);
     document.getElementById('branch-submit-btn').innerText = 'Lưu thay đổi';
     document.getElementById('branch-cancel-btn').style.display = 'block';
@@ -2884,11 +2922,12 @@ function submitBranchForm() {
         tk: document.getElementById('new-branch-tk').value.trim(),
         map: document.getElementById('new-branch-map').value.trim()
     };
+    const booth = document.getElementById('new-branch-booth').value.trim();
 
     if (editingBranchId) {
         const branchId = editingBranchId;
-        db.ref('branches/' + branchId).update({ name, social }).then(() => {
-            branchesCache[branchId] = Object.assign({}, branchesCache[branchId], { name, social });
+        db.ref('branches/' + branchId).update({ name, social, booth: booth || null }).then(() => {
+            branchesCache[branchId] = Object.assign({}, branchesCache[branchId], { name, social, booth });
             renderBranchTabs();
             populateAccountBranchSelect();
             loadBranchList();
@@ -2903,9 +2942,9 @@ function submitBranchForm() {
     if (branchesCache[branchId]) return Toast.fire({ icon: 'warning', title: 'Mã cơ sở này đã tồn tại.' });
 
     db.ref('branches/' + branchId).set({
-        name, social, active: true, createdAt: Date.now(), createdBy: auth.currentUser.uid
+        name, social, booth: booth || null, active: true, createdAt: Date.now(), createdBy: auth.currentUser.uid
     }).then(() => {
-        branchesCache[branchId] = { name, social, active: true };
+        branchesCache[branchId] = { name, social, booth, active: true };
         renderBranchTabs();
         populateAccountBranchSelect();
         loadBranchList();

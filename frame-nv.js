@@ -67,8 +67,112 @@ function nvHang(cId, uId, up) {
                     ${up.folder ? `<a href="${e(up.folder)}" target="_blank" rel="noopener" class="up-btn ghost nv-thumuc" title="Mở thư mục lượt chụp" aria-label="Mở thư mục"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></svg></a>` : ''}
                 </span>
             </div>
+            ${up.du && up.du.hong && !up.du.xong ? viecDongHong('Bản in 100%', up.du, `duLamLai('${cId}', '${uId}')`) : ''}
             ${up.le && Array.isArray(up.le.photos) ? leDongTrangThai(cId, uId, up.le) : ''}
         </div>`;
+}
+
+// ---------- Bản đủ nét: máy quán ghép lại khi máy khách phải ghép nhỏ ----------
+// Frame của tiệm 27 triệu điểm, Safari trên iPhone chỉ dựng được tấm ~16,7 triệu
+// điểm nên bản khách gửi chỉ ~70% cỡ frame. Khách gửi kèm du = { pt } và bản xếp:
+// trang nhân viên đang mở tự ghép lại đúng bản xếp đó ở cỡ đủ từ ảnh gốc, thay vào
+// chỗ bản khách (client_uploads drive[0] và album khách), bản nhỏ cho vào thùng rác.
+// Chạy chung vòng quét với ảnh lẻ màu frame (leQuet trong admin.js), giữ chỗ du.dang.
+async function duLamLai(cId, uId) {
+    if (userRole === 'viewer') return;
+    await db.ref(dbPath + br + '/' + cId + '/client_uploads/' + uId + '/du').update(Object.assign({}, VIEC_SACH));
+    Toast.fire({ icon: 'info', title: 'Đang làm lại' });
+    setTimeout(leQuet, 500);
+}
+
+// Việc còn dở trong danh sách đang xem (máy khác đang làm trong 2 phút thì để nó làm)
+function duViec() {
+    if (dbPath !== 'data/' || !currentData || userRole === 'viewer') return null;
+    for (const [cId, c] of Object.entries(currentData)) {
+        for (const [uId, up] of Object.entries((c && c.client_uploads) || {})) {
+            const du = up && up.kind === 'frame' && up.bo && up.du;
+            if (du && viecToiLuot(du)) return { cId, uId };
+        }
+    }
+    return null;
+}
+
+async function duTai(id, urls) {
+    const url = 'https://www.googleapis.com/drive/v3/files/' + id + '?alt=media';
+    let res = await fetch(url, { headers: { Authorization: 'Bearer ' + await driveToken() } });
+    if (res.status === 401) { _driveToken = ''; res = await fetch(url, { headers: { Authorization: 'Bearer ' + await driveToken() } }); }
+    if (!res.ok) throw new Error('không tải được ảnh gốc (HTTP ' + res.status + ')');
+    const u = URL.createObjectURL(await res.blob());
+    urls.push(u);
+    return u;
+}
+
+async function duLam(b, cId, uId) {
+    const goc = 'data/' + b + '/' + cId + '/client_uploads/' + uId;
+    const ref = db.ref(goc + '/du');
+    const tx = await ref.child('dang').transaction(cur => (cur && cur.by !== LE_MAY && Date.now() - (cur.at || 0) < 120000) ? undefined : { by: LE_MAY, at: Date.now() });
+    if (!tx.committed) return;
+    const up = (await db.ref(goc).once('value')).val();
+    if (!up || !up.du || up.du.xong || !up.bo) { await ref.child('dang').remove().catch(() => {}); return; }
+    // Ghép to mất cả chục giây: báo vẫn đang làm để máy khác không làm trùng
+    const giu = setInterval(() => ref.child('dang').set({ by: LE_MAY, at: Date.now() }).catch(() => {}), 30000);
+    const urls = [];
+    try {
+        const bo = up.bo;
+        await fkLoadFrames();
+        const f = FK_FRAMES[bo.frame];
+        if (!f) throw new Error('frame đã bị xoá');
+        const frame = Object.assign({ id: bo.frame }, f);
+        const loc = await fkFilterFor(frame);
+        // Bản gốc đúng từng byte qua quyền Drive của tiệm: frame, lớp PNG, ảnh từng ô
+        const lop = {};
+        for (const l of FR.layersOf(frame)) {
+            const id = l.k === 'frame' ? frame.file : l.k === 'fx' ? l.file : null;
+            if (id && !lop[id]) lop[id] = await duTai(id, urls);
+        }
+        const anh = [];
+        for (let i = 0; i < frame.slots.length; i++) {
+            const o = bo.o && bo.o[i];
+            if (!o || !o.id) { anh.push(null); continue; }
+            const src = await duTai(o.id, urls);
+            const im = await FR.loadImg(src);
+            anh.push({ src, iw: im.naturalWidth, ih: im.naturalHeight, s: +o.s || 1, ox: +o.ox || 0, oy: +o.oy || 0, r: +o.r || 0 });
+            im.src = '';
+        }
+        const cv = FR.canvasFor(frame.w, frame.h);
+        if (!cv) throw new Error('máy không đủ bộ nhớ');
+        const pt = Math.round(cv.s * 100);
+        if (pt <= (+up.du.pt || 0)) { cv.c.width = cv.c.height = 0; throw new Error(`máy thiếu bộ nhớ (${pt}%)`); }
+        await FR.compose(cv.x, cv.s, frame, l => lop[l.k === 'frame' ? frame.file : l.file], anh, p => p.src, null, loc && loc.baked);
+        let blob = await new Promise(r => cv.c.toBlob(r, 'image/png'));
+        if (!blob) blob = await new Promise(r => cv.c.toBlob(r, 'image/jpeg', 1));
+        const W = cv.c.width;
+        cv.c.width = cv.c.height = 0;
+        if (!blob) throw new Error('không xuất được ảnh');
+        const cu = Array.isArray(up.drive) && up.drive[0];
+        const ten = String((cu && cu.name) || 'GHEP FRAME').replace(/\.[a-z0-9]+$/i, '') + '_100' + (blob.type === 'image/png' ? '.png' : '.jpg');
+        const token = await driveToken();
+        const fm = await FR.upload(blob, ten, token, bo.lot);
+        if (!fm || !fm.id) throw new Error('Drive không nhận ảnh');
+        await FR.makePublic(fm.id, token).catch(() => {});
+        // Album khách: bản ghép trỏ sang bản đủ nét
+        const nhanh = 'data/' + b + '/' + cId;
+        const frs = (await db.ref(nhanh + '/framed/' + bo.lot).once('value')).val() || {};
+        for (const [k, v] of Object.entries(frs)) if (v && cu && v.id === cu.id) await db.ref(nhanh + '/framed/' + bo.lot + '/' + k + '/id').set(fm.id).catch(() => {});
+        const xong = { 'drive/0': { id: fm.id, name: fm.name || ten }, 'du/xong': true, 'du/cu': cu ? cu.id : null, 'du/w': W, 'du/at': Date.now() };
+        xong['du/daThu'] = up.du.thu || null;
+        Object.keys(VIEC_SACH).forEach(k => { xong['du/' + k] = null; });
+        await db.ref(goc).update(xong);
+        // Bản nhỏ vào thùng rác Drive (còn khôi phục được 30 ngày)
+        if (cu && cu.id) fetch('https://www.googleapis.com/drive/v3/files/' + cu.id, {
+            method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true })
+        }).catch(() => {});
+    } catch (e) {
+        await viecLoi(ref, up.du, e);
+    } finally {
+        clearInterval(giu);
+        urls.forEach(u => URL.revokeObjectURL(u));
+    }
 }
 
 // ---------- Màn xem: ảnh to, đổi giữa bản khách và bản tiệm, tải bản đang xem ----------
@@ -490,6 +594,13 @@ async function nvDong() {
 // Gọi từ fkExport khi đã ghép xong bản cỡ in (FK_RES)
 async function nvLuu(btn) {
     if (!NV || !FK_RES) return;
+    // Máy này cũng thiếu bộ nhớ, ghép không đủ cỡ frame: báo trước khi lưu
+    if (FK_RES.w < FKF.w) {
+        const r = await Swal.fire({ title: 'Ảnh chưa đủ cỡ in', icon: 'warning', showCancelButton: true,
+            text: `Máy này chỉ ghép được ${Math.round(FK_RES.w / FKF.w * 100)}%. Nên lưu trên máy khác.`,
+            confirmButtonText: 'Vẫn lưu', cancelButtonText: '<span style="color:#111">Huỷ</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff' });
+        if (!r.isConfirmed) return;
+    }
     const { cId, uId } = NV;
     const nhanh = NV.br;
     const c = currentData[cId] || {};
@@ -520,3 +631,118 @@ async function nvLuu(btn) {
     nvXem(cId, uId, 'tiem', nv);
     Toast.fire({ icon: 'success', title: 'Đã lưu bản tiệm chỉnh' });
 }
+
+// ---------- Theo dõi việc ngầm ----------
+// Việc tự chạy nên không ai phải canh, nhưng vẫn cần một chỗ xem: việc nào đang
+// chờ, đang làm, đang thử lại vì lỗi gì, hỏng hẳn, và việc chờ lâu mà chưa máy
+// nào nhận (thường là không máy quán nào mở trang nhân viên). Nhân viên xem cơ sở
+// của mình, admin xem mọi cơ sở. Đọc 3 ngày gần nhất mỗi lần mở / bấm Tải lại.
+const VIEC_NGAY = 3;
+const VIEC_CHO_LAU = 10 * 60000;
+let VIEC_DS = [], VIEC_AN_XONG = true;
+
+function viecTrangThai(v, gui) {
+    const now = Date.now();
+    if (v.xong) return { k: 5, mau: '#16a34a', chu: 'Xong' + (v.xongAt || v.at ? ' ' + nvGio(v.xongAt || v.at) : '') + (v.daThu ? ` · sau ${v.daThu} lần lỗi` : '') };
+    if (v.hong) return { k: 0, mau: '#b91c1c', chu: `Hỏng hẳn (${v.thu || 0} lần)` };
+    if (v.dang && now - (v.dang.at || 0) < 120000) return { k: 3, mau: '#2563eb', chu: 'Đang làm' };
+    if (v.thu) return { k: 1, mau: '#b45309', chu: `Thử lại lần ${v.thu + 1}` + (v.sau ? ' lúc ' + nvGio(v.sau) : '') };
+    if (gui && now - gui > VIEC_CHO_LAU) return { k: 2, mau: '#b45309', chu: 'Chờ lâu – chưa máy quán nào nhận' };
+    return { k: 4, mau: '#52525b', chu: 'Đang chờ' };
+}
+
+// Cơ sở được xem: admin mọi cơ sở, nhân viên cơ sở của mình
+const viecCoSo = () => userRole === 'admin' ? Object.keys(branchesCache || {}) : (br ? [br] : []);
+
+async function viecTai() {
+    const tu = 'S_' + (Date.now() - VIEC_NGAY * 864e5);
+    const ds = [];
+    for (const b of viecCoSo()) {
+        const d = (await db.ref('data/' + b).orderByKey().startAt(tu).once('value')).val() || {};
+        Object.entries(d).forEach(([cId, c]) => Object.entries((c && c.client_uploads) || {}).forEach(([uId, u]) => {
+            if (!u || u.kind !== 'frame') return;
+            const gui = parseInt(uId.split('_')[1]) || 0;
+            const chung = { b, cId, uId, gui, ten: c.name || 'Khách', ma: cId.split('_')[1].slice(-4), coSo: (branchesCache[b] || {}).name || b };
+            if (u.le && u.le.photos) {
+                const tong = Object.keys(u.le.photos).length;
+                ds.push(Object.assign({ loai: 'le', viec: `Ảnh lẻ màu ${u.le.ten || 'frame'} (${Math.min(u.le.n || 0, tong)}/${tong})`, v: u.le, st: viecTrangThai(u.le, gui) }, chung));
+            }
+            if (u.du) ds.push(Object.assign({ loai: 'du', viec: `Bản in 100% (khách ${+u.du.pt || 0}%)`, v: u.du, st: viecTrangThai(u.du, gui) }, chung));
+        }));
+    }
+    VIEC_DS = ds.sort((x, y) => x.st.k - y.st.k || y.gui - x.gui);
+}
+
+async function viecMo() {
+    if (userRole === 'viewer') return;
+    if (!document.getElementById('vx')) {
+        document.body.insertAdjacentHTML('beforeend', `
+        <div id="vx" class="nvx" style="display:none;" onclick="if (event.target === this) viecDong()">
+            <div class="nvx-box vx-box">
+                <div class="nvx-head">
+                    <div class="nvx-ti"><b>Việc ngầm</b><small id="vx-phu"></small></div>
+                    <button type="button" class="nvx-btn vx-lai" onclick="viecMoLai()">Tải lại</button>
+                    <button type="button" class="nvx-x" onclick="viecDong()" aria-label="Đóng"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg></button>
+                </div>
+                <div class="vx-tom" id="vx-tom"></div>
+                <div class="vx-ds" id="vx-ds"></div>
+            </div>
+        </div>`);
+    }
+    document.getElementById('vx-phu').innerText = `Ảnh lẻ màu frame và bản in 100% · ${VIEC_NGAY} ngày gần nhất · `
+        + (userRole === 'admin' ? 'mọi cơ sở' : ((branchesCache[br] || {}).name || br));
+    document.getElementById('vx').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    await viecMoLai();
+}
+
+async function viecMoLai() {
+    document.getElementById('vx-ds').innerHTML = '<p class="fr-hint" style="padding:16px;">Đang tải...</p>';
+    try { await viecTai(); } catch (e) { document.getElementById('vx-ds').innerHTML = `<p class="fr-hint" style="padding:16px;">Chưa tải được: ${escapeHTML(e.message)}</p>`; return; }
+    viecVe();
+}
+
+function viecVe() {
+    const dem = [0, 0, 0, 0, 0, 0];
+    VIEC_DS.forEach(x => dem[x.st.k]++);
+    const chip = (n, chu, mau) => n ? `<span class="vx-chip" style="color:${mau};"><b>${n}</b> ${chu}</span>` : '';
+    document.getElementById('vx-tom').innerHTML = (chip(dem[0], 'hỏng hẳn', '#b91c1c') + chip(dem[1], 'đang thử lại', '#b45309') + chip(dem[2], 'chờ lâu', '#b45309')
+        + chip(dem[3], 'đang làm', '#2563eb') + chip(dem[4], 'đang chờ', '#52525b') + chip(dem[5], 'xong', '#16a34a') || '<span class="vx-chip">Không có việc nào</span>')
+        + `<label class="vx-an"><input type="checkbox" ${VIEC_AN_XONG ? 'checked' : ''} onchange="VIEC_AN_XONG = this.checked; viecVe()"> Ẩn việc đã xong</label>`;
+    const nhieuCoSo = userRole === 'admin';
+    const ds = VIEC_DS.filter(x => !(VIEC_AN_XONG && x.st.k === 5));
+    document.getElementById('vx-ds').innerHTML = ds.map(x => `
+        <div class="vx-dong">
+            <div><b>#${escapeHTML(x.ma)} ${escapeHTML(x.ten)}</b><small>${nhieuCoSo ? escapeHTML(x.coSo) + ' · ' : ''}gửi ${nvGio(x.gui)} ${getDStr(new Date(x.gui)).slice(0, 5)}</small></div>
+            <div>${escapeHTML(x.viec)}</div>
+            <div><b style="color:${x.st.mau};">${escapeHTML(x.st.chu)}</b>${x.v.loi && !x.v.xong ? `<small>${escapeHTML(x.v.loi)}</small>` : ''}</div>
+            <div>${x.st.k <= 2 ? `<button type="button" class="up-btn ghost" onclick="viecLamLai('${x.b}', '${x.cId}', '${x.uId}', '${x.loai}')">THỬ LẠI NGAY</button>` : ''}</div>
+        </div>`).join('') || `<p class="fr-hint" style="padding:16px;">${VIEC_DS.length ? 'Mọi việc đã xong.' : 'Không có việc ngầm nào trong ' + VIEC_NGAY + ' ngày qua.'}</p>`;
+}
+
+async function viecLamLai(b, cId, uId, loai) {
+    if (userRole === 'viewer') return;
+    const goc = 'data/' + b + '/' + cId + '/client_uploads/' + uId + '/' + loai;
+    await db.ref(goc).update(Object.assign(loai === 'le' ? { xong: null, n: 0, xongAt: null, daThu: null } : {}, VIEC_SACH));
+    Toast.fire({ icon: 'info', title: b === br ? 'Đang làm lại' : 'Đã xếp lại, máy quán của cơ sở đó sẽ làm' });
+    if (b === br) setTimeout(leQuet, 500);
+    setTimeout(viecMoLai, 1500);
+}
+
+function viecDong() {
+    document.getElementById('vx').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+// Số đỏ trên nút "Việc ngầm": việc hỏng hẳn / đang thử lại trong danh sách đang xem
+function viecDem() {
+    const so = document.getElementById('viec-so');
+    if (!so || userRole === 'viewer' || dbPath !== 'data/') return;
+    let n = 0;
+    Object.values(currentData || {}).forEach(c => Object.values((c && c.client_uploads) || {}).forEach(u => {
+        [u && u.le, u && u.du].forEach(v => { if (v && !v.xong && (v.hong || v.thu)) n++; });
+    }));
+    so.innerText = n || '';
+    so.style.display = n ? '' : 'none';
+}
+setInterval(viecDem, 20000);
