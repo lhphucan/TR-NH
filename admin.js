@@ -1094,7 +1094,9 @@ const LE_MAY = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
 // Dấu tiến độ ảnh lẻ của một khách: đổi là biết phải vẽ lại thẻ
 function leChuKy(c) {
-    return JSON.stringify(Object.values((c && c.client_uploads) || {}).map(u => u && u.le ? [u.le.n || 0, !!u.le.xong, u.le.loi || '', !!u.le.dang] : 0));
+    // Kèm bản tiệm chỉnh và giờ tải của ảnh ghép frame (dòng ảnh ghép đổi theo)
+    return JSON.stringify(Object.values((c && c.client_uploads) || {}).map(u => u ? [u.le ? [u.le.n || 0, !!u.le.xong, u.le.loi || '', !!u.le.dang] : 0,
+        u.nv ? [u.nv.id, u.nv.tai || 0] : 0, u.tai || 0] : 0));
 }
 
 function leDongTrangThai(cId, uId, le) {
@@ -1526,7 +1528,7 @@ function filterToday(kind) {
             let ok = inRange;
             if (ok && kind === 'noprice') ok = card.classList.contains('card-no-price');
             if (ok && kind === 'nolink') ok = !card.querySelector('.link-manager .link-row');
-            if (ok && kind === 'pending') ok = !!card.querySelector('[onclick^="delClientUp"]');
+            if (ok && kind === 'pending') ok = !!card.querySelector('[data-up]');
             card.style.display = ok ? 'flex' : 'none';
             if (ok) { anyCard = true; shown++; }
         });
@@ -1607,7 +1609,7 @@ function patchCard(clientId, c) {
     // Số ảnh hoặc yêu cầu in đổi -> cấu trúc thẻ khác, phải vẽ đầy đủ
     const shownLinks = card.querySelectorAll('.link-manager .link-row').length;
     const realLinks = c.links ? Object.keys(c.links).length : 0;
-    const shownUploads = card.querySelectorAll('[onclick^="delClientUp"]').length;
+    const shownUploads = card.querySelectorAll('[data-up]').length;
     const realUploads = c.client_uploads ? Object.keys(c.client_uploads).length : 0;
     return (shownLinks !== realLinks || shownUploads !== realUploads);
 }
@@ -1739,6 +1741,8 @@ function load() {
                 if (client.client_uploads && dbPath === 'data/') {
                     Object.keys(client.client_uploads).forEach(uId => {
                         const up = client.client_uploads[uId];
+                        // Ảnh ghép frame: một dòng gọn, bấm xem bản khách / bản tiệm chỉnh (frame-nv.js)
+                        if (up && up.kind === 'frame' && typeof nvHang === 'function') { clientUploadsHtml += nvHang(client.id, uId, up); return; }
                         // Ảnh cũ nằm trên imgbb (links), ảnh mới nằm trên Drive (drive)
                         const upLinks = Array.isArray(up.links) ? up.links : [];
                         const upDrive = Array.isArray(up.drive) ? up.drive : [];
@@ -1752,7 +1756,7 @@ function load() {
                             imgLinks += `<a href="https://drive.google.com/file/d/${escapeHTML(d.id)}/view" target="_blank" rel="noopener" style="color:#111; font-size:12px; font-weight:600; text-decoration:underline; margin-right:12px; display:inline-block; margin-top:5px;">Ảnh gốc ${upLinks.length + i + 1}</a>`;
                         });
                         clientUploadsHtml += `
-                            <div style="background:#fafafa; border:1px dashed #d4d4d8; padding:12px 15px; border-radius:10px; margin-bottom:12px;">
+                            <div data-up="${escapeHTML(uId)}" style="background:#fafafa; border:1px dashed #d4d4d8; padding:12px 15px; border-radius:10px; margin-bottom:12px;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:10px;">
                                     <span style="font-size:12px; font-weight:700; color:#111; display:flex; align-items:center; gap:6px; text-transform:uppercase;">
                                         <svg class="icon-sm" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
@@ -1762,7 +1766,6 @@ function load() {
                                     <div style="display:flex; gap:8px;">
                                         ${up.folder ? `<a href="${escapeHTML(up.folder)}" target="_blank" rel="noopener" class="up-btn ghost">MỞ THƯ MỤC</a>` : ''}
                                         <button onclick="downloadAllUploads('${client.id}', '${uId}', this)" class="up-btn solid">TẢI TẤT CẢ (${upCount})</button>
-                                        <button onclick="delClientUp('${client.id}', '${uId}')" class="up-btn danger">Hoàn tất (Xóa)</button>
                                     </div>
                                 </div>
                                 <div style="display:flex; flex-wrap:wrap;">${imgLinks}</div>
@@ -2633,18 +2636,6 @@ function load() {
             } else {
                 Toast.fire({ icon: 'success', title: `Đã tải ${ok} ảnh` });
             }
-        }
-
-        function delClientUp(cId, uId) {
-            // Đánh dấu in xong là việc hằng ngày của nhân viên, không phải việc quản trị.
-            // Trước đây chặn admin rồi thoát im lặng: nhân viên bấm không thấy gì xảy ra.
-            if (userRole === 'viewer') return Toast.fire({ icon: 'error', title: 'Tài khoản chỉ xem thu nhập' });
-            Swal.fire({ title: 'Xóa yêu cầu in?', showCancelButton: true, confirmButtonText: 'Xóa', cancelButtonText: '<span style="color:#111">Hủy</span>', confirmButtonColor: '#111' }).then(r => {
-                if(r.isConfirmed) {
-                    db.ref(dbPath + br + '/' + cId + '/client_uploads/' + uId).remove();
-                    Toast.fire({ icon: 'success', title: 'Đã xóa yêu cầu in' });
-                }
-            });
         }
 
         function softDeleteCustomer(clientId, clientName) { 

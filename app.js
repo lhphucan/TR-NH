@@ -962,7 +962,8 @@ async function openAlbum(url, branch, clientId) {
 
     try {
         const d = await gsCall({ action: 'album', folder: fid });
-        _alb = d.images || [];
+        // Ảnh khách gửi kèm lúc ghép frame (KHACH_...) chỉ để tiệm chỉnh lại, không hiện
+        _alb = (d.images || []).filter(x => !laAnhKhach(x.name));
     } catch (e) {
         // Không đọc được thì vẫn cho khách vào Drive, đừng để khách tay trắng
         document.getElementById('alb-count').innerText = 'Chưa mở được';
