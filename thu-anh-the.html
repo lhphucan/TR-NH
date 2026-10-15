@@ -69,7 +69,7 @@ details summary { font-size: 14px; font-weight: 700; cursor: pointer; margin-bot
 .tren-dinh { display: contents; }
 #mac-dinh { padding: 7px 12px; margin-top: 2px; }
 /* Cọ xoá viền: bôi trên ảnh thẻ */
-#khung canvas.boi { touch-action: none; cursor: crosshair; outline: 2px dashed #e0245e; outline-offset: 2px; }
+#khung canvas.boi { touch-action: none; cursor: crosshair; outline: 2px dashed #111; outline-offset: 2px; }
 .chip:disabled { opacity: .35; cursor: default; }
 /* vòng cọ theo ngón tay + kính lúp góc ảnh (ngón tay che chỗ đang sửa) */
 #vong { position: absolute; z-index: 3; pointer-events: none; display: none; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.55); }
@@ -943,7 +943,7 @@ function veVien() {
     v._css = v.neo.map(css);
     const dd = v._cssDuong.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join('');
     sv.innerHTML = `<path d="${dd}" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="4"/><path d="${dd}" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="6 4"/>`
-        + v._css.map(([a, b], i) => `<circle cx="${a.toFixed(1)}" cy="${b.toFixed(1)}" r="${i === v.dang ? 13 : 10}" fill="${i === v.dang ? '#e0245e' : '#fff'}" stroke="#111" stroke-width="2"/>`).join('');
+        + v._css.map(([a, b], i) => `<circle cx="${a.toFixed(1)}" cy="${b.toFixed(1)}" r="${i === v.dang ? 13 : 10}" fill="${i === v.dang ? '#111' : '#fff'}" stroke="#111" stroke-width="2"/>`).join('');
     sv.style.display = 'block';
 }
 // Thả chấm: lưu đường mới (hoàn tác được), làm lại ảnh

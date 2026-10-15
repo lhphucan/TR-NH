@@ -642,7 +642,7 @@ async function faDelete(id) {
     if (!id) return;
     const f = FA_LIST[id] || (FA && FA.id === id ? FA : null);
     const r = await Swal.fire({ title: 'Xoá frame?', text: `"${f ? f.name : ''}" sẽ mất hẳn. Muốn tạm cất thì chọn Ẩn thay vì xoá.`, icon: 'warning',
-                                showCancelButton: true, confirmButtonText: 'Xoá', cancelButtonText: '<span style="color:#111">Huỷ</span>', confirmButtonColor: '#dc2626', cancelButtonColor: '#fff' });
+                                showCancelButton: true, confirmButtonText: 'Xoá', cancelButtonText: '<span style="color:#111">Huỷ</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff' });
     if (!r.isConfirmed) return;
     try {
         if (FA_LIST[id]) await db.ref('frames/' + id).remove();
@@ -900,7 +900,7 @@ async function ftDelete() {
     const dung = Object.values(FA_LIST || {}).filter(f => f.filter === FT.id).map(f => f.name);
     const r = await Swal.fire({ title: `Xoá bộ lọc "${FT.name}"?`, icon: 'warning',
         text: dung.length ? `Đang dùng ở: ${dung.join(', ')}. Các frame này sẽ về màu gốc.` : 'Không frame nào đang dùng bộ lọc này.',
-        showCancelButton: true, confirmButtonText: 'Xoá', cancelButtonText: '<span style="color:#111">Huỷ</span>', confirmButtonColor: '#dc2626', cancelButtonColor: '#fff' });
+        showCancelButton: true, confirmButtonText: 'Xoá', cancelButtonText: '<span style="color:#111">Huỷ</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff' });
     if (!r.isConfirmed) return;
     try {
         await db.ref('config/filters/' + FT.id).remove();

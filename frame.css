@@ -16,7 +16,7 @@
 .fr-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .fr-btn { padding: 10px 14px; border-radius: 10px; border: 1px solid #e5e5e5; background: #fff; font: 600 12px 'Inter', sans-serif; cursor: pointer; color: #111; white-space: nowrap; }
 .fr-btn.solid { background: #111; color: #fff; border-color: #111; }
-.fr-btn.danger { color: #dc2626; border-color: #fecaca; }
+.fr-btn.danger { color: #ef4444; border-color: #e5e5e5; }
 .fr-btn:disabled { opacity: .45; cursor: not-allowed; }
 .fr-big { width: 100%; padding: 15px; font-size: 13px; text-transform: uppercase; letter-spacing: .3px; }
 .fr-hint { font-size: 12px; color: #666; line-height: 1.6; margin: 8px 0 0; }
@@ -54,8 +54,8 @@
 .fr-fitem b { display: block; font-size: 12px; margin-top: 6px; }
 .fr-fitem span.fr-meta { display: block; font-size: 11px; color: #666; }
 .fr-fitem.off { opacity: .5; }
-.fr-fdel { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid #fecaca; background: #fff;
-           color: #dc2626; font: 700 16px 'Inter', sans-serif; cursor: pointer; line-height: 1; }
+.fr-fdel { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid #e5e5e5; background: #fff;
+           color: #ef4444; font: 700 16px 'Inter', sans-serif; cursor: pointer; line-height: 1; }
 
 /* Khung làm việc: chặn cuộn trang khi kéo trên khung */
 .fr-stage { position: relative; width: 100%; touch-action: none; user-select: none; -webkit-user-select: none;
@@ -63,19 +63,19 @@
 .fr-stage img.fr-frame { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 
 /* Ô bên quản lý: ảnh giả (để thấy frame nằm trên hay dưới ảnh), frame, khung điều khiển */
-.fr-efill { position: absolute; background: repeating-linear-gradient(45deg, #94a3b8 0 14px, #cbd5e1 14px 28px); }
-.fr-eslot { position: absolute; border: 2px dashed #2563eb; cursor: move; --hs: 16px; box-sizing: border-box; }
+.fr-efill { position: absolute; background: repeating-linear-gradient(45deg, #a1a1aa 0 14px, #d4d4d8 14px 28px); }
+.fr-eslot { position: absolute; border: 2px dashed #18181b; cursor: move; --hs: 16px; box-sizing: border-box; }
 /* Ô đang chọn nổi lên trên: ô to ra chạm ô bên cạnh thì chấm kéo không bị che */
 .fr-eslot.sel { border-style: solid; z-index: 2; }
-.fr-eslot .fr-num { position: absolute; left: 4px; top: 4px; background: #2563eb; color: #fff; font: 700 11px 'Inter', sans-serif; padding: 2px 6px; border-radius: 6px; }
+.fr-eslot .fr-num { position: absolute; left: 4px; top: 4px; background: #18181b; color: #fff; font: 700 11px 'Inter', sans-serif; padding: 2px 6px; border-radius: 6px; }
 /* Chấm kéo như Canva: 4 góc đổi cả hai chiều, 4 cạnh chỉ đổi một chiều */
-.fr-h { position: absolute; width: var(--hs); height: var(--hs); background: #fff; border: 2px solid #2563eb; border-radius: 50%;
+.fr-h { position: absolute; width: var(--hs); height: var(--hs); background: #fff; border: 2px solid #18181b; border-radius: 50%;
         margin: calc(var(--hs) / -2) 0 0 calc(var(--hs) / -2); touch-action: none; box-sizing: border-box; }
 .fr-h.side { border-radius: 4px; }
 .fr-h.n, .fr-h.s { width: calc(var(--hs) * 1.6); margin-left: calc(var(--hs) * -0.8); }
 .fr-h.e, .fr-h.w { height: calc(var(--hs) * 1.6); margin-top: calc(var(--hs) * -0.8); }
-.fr-h.rt { cursor: grab; background: #2563eb; }
-.fr-h.rt::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 2px; height: 14px; margin-left: -1px; background: #2563eb; }
+.fr-h.rt { cursor: grab; background: #18181b; }
+.fr-h.rt::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 2px; height: 14px; margin-left: -1px; background: #18181b; }
 
 /* Ô bên khách: không viền, ô trống có nền xám và dấu cộng */
 .fr-cslot { position: absolute; overflow: hidden; background: #e5e5e5; box-sizing: border-box; }
@@ -135,7 +135,7 @@
 .fa-lthumb { width: 46px; height: 34px; border-radius: 6px; flex: none; overflow: hidden; display: flex; align-items: center; justify-content: center;
              background: repeating-conic-gradient(#e5e5e5 0 25%, #fff 0 50%) 0 0 / 10px 10px; }
 .fa-lthumb img { width: 100%; height: 100%; object-fit: contain; }
-.fa-lthumb.ph { background: repeating-linear-gradient(45deg, #94a3b8 0 6px, #cbd5e1 6px 12px); }
+.fa-lthumb.ph { background: repeating-linear-gradient(45deg, #a1a1aa 0 6px, #d4d4d8 6px 12px); }
 .fa-lname { flex: 1; min-width: 60px; font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fa-layers input.fa-lop { width: 90px; flex: none; accent-color: #111; }
 .fa-lpct { font-size: 11px; color: #666; width: 34px; text-align: right; }

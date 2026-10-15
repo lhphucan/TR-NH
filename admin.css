@@ -486,8 +486,12 @@ button, .btn, label[for] { touch-action: manipulation; }
 .vx-tom { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 12px 18px; border-bottom: 1px solid #f0f0f0; }
 .vx-chip { font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid #e4e4e7; color: #3f3f46; }
 .vx-an { margin-left: auto; font-size: 12px; color: #52525b; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.vx-an input { accent-color: #18181b; width: 14px; height: 14px; margin: 0; cursor: pointer; }
 .vx-ds { flex: 1; min-height: 0; overflow-y: auto; }
 .vx-dong { display: grid; grid-template-columns: 1.3fr 1.3fr 1.6fr 120px; gap: 12px; align-items: center; padding: 10px 18px; border-bottom: 1px solid #f4f4f5; font-size: 12px; }
 .vx-dong > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .vx-dong small { color: #71717a; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 700px) { .vx-dong { grid-template-columns: 1fr 1fr; } }
+
+/* Ô tick, thanh kéo: màu của trang thay cho xanh mặc định của trình duyệt */
+input[type=checkbox], input[type=radio], input[type=range] { accent-color: #18181b; }
