@@ -1131,7 +1131,7 @@ function viecToiLuot(v) {
 }
 function viecDongHong(ten, v, nut) {
     return `<div class="le-row" style="margin-top:8px; font-size:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-        <span style="font-weight:600;">${ten}: <span style="color:#b91c1c;">lỗi – ${escapeHTML(v.loi || 'không rõ')}</span></span>
+        <span style="font-weight:600;">${ten}: <span style="color:#ef4444;">lỗi – ${escapeHTML(v.loi || 'không rõ')}</span></span>
         <button type="button" class="up-btn ghost" onclick="${nut}">THỬ LẠI</button>
     </div>`;
 }

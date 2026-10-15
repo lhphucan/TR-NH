@@ -582,7 +582,7 @@ async function nvVeO() {
 async function nvDong() {
     if (NV && NV.ky !== nvKy()) {
         const r = await Swal.fire({ title: 'Chưa lưu bản chỉnh', text: 'Đóng thì mất các chỗ vừa sửa.', icon: 'warning', showCancelButton: true,
-                                    confirmButtonText: 'Bỏ, đóng lại', cancelButtonText: '<span style="color:#111">Chỉnh tiếp</span>', confirmButtonColor: '#b91c1c', cancelButtonColor: '#fff' });
+                                    confirmButtonText: 'Bỏ, đóng lại', cancelButtonText: '<span style="color:#111">Chỉnh tiếp</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff' });
         if (!r.isConfirmed) return;
     }
     NV = null;
@@ -643,12 +643,12 @@ let VIEC_DS = [], VIEC_AN_XONG = true;
 
 function viecTrangThai(v, gui) {
     const now = Date.now();
-    if (v.xong) return { k: 5, mau: '#16a34a', chu: 'Xong' + (v.xongAt || v.at ? ' ' + nvGio(v.xongAt || v.at) : '') + (v.daThu ? ` · sau ${v.daThu} lần lỗi` : '') };
-    if (v.hong) return { k: 0, mau: '#b91c1c', chu: `Hỏng hẳn (${v.thu || 0} lần)` };
-    if (v.dang && now - (v.dang.at || 0) < 120000) return { k: 3, mau: '#2563eb', chu: 'Đang làm' };
-    if (v.thu) return { k: 1, mau: '#b45309', chu: `Thử lại lần ${v.thu + 1}` + (v.sau ? ' lúc ' + nvGio(v.sau) : '') };
-    if (gui && now - gui > VIEC_CHO_LAU) return { k: 2, mau: '#b45309', chu: 'Chờ lâu – chưa máy quán nào nhận' };
-    return { k: 4, mau: '#52525b', chu: 'Đang chờ' };
+    if (v.xong) return { k: 5, mau: '#a1a1aa', chu: 'Xong' + (v.xongAt || v.at ? ' ' + nvGio(v.xongAt || v.at) : '') + (v.daThu ? ` · sau ${v.daThu} lần lỗi` : '') };
+    if (v.hong) return { k: 0, mau: '#ef4444', chu: `Hỏng hẳn (${v.thu || 0} lần)` };
+    if (v.dang && now - (v.dang.at || 0) < 120000) return { k: 3, mau: '#52525b', chu: 'Đang làm' };
+    if (v.thu) return { k: 1, mau: '#18181b', chu: `Thử lại lần ${v.thu + 1}` + (v.sau ? ' lúc ' + nvGio(v.sau) : '') };
+    if (gui && now - gui > VIEC_CHO_LAU) return { k: 2, mau: '#18181b', chu: 'Chờ lâu – chưa máy quán nào nhận' };
+    return { k: 4, mau: '#71717a', chu: 'Đang chờ' };
 }
 
 // Cơ sở được xem: admin mọi cơ sở, nhân viên cơ sở của mình
@@ -689,8 +689,7 @@ async function viecMo() {
             </div>
         </div>`);
     }
-    document.getElementById('vx-phu').innerText = `Ảnh lẻ màu frame và bản in 100% · ${VIEC_NGAY} ngày gần nhất · `
-        + (userRole === 'admin' ? 'mọi cơ sở' : ((branchesCache[br] || {}).name || br));
+    document.getElementById('vx-phu').innerText = (userRole === 'admin' ? 'Mọi cơ sở' : ((branchesCache[br] || {}).name || br)) + ` · ${VIEC_NGAY} ngày gần nhất`;
     document.getElementById('vx').style.display = 'flex';
     document.body.style.overflow = 'hidden';
     await viecMoLai();
@@ -706,8 +705,8 @@ function viecVe() {
     const dem = [0, 0, 0, 0, 0, 0];
     VIEC_DS.forEach(x => dem[x.st.k]++);
     const chip = (n, chu, mau) => n ? `<span class="vx-chip" style="color:${mau};"><b>${n}</b> ${chu}</span>` : '';
-    document.getElementById('vx-tom').innerHTML = (chip(dem[0], 'hỏng hẳn', '#b91c1c') + chip(dem[1], 'đang thử lại', '#b45309') + chip(dem[2], 'chờ lâu', '#b45309')
-        + chip(dem[3], 'đang làm', '#2563eb') + chip(dem[4], 'đang chờ', '#52525b') + chip(dem[5], 'xong', '#16a34a') || '<span class="vx-chip">Không có việc nào</span>')
+    document.getElementById('vx-tom').innerHTML = (chip(dem[0], 'hỏng hẳn', '#ef4444') + chip(dem[1], 'đang thử lại', '#18181b') + chip(dem[2], 'chờ lâu', '#18181b')
+        + chip(dem[3], 'đang làm', '#52525b') + chip(dem[4], 'đang chờ', '#52525b') + chip(dem[5], 'xong', '#a1a1aa') || '<span class="vx-chip">Không có việc nào</span>')
         + `<label class="vx-an"><input type="checkbox" ${VIEC_AN_XONG ? 'checked' : ''} onchange="VIEC_AN_XONG = this.checked; viecVe()"> Ẩn việc đã xong</label>`;
     const nhieuCoSo = userRole === 'admin';
     const ds = VIEC_DS.filter(x => !(VIEC_AN_XONG && x.st.k === 5));
