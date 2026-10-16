@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Tách nền người cho Ảnh 3D (MediaPipe, chạy trên máy) -->
   <script src="./mediapipe/selfie_segmentation.js"></script>
-  <script type="module" crossorigin src="./assets/index-CJC0wibC.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-CRaqG2uA.css">
+  <script type="module" crossorigin src="./assets/index-olMoEd4w.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DP0rS3o5.css">
 </head>
 <body>
   <!-- ===== THANH TRÊN (cùng kiểu .admin-header của trang Quản lý PHOTONOIR) ===== -->
@@ -23,6 +23,7 @@
     <div class="admin-menu">
       <span class="chip" title="Phần mềm in chạy trên máy tính nối máy in">
         <span class="dot" id="agentDot"></span> Phần mềm in: <b id="agentStatus">đang kiểm tra…</b>
+        <a id="agentDownload" class="chip-link hidden" href="#">Tải phần mềm in</a>
       </span>
       <span id="userLabel" class="user-label"></span>
       <button type="button" id="accuracyModalBtn" class="menu-btn admin-only" title="Báo cáo kiểm tra thuật toán ghép ảnh">
@@ -539,6 +540,6 @@
       </div>
     </div>
   </div>
-
+
 </body>
 </html>
