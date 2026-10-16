@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Tách nền người cho Ảnh 3D (MediaPipe, chạy trên máy) -->
   <script src="./mediapipe/selfie_segmentation.js"></script>
-  <script type="module" crossorigin src="./assets/index-D3YPDxCW.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DMIV9zq_.css">
+  <script type="module" crossorigin src="./assets/index-BGbe_jGS.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CYUcEFty.css">
 </head>
 <body>
   <!-- ===== THANH TRÊN (cùng kiểu .admin-header của trang Quản lý PHOTONOIR) ===== -->
@@ -157,12 +157,8 @@
               <button type="button" id="videoSelectAllBtn" class="mini-pill" style="margin-left:auto;">Cả video</button>
             </div>
             <div class="mini-label" style="margin-top:8px;">Số khung hình</div>
-            <div class="row-gap">
-              <button type="button" class="mini-pill video-frame-btn" data-frames="3">3</button>
-              <button type="button" class="mini-pill video-frame-btn active" data-frames="6">6 (khuyên dùng)</button>
-              <button type="button" class="mini-pill video-frame-btn" data-frames="9">9</button>
-            </div>
-            <div class="note">Mỗi rãnh lens có 18 chấm in: 6 khung = đúng 3 chấm/khung, nét nhất. Ít khung = cử động giật nhưng rõ; nhiều khung = mượt nhưng mờ.</div>
+            <div class="row-gap" id="videoFrameCountGroup"></div>
+            <div class="note" id="videoFrameNote"></div>
             <button type="button" id="applyVideoTrimBtn" class="btn-primary btn-block" style="margin-top:8px;">Lấy khung hình</button>
           </div>
 
@@ -235,11 +231,15 @@
               <button type="button" class="mini-pill parallax-level-btn" data-level="pronounced">Mạnh</button>
             </div>
 
-            <div class="mini-label">Số góc nhìn <span class="muted">(nhiều hơn = mượt hơn)</span></div>
-            <div class="mode-pills three" id="parallaxViewsCountGroup">
-              <button type="button" class="mini-pill parallax-views-btn" data-views="9">9</button>
-              <button type="button" class="mini-pill parallax-views-btn active" data-views="18">18 (khuyên dùng)</button>
+            <div class="mini-label">Chỗ nét nhất</div>
+            <div class="mode-pills" id="keyPlaneGroup">
+              <button type="button" class="mini-pill keyplane-btn active" data-keyplane="subject">Mặt người (khuyên dùng)</button>
+              <button type="button" class="mini-pill keyplane-btn" data-keyplane="popout">Người nổi ra ngoài</button>
             </div>
+            <div class="note">Phần nằm đúng mặt lens là phần nét nhất. Đặt mặt người ở đó (chuẩn của các xưởng in lens), nền lùi vào trong. "Nổi ra ngoài" ấn tượng hơn nhưng mặt mềm hơn.</div>
+
+            <div class="mini-label">Số góc nhìn <span class="muted">(theo số chấm của 1 rãnh lens)</span></div>
+            <div class="mode-pills three" id="parallaxViewsCountGroup"></div>
 
             <div class="row-between mini-label"><span>Tinh chỉnh độ nổi</span><span id="parallaxScaleVal" class="strong">100%</span></div>
             <input id="parallaxScaleSlider" type="range" min="60" max="140" step="5" value="100">
@@ -255,6 +255,7 @@
             <button type="button" id="reverseFramesBtn" class="mini-pill" title="Đảo thứ tự ảnh">⇄ Đảo thứ tự</button>
           </div>
           <div id="frameStrip" class="frame-strip"></div>
+          <div id="ghostTip" class="ghost-tip hidden"></div>
 
           <!-- Căn chỉnh (thu gọn) -->
           <details id="frameAlignCard" class="fold">
@@ -355,7 +356,9 @@
               <ol class="guide">
                 <li>Loại giấy: đúng loại đang dùng (ví dụ <b>Epson Premium Semigloss</b>). Chất lượng: <b>High</b>.</li>
                 <li>In tràn viền (Borderless): <b>tắt</b>. Phần mềm in cũng tự tắt.</li>
-                <li>More Options → <b>bỏ tích "High Speed"</b> để đầu phun in một chiều, sọc thẳng hơn.</li>
+                <li>More Options → <b>bỏ tích "High Speed"</b> (đầu phun in một chiều) và <b>bỏ tích "Edge Smoothing"</b>: cả hai làm sọc nhoè.</li>
+                <li>Mỗi khi nghi sọc lệch: Maintenance → <b>Nozzle Check</b> rồi <b>Print Head Alignment</b>.</li>
+                <li><b>Đo lens lại</b> khi đổi lô lens, đổi loại giấy hoặc đổi chất lượng in (giá trị LPI chỉ đúng cho đúng bộ đó).</li>
                 <li>More Options → Chỉnh màu: <b>Epson Standard (sRGB)</b>, <b>tắt PhotoEnhance</b> (driver tự chỉnh màu sẽ phá phần bù màu của app).</li>
               </ol>
             </div>
