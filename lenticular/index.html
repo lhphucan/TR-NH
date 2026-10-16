@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Tách nền người cho Ảnh 3D (MediaPipe, chạy trên máy) -->
   <script src="./mediapipe/selfie_segmentation.js"></script>
-  <script type="module" crossorigin src="./assets/index-BGbe_jGS.js"></script>
+  <script type="module" crossorigin src="./assets/index-tGd2aKFJ.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-CYUcEFty.css">
 </head>
 <body>
@@ -503,6 +503,23 @@
               <button id="bandCalcBtn" type="button" class="btn-secondary">Tính</button>
             </div>
             <div id="bandCalcResult" class="strong small" style="margin-top:6px;"></div>
+          </div>
+
+          <div class="guide-box">
+            <div class="guide-title">Đo bóng ma của ảnh lật <span class="muted">(làm sau khi đã có LPI)</span></div>
+            <ol class="guide">
+              <li>Bấm <b>In tờ đo bóng ma</b> (dùng đúng giấy, lens, LPI đang dùng). Dán lens theo dải canh như ảnh thật.</li>
+              <li>Nghiêng tới khi <b>Ô A</b> tối nhất. Ô A không đen hẳn mà xám: đó là bóng ma của ảnh kia.</li>
+              <li>So Ô A với <b>thang so sánh</b> bên dưới (thang không đổi khi nghiêng). Ô thang giống nhất là mức lẫn. Nghiêng ngược lại, làm tương tự với Ô B, lấy số lớn hơn.</li>
+              <li>Chọn số đó rồi bấm <b>Dùng số này</b>. Từ đó ảnh lật được trừ trước bóng ma. Chọn 0 để tắt.</li>
+            </ol>
+            <div class="row-gap wrap small" style="margin-top:8px;">
+              <button id="printGhostTestBtn" type="button" class="btn-secondary">In tờ đo bóng ma</button>
+              <span>Mức lẫn đọc được</span>
+              <select id="ghostLevelSelect" class="form-select input-sm"></select>
+              <button id="applyGhostBtn" type="button" class="btn-primary">Dùng số này</button>
+            </div>
+            <div id="ghostCurrent" class="small muted" style="margin-top:6px;"></div>
           </div>
 
           <div class="note">Ảnh xem trên màn hình có vùng loang sáng tối giả (do màn hình thu nhỏ sọc). Chỉ đánh giá trên giấy có đặt lens.</div>
