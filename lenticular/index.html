@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Tách nền người cho Ảnh 3D (MediaPipe, chạy trên máy) -->
   <script src="./mediapipe/selfie_segmentation.js"></script>
-  <script type="module" crossorigin src="./assets/index-CZa27Oxi.js"></script>
+  <script type="module" crossorigin src="./assets/index-4Uu9IGaU.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-B_Bt9fjb.css">
 </head>
 <body>
@@ -72,13 +72,6 @@
 
           <div class="precision-control-panel">
             <div class="panel-row-controls">
-              <div id="transitionModeWrap">
-                <div class="mini-label">Kiểu chuyển ảnh</div>
-                <div class="segmented-control" id="transitionModeControl">
-                  <button type="button" class="segment-btn active" data-transition="crisp" title="Đổi hẳn sang ảnh kia ở một góc nghiêng">Dứt khoát</button>
-                  <button type="button" class="segment-btn" data-transition="blend" title="Chuyển từ từ qua các bước trung gian">Chuyển mượt</button>
-                </div>
-              </div>
               <div class="row-gap">
                 <button id="autoWiggleBtn" class="btn-secondary" type="button" title="Tự nghiêng qua lại để xem">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
@@ -245,6 +238,15 @@
           </div>
           <div id="frameStrip" class="frame-strip"></div>
           <div id="ghostTip" class="ghost-tip hidden"></div>
+
+          <div id="transitionModeWrap" style="margin-top:10px;">
+            <div class="mini-label">Kiểu đổi ảnh <span class="muted">(ảnh hưởng bản in)</span></div>
+            <div class="segmented-control" id="transitionModeControl">
+                  <button type="button" class="segment-btn active" data-transition="crisp" title="Đổi hẳn sang ảnh kia ở một góc nghiêng">Dứt khoát</button>
+                  <button type="button" class="segment-btn" data-transition="blend" title="Chuyển từ từ qua các bước trung gian">Chuyển mượt</button>
+                </div>
+            <div class="note"><b>Dứt khoát</b>: nghiêng là đổi hẳn, mỗi ảnh nét nhất – dùng cho hầu hết ảnh. <b>Chuyển mượt</b>: chèn ảnh trộn ở giữa, đổi dần, đỡ lộ bóng ma khi 2 ảnh chênh sáng–tối mạnh, nhưng mỗi ảnh kém nét hơn một chút.</div>
+          </div>
 
           <!-- Căn chỉnh (thu gọn) -->
           <details id="frameAlignCard" class="fold">
