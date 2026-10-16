@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Tách nền người cho Ảnh 3D (MediaPipe, chạy trên máy) -->
   <script src="./mediapipe/selfie_segmentation.js"></script>
-  <script type="module" crossorigin src="./assets/index-olMoEd4w.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DP0rS3o5.css">
+  <script type="module" crossorigin src="./assets/index-Dh1rswh4.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DMIV9zq_.css">
 </head>
 <body>
   <!-- ===== THANH TRÊN (cùng kiểu .admin-header của trang Quản lý PHOTONOIR) ===== -->
@@ -158,10 +158,11 @@
             </div>
             <div class="mini-label" style="margin-top:8px;">Số khung hình</div>
             <div class="row-gap">
-              <button type="button" class="mini-pill video-frame-btn" data-frames="6">6</button>
-              <button type="button" class="mini-pill video-frame-btn active" data-frames="8">8 (khuyên dùng)</button>
-              <button type="button" class="mini-pill video-frame-btn" data-frames="12">12</button>
+              <button type="button" class="mini-pill video-frame-btn" data-frames="3">3</button>
+              <button type="button" class="mini-pill video-frame-btn active" data-frames="6">6 (khuyên dùng)</button>
+              <button type="button" class="mini-pill video-frame-btn" data-frames="9">9</button>
             </div>
+            <div class="note">Mỗi rãnh lens có 18 chấm in: 6 khung = đúng 3 chấm/khung, nét nhất. Ít khung = cử động giật nhưng rõ; nhiều khung = mượt nhưng mờ.</div>
             <button type="button" id="applyVideoTrimBtn" class="btn-primary btn-block" style="margin-top:8px;">Lấy khung hình</button>
           </div>
 
@@ -288,11 +289,17 @@
 
           <div class="mini-label">Giấy đang để trong khay</div>
           <div id="paperPresetsGroup" class="choice-grid"></div>
-          <div id="customPaperWrap" class="two-col hidden" style="margin-top:8px;">
-            <label class="field"><span>Rộng (cạnh vào máy trước), mm</span>
-              <input id="customPaperW" type="number" class="form-input" value="101.6" step="0.1" min="89" max="215.9"></label>
-            <label class="field"><span>Dài, mm (≥ 127)</span>
-              <input id="customPaperH" type="number" class="form-input" value="152.4" step="0.1" min="127"></label>
+          <div id="customPaperWrap" class="sub-panel hidden" style="margin-top:8px;">
+            <div class="two-col">
+              <label class="field"><span>Rộng (cạnh vào máy trước), mm</span>
+                <input id="customPaperW" type="number" class="form-input" value="101.6" step="0.1" min="89" max="215.9"></label>
+              <label class="field"><span>Dài, mm (≥ 127)</span>
+                <input id="customPaperH" type="number" class="form-input" value="152.4" step="0.1" min="127"></label>
+            </div>
+            <div class="row-gap" style="margin-top:8px;">
+              <button type="button" id="savePaperBtn" class="btn-primary">Lưu khổ giấy</button>
+              <button type="button" id="cancelPaperBtn" class="mini-pill">Huỷ</button>
+            </div>
           </div>
 
           <div class="row-between" style="margin-top:14px;">
@@ -302,7 +309,15 @@
               <button type="button" class="mini-pill" data-page-orient="landscape">Ngang</button>
             </div>
           </div>
-          <div id="sizePresetsGroup" class="choice-grid" style="margin-top:6px;"></div>
+          <div class="size-slider">
+            <div class="row-between">
+              <strong id="artSizeLabel" class="size-value">—</strong>
+              <button type="button" id="artSizeMaxBtn" class="mini-pill">Lớn nhất</button>
+            </div>
+            <input id="artSizeSlider" type="range" min="50" max="150" step="1" value="150">
+            <div class="row-between small muted"><span id="artSizeMin">5 cm</span><span id="artSizeMax">15 cm</span></div>
+            <button type="button" id="customSizeToggle" class="link-btn small">Nhập số chính xác (cắt theo khổ thẻ)…</button>
+          </div>
           <div id="customSizeWrap" class="hidden" style="margin-top:8px;">
             <div class="two-col">
               <label class="field"><span>Rộng, cm</span><input id="customWidthInput" type="number" class="form-input" value="10" step="0.1"></label>
@@ -350,11 +365,11 @@
               <button type="button" class="segment-btn active" data-orientation="vertical">Lật trái–phải (rãnh dọc · 3D)</button>
               <button type="button" class="segment-btn" data-orientation="horizontal">Lật lên–xuống (rãnh ngang)</button>
             </div>
-            <div class="note">App tự xoay ảnh để sọc luôn chạy theo chiều giấy vào máy (chiều in chính xác nhất, cũng là chiều "Đo lens" đã đo).</div>
+            <div class="note">Nhớ riêng cho từng hiệu ứng. <b>Lật ảnh / chuyển động: nên lên–xuống</b> (hai mắt thấy cùng một khung, không bóng mờ). <b>Ảnh 3D: luôn trái–phải</b> (mỗi mắt một khung mới ra chiều sâu). App tự xoay ảnh để sọc luôn chạy theo chiều giấy vào máy.</div>
 
             <label class="field" style="margin-top:10px;"><span>Bù màu cho lens (chỉ khi in)</span>
               <select id="lensCompSelect" class="form-select"></select></label>
-            <div class="note">Lens làm ảnh tối và nhạt màu. Mặc định tăng màu 12%, giữ nguyên trắng và đen.</div>
+            <div class="note">Lens làm ảnh tối và nhạt màu. <b>Tự động</b>: ảnh tối được nâng sáng, ảnh sáng giữ nguyên hoặc hạ nhẹ vùng giữa cho chi tiết nhạt (cánh hoa, mây) tách khỏi nền. Vùng sáng luôn giữ nguyên, không bị đẩy trắng.</div>
 
             <label class="row-gap small" style="margin-top:10px; cursor:pointer;">
               <input type="checkbox" id="alignmentMarksCheck" checked>
