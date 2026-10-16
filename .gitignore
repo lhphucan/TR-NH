@@ -23,3 +23,6 @@
 !database.rules.json
 !firebase.json
 !.firebaserc
+!lenticular/
+!lenticular/**
+lenticular/**/*.map

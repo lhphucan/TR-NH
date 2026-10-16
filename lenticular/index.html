@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>In ảnh Lens · PHOTONOIR</title>
+  <meta name="description" content="Tạo và in ảnh lenticular (lật ảnh, 3D, chuyển động) đúng 1:1 trên Epson L8050">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tách nền người cho Ảnh 3D (MediaPipe, chạy trên máy) -->
+  <script src="./mediapipe/selfie_segmentation.js"></script>
+  <script type="module" crossorigin src="./assets/index-CJC0wibC.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CRaqG2uA.css">
+</head>
+<body>
+  <!-- ===== THANH TRÊN (cùng kiểu .admin-header của trang Quản lý PHOTONOIR) ===== -->
+  <header class="admin-header">
+    <h2>
+      IN ẢNH LENS
+      <span id="roleBadge" class="role-badge"></span>
+    </h2>
+    <div class="admin-menu">
+      <span class="chip" title="Phần mềm in chạy trên máy tính nối máy in">
+        <span class="dot" id="agentDot"></span> Phần mềm in: <b id="agentStatus">đang kiểm tra…</b>
+      </span>
+      <span id="userLabel" class="user-label"></span>
+      <button type="button" id="accuracyModalBtn" class="menu-btn admin-only" title="Báo cáo kiểm tra thuật toán ghép ảnh">
+        <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Kiểm tra thuật toán
+      </button>
+      <a id="backToAdminLink" class="menu-btn-outline hidden" href="#">
+        <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg> Về Quản lý
+      </a>
+    </div>
+  </header>
+
+  <!-- Tab (cùng kiểu .tabs/.tab-btn của PHOTONOIR) -->
+  <nav class="tabs page-tabs">
+    <button id="tabStudioBtn" class="tab-btn active" type="button">Tạo &amp; In</button>
+    <button id="tabHistoryBtn" class="tab-btn" type="button">Lịch sử in</button>
+    <button id="tabPitchBtn" class="tab-btn admin-only" type="button">Đo lens</button>
+  </nav>
+
+  <!-- Không có quyền / chưa đăng nhập -->
+  <div id="accessGate" class="access-gate hidden">
+    <div class="gate-box">
+      <div class="gate-title">Cần đăng nhập</div>
+      <div id="accessGateText" class="gate-text">Hãy đăng nhập ở trang quản trị PHOTONOIR rồi mở lại trang này.</div>
+      <a id="accessGateLink" class="btn-primary" href="#">Mở trang quản trị</a>
+    </div>
+  </div>
+
+  <main class="main-content">
+    <!-- ================= TẠO & IN ================= -->
+    <section id="studioSection" class="studio-grid">
+
+      <!-- CỘT TRÁI: XEM TRƯỚC -->
+      <div class="card stage-card">
+        <div class="card-header">
+          <div class="card-title">Xem trước</div>
+          <div class="header-status-group">
+            <span id="angleReadoutBadge" class="tag">Góc nghiêng: 0.0°</span>
+            <span id="frameCountBadge" class="tag tag-dark">2 Khung hình</span>
+          </div>
+        </div>
+
+        <div class="card-body stage-body">
+          <div id="simulatorBox" class="stage-container" title="Kéo chuột hoặc vuốt để nghiêng thử">
+            <!-- simulator.ts vẽ vào đây -->
+          </div>
+
+          <div class="precision-control-panel">
+            <div class="panel-row-controls">
+              <div>
+                <div class="mini-label">Kiểu chuyển ảnh</div>
+                <div class="segmented-control" id="transitionModeControl">
+                  <button type="button" class="segment-btn active" data-transition="crisp" title="Đổi hẳn sang ảnh kia ở một góc nghiêng">Dứt khoát</button>
+                  <button type="button" class="segment-btn" data-transition="blend" title="Chuyển từ từ qua các bước trung gian">Chuyển mượt</button>
+                </div>
+              </div>
+              <div class="row-gap">
+                <button id="autoWiggleBtn" class="btn-secondary" type="button" title="Tự nghiêng qua lại để xem">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  <span>Tự nghiêng</span>
+                </button>
+                <button id="exportDemoGifBtn" class="btn-secondary" type="button" title="Xuất ảnh động GIF để gửi khách duyệt qua Zalo / Messenger">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"></rect><polyline points="8 21 12 17 16 21"></polyline></svg>
+                  <span>GIF gửi khách</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="micro-stepper-wrap">
+              <div class="step-buttons-group">
+                <button class="step-btn" id="stepMinus5Btn" title="Nghiêng -5°">-5°</button>
+                <button class="step-btn" id="stepMinus1Btn" title="Nghiêng -1°">-1°</button>
+              </div>
+              <div class="slider-track-wrap">
+                <input id="tiltSlider" type="range" min="-20" max="20" step="0.1" value="0" title="Kéo để nghiêng thử (-20° đến +20°)">
+                <div class="slider-scale-ticks"><span>-20°</span><span>-10°</span><span class="strong">0°</span><span>+10°</span><span>+20°</span></div>
+              </div>
+              <div class="step-buttons-group">
+                <button class="step-btn" id="stepPlus1Btn" title="Nghiêng +1°">+1°</button>
+                <button class="step-btn" id="stepPlus5Btn" title="Nghiêng +5°">+5°</button>
+                <button class="step-btn step-reset" id="stepResetBtn" title="Về 0°">0°</button>
+              </div>
+            </div>
+
+            <div class="optical-status-bar">
+              <span id="activeFrameText" class="status-indicator">Đang thấy: Ảnh 1</span>
+              <span id="microTransitionText" class="transition-status">Đang chuyển: 0%</span>
+            </div>
+            <div class="note">Xem trước chỉ để duyệt bố cục. Chất lượng thật xem trên bản in có đặt lens.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CỘT PHẢI: 4 BƯỚC -->
+      <div class="steps">
+
+        <!-- BƯỚC 1: HIỆU ỨNG -->
+        <div class="card step-card">
+          <div class="step-head"><span class="step-no">1</span><span class="step-title">Chọn hiệu ứng</span></div>
+          <div class="seg-tabs" id="effectModeGroup">
+            <button type="button" class="seg-tab active" data-mode="flip"><b>Lật ảnh</b><small>2–3 ảnh đổi qua lại</small></button>
+            <button type="button" class="seg-tab" data-mode="3d"><b>Ảnh 3D</b><small>1 ảnh chân dung, nổi khối</small></button>
+            <button type="button" class="seg-tab" data-mode="motion"><b>Chuyển động</b><small>Video hoặc GIF</small></button>
+          </div>
+        </div>
+
+        <!-- BƯỚC 2: ẢNH -->
+        <div class="card step-card">
+          <div class="step-head"><span class="step-no">2</span><span class="step-title">Nạp ảnh</span></div>
+
+          <input type="file" id="fileInput" accept="image/*,video/*,.gif" class="hidden">
+          <div id="dropzone" class="dropzone">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span id="dropzonePromptText">Kéo thả hoặc <strong>chọn ảnh</strong></span>
+          </div>
+
+          <!-- Cắt video (Chuyển động) -->
+          <div id="videoTrimCard" class="sub-panel hidden">
+            <div class="sub-head">
+              <strong>Cắt đoạn video</strong>
+              <span id="videoDurationLabel" class="muted">0.0s</span>
+            </div>
+            <div class="row-between muted small">
+              <span>Đoạn đã chọn:</span>
+              <span id="videoTrimRangeText" class="strong">0.0s → 3.0s</span>
+            </div>
+            <div class="row-gap" style="margin-top:6px;">
+              <label class="small muted">Từ</label>
+              <input id="videoStartInput" class="form-input input-xs" type="number" min="0" step="0.1" value="0"> <span class="small muted">s</span>
+              <label class="small muted" style="margin-left:6px;">Đến</label>
+              <input id="videoEndInput" class="form-input input-xs" type="number" min="0.1" step="0.1" value="3.0"> <span class="small muted">s</span>
+              <button type="button" id="videoSelectAllBtn" class="mini-pill" style="margin-left:auto;">Cả video</button>
+            </div>
+            <div class="mini-label" style="margin-top:8px;">Số khung hình</div>
+            <div class="row-gap">
+              <button type="button" class="mini-pill video-frame-btn" data-frames="6">6</button>
+              <button type="button" class="mini-pill video-frame-btn active" data-frames="8">8 (khuyên dùng)</button>
+              <button type="button" class="mini-pill video-frame-btn" data-frames="12">12</button>
+            </div>
+            <button type="button" id="applyVideoTrimBtn" class="btn-primary btn-block" style="margin-top:8px;">Lấy khung hình</button>
+          </div>
+
+          <!-- Ảnh 3D nhiều lớp -->
+          <div id="parallaxControlCard" class="sub-panel hidden">
+            <div class="sub-head"><strong>Ảnh 3D nhiều lớp</strong><span class="muted small">Người tự tách khỏi nền</span></div>
+            <div class="layer-grid">
+              <div class="layer-slot">
+                <div class="layer-name">Người (chính)</div>
+                <div id="subjectThumbBox" class="layer-thumb"><span>Chưa có ảnh</span></div>
+                <button type="button" id="uploadSubjectBtn" class="btn-primary btn-xs btn-block">Chọn ảnh người</button>
+                <input type="file" id="subjectFileInput" accept="image/*" class="hidden">
+              </div>
+              <div class="layer-slot">
+                <div class="layer-name">Nền</div>
+                <div id="bgThumbBox" class="layer-thumb"><span>Tự tạo từ ảnh</span></div>
+                <button type="button" id="uploadBgBtn" class="btn-secondary btn-xs btn-block">Chọn ảnh nền</button>
+                <input type="file" id="bgFileInput" accept="image/*" class="hidden">
+              </div>
+              <div class="layer-slot">
+                <div class="layer-name">Hiệu ứng</div>
+                <div id="effectThumbBox" class="layer-thumb"><span>Hạt sáng, hoa, tuyết…</span></div>
+                <div class="row-gap">
+                  <button type="button" id="uploadEffectBtn" class="btn-secondary btn-xs" style="flex:1;">Nạp hiệu ứng</button>
+                  <button type="button" id="clearEffectBtn" class="btn-ghost btn-xs hidden" title="Bỏ hiệu ứng">✕</button>
+                </div>
+                <input type="file" id="effectFileInput" accept="image/*" class="hidden">
+              </div>
+              <div class="layer-slot">
+                <div class="layer-name">Logo quán</div>
+                <div id="logoThumbBox" class="layer-thumb"><span>PNG nền trong</span></div>
+                <div class="row-gap">
+                  <button type="button" id="uploadLogoBtn" class="btn-secondary btn-xs" style="flex:1;">Nạp logo</button>
+                  <button type="button" id="clearLogoBtn" class="btn-ghost btn-xs hidden" title="Bỏ logo">✕</button>
+                </div>
+                <input type="file" id="logoFileInput" accept="image/*" class="hidden">
+              </div>
+            </div>
+
+            <div id="effectConfigWrap" class="opt-box hidden">
+              <div class="row-between"><span class="opt-title">Vị trí hiệu ứng</span><span id="effectDepthVal" class="muted small">Độ nổi: 125%</span></div>
+              <div class="mode-pills two" id="effectPlaneGroup">
+                <button type="button" class="mini-pill effect-plane-btn active" data-effect-plane="front">Trước người</button>
+                <button type="button" class="mini-pill effect-plane-btn" data-effect-plane="behind">Sau lưng người</button>
+              </div>
+              <input id="effectDepthSlider" type="range" min="70" max="200" step="5" value="125" title="Độ tách lớp hiệu ứng so với người">
+            </div>
+
+            <div id="logoEffectConfigWrap" class="opt-box hidden">
+              <div class="row-between"><span class="opt-title">Logo hiện thế nào</span><span id="logoEffectLabel" class="muted small">Nghiêng để hiện / ẩn</span></div>
+              <div class="mode-pills three" id="logoEffectGroup">
+                <button type="button" class="mini-pill logo-effect-btn active" data-logo-effect="flip_appear">Nghiêng để hiện</button>
+                <button type="button" class="mini-pill logo-effect-btn" data-logo-effect="fade_tilt">Mờ dần</button>
+                <button type="button" class="mini-pill logo-effect-btn" data-logo-effect="always">Luôn hiện</button>
+              </div>
+            </div>
+
+            <div class="opt-box">
+              <div class="row-between">
+                <label for="enable3DShadowCheck" class="opt-title row-gap" style="cursor:pointer;"><input type="checkbox" id="enable3DShadowCheck" checked> Bóng đổ</label>
+                <span id="shadowIntensityVal" class="muted small">Độ đậm: 40%</span>
+              </div>
+              <input id="shadowIntensitySlider" type="range" min="0" max="100" step="5" value="40" title="Độ đậm bóng đổ">
+            </div>
+
+            <div class="mini-label">Độ nổi</div>
+            <div class="mode-pills three" id="parallaxLevelGroup">
+              <button type="button" class="mini-pill parallax-level-btn" data-level="subtle">Nhẹ</button>
+              <button type="button" class="mini-pill parallax-level-btn active" data-level="standard">Vừa</button>
+              <button type="button" class="mini-pill parallax-level-btn" data-level="pronounced">Mạnh</button>
+            </div>
+
+            <div class="mini-label">Số góc nhìn <span class="muted">(nhiều hơn = mượt hơn)</span></div>
+            <div class="mode-pills three" id="parallaxViewsCountGroup">
+              <button type="button" class="mini-pill parallax-views-btn" data-views="12">12</button>
+              <button type="button" class="mini-pill parallax-views-btn active" data-views="16">16 (khuyên dùng)</button>
+              <button type="button" class="mini-pill parallax-views-btn" data-views="20">20</button>
+            </div>
+
+            <div class="row-between mini-label"><span>Tinh chỉnh độ nổi</span><span id="parallaxScaleVal" class="strong">100%</span></div>
+            <input id="parallaxScaleSlider" type="range" min="60" max="140" step="5" value="100">
+
+            <button type="button" id="recalcParallaxBtn" class="btn-primary btn-block" style="margin-top:10px;">
+              <span>Cập nhật ảnh 3D</span>
+            </button>
+          </div>
+
+          <!-- Khung hình đã nạp -->
+          <div class="row-between" style="margin-top:12px;">
+            <span class="mini-label" style="margin:0;">Thứ tự ảnh</span>
+            <button type="button" id="reverseFramesBtn" class="mini-pill" title="Đảo thứ tự ảnh">⇄ Đảo thứ tự</button>
+          </div>
+          <div id="frameStrip" class="frame-strip"></div>
+
+          <!-- Căn chỉnh (thu gọn) -->
+          <details id="frameAlignCard" class="fold">
+            <summary>Căn chỉnh ảnh <span class="muted">(khi các ảnh lệch nhau)</span></summary>
+            <div class="fold-body">
+              <div class="row-between">
+                <div id="alignFrameSelector" class="row-gap"></div>
+                <button type="button" id="resetAlignBtn" class="mini-pill">Đặt lại</button>
+              </div>
+              <div class="two-col" style="margin-top:8px;">
+                <div>
+                  <div class="row-between small muted"><span>Dịch ngang</span><span id="alignXVal" class="strong">0%</span></div>
+                  <input id="alignXSlider" type="range" min="-25" max="25" step="0.5" value="0">
+                </div>
+                <div>
+                  <div class="row-between small muted"><span>Dịch dọc</span><span id="alignYVal" class="strong">0%</span></div>
+                  <input id="alignYSlider" type="range" min="-25" max="25" step="0.5" value="0">
+                </div>
+              </div>
+              <div style="margin-top:6px;">
+                <div class="row-between small muted"><span>Phóng to / thu nhỏ</span><span id="alignZoomVal" class="strong">100%</span></div>
+                <input id="alignZoomSlider" type="range" min="80" max="130" step="1" value="100">
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- BƯỚC 3: GIẤY & KÍCH THƯỚC -->
+        <div class="card step-card">
+          <div class="step-head"><span class="step-no">3</span><span class="step-title">Giấy &amp; kích thước</span></div>
+
+          <div class="mini-label">Giấy đang để trong khay</div>
+          <div id="paperPresetsGroup" class="choice-grid"></div>
+          <div id="customPaperWrap" class="two-col hidden" style="margin-top:8px;">
+            <label class="field"><span>Rộng (cạnh vào máy trước), mm</span>
+              <input id="customPaperW" type="number" class="form-input" value="101.6" step="0.1" min="89" max="215.9"></label>
+            <label class="field"><span>Dài, mm (≥ 127)</span>
+              <input id="customPaperH" type="number" class="form-input" value="152.4" step="0.1" min="127"></label>
+          </div>
+
+          <div class="row-between" style="margin-top:14px;">
+            <span class="mini-label" style="margin:0;">Kích thước ảnh</span>
+            <div class="mode-pills" id="pageOrientationGroup">
+              <button type="button" class="mini-pill active" data-page-orient="portrait">Dọc</button>
+              <button type="button" class="mini-pill" data-page-orient="landscape">Ngang</button>
+            </div>
+          </div>
+          <div id="sizePresetsGroup" class="choice-grid" style="margin-top:6px;"></div>
+          <div id="customSizeWrap" class="hidden" style="margin-top:8px;">
+            <div class="two-col">
+              <label class="field"><span>Rộng, cm</span><input id="customWidthInput" type="number" class="form-input" value="10" step="0.1"></label>
+              <label class="field"><span>Cao, cm</span><input id="customHeightInput" type="number" class="form-input" value="15" step="0.1"></label>
+            </div>
+            <label class="row-gap small" style="margin-top:6px; cursor:pointer;">
+              <input type="checkbox" id="customRatioLock" checked> Giữ đúng tỉ lệ ảnh gốc (không cắt ảnh)
+            </label>
+            <div id="customSizeNote" class="small muted" style="margin-top:4px;"></div>
+          </div>
+          <div id="placementInfo" class="placement-info"></div>
+        </div>
+
+        <!-- QUẢN TRỊ: chỉ tài khoản admin -->
+        <details id="advancedPanel" class="card step-card fold admin-only">
+          <summary><span class="step-no step-no-admin">⚙</span> Thông số in <span class="muted">(quản trị · lưu trên máy này)</span></summary>
+          <div class="fold-body">
+            <div class="row-between">
+              <span class="mini-label" style="margin:0;">Lens &amp; máy in</span>
+              <div class="row-gap">
+                <button type="button" id="openPitchBtn" class="mini-pill">Đo lens</button>
+                <button type="button" id="epsonGuideBtn" class="mini-pill">Hướng dẫn driver Epson</button>
+              </div>
+            </div>
+            <div class="two-col" style="margin-top:6px;">
+              <label class="field"><span>Máy in</span><select id="printerSelect" class="form-select"></select></label>
+              <label class="field"><span>Loại lens</span><select id="lensSelect" class="form-select"></select></label>
+            </div>
+            <div id="customLpiWrap" class="hidden" style="margin-top:8px;">
+              <label class="field"><span>Mật độ lens đo được (LPI, từ "Đo lens")</span>
+                <input id="customLpiVal" type="number" class="form-input" placeholder="Ví dụ: 40.12" value="40.00" step="0.01"></label>
+            </div>
+
+            <div id="epsonGuideBox" class="sub-panel hidden">
+              <strong>Cài driver Epson L8050 (làm 1 lần):</strong>
+              <ol class="guide">
+                <li>Loại giấy: đúng loại đang dùng (ví dụ <b>Epson Premium Semigloss</b>). Chất lượng: <b>High</b>.</li>
+                <li>In tràn viền (Borderless): <b>tắt</b>. Phần mềm in cũng tự tắt.</li>
+                <li>More Options → <b>bỏ tích "High Speed"</b> để đầu phun in một chiều, sọc thẳng hơn.</li>
+              </ol>
+            </div>
+
+            <div class="mini-label" style="margin-top:10px;">Kiểu lật của lens</div>
+            <div class="segmented-control full-width">
+              <button type="button" class="segment-btn active" data-orientation="vertical">Lật trái–phải (rãnh dọc · 3D)</button>
+              <button type="button" class="segment-btn" data-orientation="horizontal">Lật lên–xuống (rãnh ngang)</button>
+            </div>
+            <div class="note">App tự xoay ảnh để sọc luôn chạy theo chiều giấy vào máy (chiều in chính xác nhất, cũng là chiều "Đo lens" đã đo).</div>
+
+            <label class="field" style="margin-top:10px;"><span>Bù màu cho lens (chỉ khi in)</span>
+              <select id="lensCompSelect" class="form-select"></select></label>
+            <div class="note">Lens làm ảnh tối và nhạt màu. Mặc định tăng màu 12%, giữ nguyên trắng và đen.</div>
+
+            <label class="row-gap small" style="margin-top:10px; cursor:pointer;">
+              <input type="checkbox" id="alignmentMarksCheck" checked>
+              <span><b>Dấu căn lens</b>: in đè lên mép ảnh 2 dải sọc, mũi tên căn và thước 50 mm. Bật khi in thử, tắt khi in cho khách.</span>
+            </label>
+
+            <div class="verify-box">
+              <div class="mini-label">Kiểm tra kích thước</div>
+              <div class="two-col small">
+                <div>Ảnh: <b id="verifyArtSize">—</b></div>
+                <div>Giấy: <b id="verifyPaper">—</b></div>
+                <div>Độ phân giải: <b>720 DPI</b> <span id="verifyPixels" class="muted"></span></div>
+                <div>Lens: <b id="verifyLpi">—</b></div>
+              </div>
+              <div class="note">Bật "Dấu căn lens" thì góc ảnh có thước 50 mm. Đo bằng thước thật: đúng 50 mm là in đúng 1:1.</div>
+              <div id="calcDimsText" class="hidden"></div>
+            </div>
+          </div>
+        </details>
+
+        <!-- BƯỚC 4: IN -->
+        <div class="card step-card step-print">
+          <div id="configSummaryBox" class="print-summary">
+            <span class="step-no">4</span>
+            <span class="muted">In với:</span> <strong id="cfgSummaryText">…</strong>
+          </div>
+          <div id="cfgOrientWarn" class="warn-box hidden"></div>
+          <div class="print-row">
+            <button id="directPrintArtworkBtn" class="btn-primary btn-big" type="button" title="Gửi lệnh in đúng 1:1 tới máy in">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              In ngay
+            </button>
+            <button id="exportBtn" class="btn-secondary btn-big" type="button" title="Tải file tờ in (PNG 720 DPI) về máy">Tải file in</button>
+          </div>
+          <button id="exportRawArtworkBtn" class="link-btn admin-only" type="button" title="Chỉ phần ảnh đã ghép, không kèm giấy (cho Photoshop)" style="margin-top:6px;">Tải file ảnh ghép (không kèm giấy)</button>
+
+          <div id="progressCard" class="progress-card hidden">
+            <div class="progress-header"><span id="progressText">Đang chuẩn bị…</span><span id="progressPercent">0%</span></div>
+            <div class="progress-bar-bg"><div id="progressBarFill" class="progress-bar-fill"></div></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= LỊCH SỬ IN ================= -->
+    <section id="historySection" class="hidden">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Lịch sử in <span class="muted" style="font-weight:500; text-transform:none;">· máy tính này</span></div>
+          <button id="historyRefreshBtn" class="btn-secondary" type="button">Tải lại</button>
+        </div>
+        <div class="card-body">
+          <div id="historyEmpty" class="muted small hidden">Chưa có lần in nào (hoặc phần mềm in chưa chạy).</div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Thời gian</th><th>Người in</th><th>Nội dung</th><th>Giấy</th><th>Bản</th><th>Tỉ lệ</th></tr></thead>
+              <tbody id="historyTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ĐO LENS (PITCH TEST) ================= -->
+    <section id="pitchSection" class="hidden">
+      <div class="card pitch-card">
+        <div class="card-header wrap">
+          <div class="card-title">Đo lens <span class="muted" style="font-weight:500; text-transform:none;">· tìm mật độ lens (LPI) thật cho máy in + giấy + lens</span></div>
+          <div class="row-gap wrap">
+            <button id="directPrintPitchBtn" class="btn-primary" type="button">In tờ đo lens</button>
+            <button id="downloadPitchCompBtn" class="btn-secondary" type="button">Tải file</button>
+            <button id="printVerifyBtn" class="btn-secondary" type="button" title="Tờ có thước và ô vuông để kiểm tra máy in đúng 1:1">In tờ kiểm tra kích thước</button>
+            <button id="pitchBackBtn" class="btn-ghost" type="button">‹ Quay lại</button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="pitch-config">
+            <label class="field"><span>1. Mật độ dự kiến (LPI)</span>
+              <input id="pitchBaseLpi" type="number" class="form-input" value="40.0" step="0.05"></label>
+            <label class="field"><span>2. Bước đo</span>
+              <select id="pitchStep" class="form-select">
+                <option value="0.50">Rất rộng · 0.50 (chưa biết LPI)</option>
+                <option value="0.25">Rộng · 0.25</option>
+                <option value="0.10" selected>Thô · 0.10</option>
+                <option value="0.02">Tinh · 0.02</option>
+                <option value="0.01">Rất tinh · 0.01</option>
+              </select></label>
+            <label class="field"><span>3. Số dải</span>
+              <select id="pitchNumBands" class="form-select">
+                <option value="11" selected>11 dải (khuyên dùng)</option>
+                <option value="15">15 dải</option>
+                <option value="21">21 dải</option>
+                <option value="7">7 dải</option>
+              </select></label>
+            <label class="field"><span>4. Giấy in tờ đo</span>
+              <select id="pitchLensSize" class="form-select">
+                <option value="a4" selected>A4 (khuyên dùng, dải dài dễ đọc)</option>
+                <option value="a5">A5</option>
+                <option value="a6">A6 (dải ngắn, khó đọc)</option>
+              </select></label>
+            <div class="found-box">
+              <span class="small strong">Kết quả:</span>
+              <input id="pitchFoundLpiInput" type="number" step="0.01" value="40.00" class="form-input input-sm">
+              <button id="applyFoundLpiBtn" type="button" class="btn-primary">Dùng số này</button>
+            </div>
+          </div>
+
+          <div class="guide-box">
+            <div class="guide-title">Cách đọc tờ đo</div>
+            <ol class="guide">
+              <li>Đặt lens lên tờ in, xoay cho rãnh lens song song với sọc.</li>
+              <li>Nghiêng từ từ. Dải <b>đúng</b> là dải <b>đổi màu đều trên suốt chiều dài</b> (cả dải cùng tối, cùng sáng).</li>
+              <li>Dải lệch thì có vệt sáng tối chạy dọc. Hai dải có vệt chạy <b>ngược chiều nhau</b> thì số đúng nằm giữa.</li>
+              <li>Đo 3 vòng: bước 0.10 → lấy số đó làm "mật độ dự kiến", đo bước 0.02 → (tuỳ chọn) bước 0.01.</li>
+            </ol>
+          </div>
+
+          <div class="guide-box">
+            <div class="guide-title">Còn vệt sáng tối lặp lại? Tính ngược từ khoảng cách vệt</div>
+            <div class="row-gap wrap small">
+              <span>Dải đang xem</span>
+              <input id="bandCalcLpi" type="number" step="0.01" value="40.00" class="form-input input-sm">
+              <span>LPI · 1 chu kỳ (1 vùng tối + 1 vùng sáng) dài</span>
+              <input id="bandCalcMm" type="number" step="1" value="20" class="form-input input-sm">
+              <span>mm</span>
+              <button id="bandCalcBtn" type="button" class="btn-secondary">Tính</button>
+            </div>
+            <div id="bandCalcResult" class="strong small" style="margin-top:6px;"></div>
+          </div>
+
+          <div class="note">Ảnh xem trên màn hình có vùng loang sáng tối giả (do màn hình thu nhỏ sọc). Chỉ đánh giá trên giấy có đặt lens.</div>
+          <div id="pitchPreviewBox" class="pitch-preview-box"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="statusToast" class="hidden toast-alert"></div>
+
+  <!-- Báo cáo kiểm tra thuật toán -->
+  <dialog id="accuracyModal" class="dlg">
+    <div class="dlg-head">
+      <h3>Kiểm tra thuật toán ghép ảnh</h3>
+      <button id="closeAccuracyModalBtn" type="button" class="dlg-x">&times;</button>
+    </div>
+    <div id="accuracyModalContent"></div>
+  </dialog>
+
+  <!-- ===== HỘP XÁC NHẬN IN ===== -->
+  <div id="printPreviewOverlay" class="overlay" style="display:none;">
+    <div class="overlay-box">
+      <div class="dlg-head">
+        <h3>Xác nhận in</h3>
+        <button id="ppCloseBtn" class="dlg-x" type="button">&times;</button>
+      </div>
+      <div class="overlay-body">
+        <div class="pp-preview"><img id="ppImage" src="" alt="Xem trước tờ in"></div>
+        <div class="two-col" style="grid-template-columns:1.6fr 1fr;">
+          <label class="field"><span>Máy in</span><select id="ppPrinter" class="form-select"></select></label>
+          <label class="field"><span>Số bản</span><input id="ppCopies" type="number" min="1" value="1" class="form-input"></label>
+        </div>
+        <div class="pp-info">
+          <div class="mini-label">Sẽ in với <span class="muted">(đọc từ máy in)</span></div>
+          <div class="two-col small">
+            <div>Loại giấy: <b id="ppInfoMedia">—</b></div>
+            <div>Chất lượng: <b id="ppInfoQuality">—</b></div>
+            <div>Màu: <b id="ppInfoColor">—</b></div>
+            <div>Khổ giấy: <b id="ppSize">—</b></div>
+            <div>Lens: <b id="ppLpi">—</b></div>
+            <div>Tỉ lệ: <b class="ok">1:1 cố định</b></div>
+          </div>
+        </div>
+        <button id="ppDialogBtn" class="btn-secondary btn-block" type="button">Đổi loại giấy / chất lượng</button>
+        <div class="note center">Máy in nhớ lựa chọn lần trước. Chỉ bấm khi cần đổi.</div>
+        <div id="ppOrientWarn" class="warn-box" style="display:none;"></div>
+        <div id="ppAgentWarn" class="warn-box warn-amber" style="display:none;"></div>
+      </div>
+      <div class="overlay-foot">
+        <button id="ppCancelBtn" class="btn-secondary" type="button">Huỷ</button>
+        <button id="ppConfirmBtn" class="btn-primary btn-big" type="button">In 1:1</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
