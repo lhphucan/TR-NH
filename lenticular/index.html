@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>In ảnh Lens · PHOTONOIR</title>
-  <meta name="description" content="Tạo và in ảnh lenticular (lật ảnh, 3D, chuyển động) đúng 1:1 trên Epson L8050">
+  <meta name="description" content="Tạo và in ảnh lenticular (lật ảnh, 3D, chuyển động, biến hình) đúng 100% kích thước trên Epson L8050">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Tách nền người cho Ảnh 3D (MediaPipe, chạy trên máy) -->
   <script src="./mediapipe/selfie_segmentation.js"></script>
-  <script type="module" crossorigin src="./assets/index-DDOyRyoV.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DxB-q08D.css">
+  <script type="module" crossorigin src="./assets/index-BfthN2A9.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-C6SZbQCc.css">
 </head>
 <body>
   <!-- ===== THANH TRÊN (cùng kiểu .admin-header của trang Quản lý PHOTONOIR) ===== -->
@@ -114,6 +114,7 @@
             <button type="button" class="seg-tab active" data-mode="flip"><b>Lật ảnh</b><small>2–3 ảnh đổi qua lại</small></button>
             <button type="button" class="seg-tab" data-mode="3d"><b>Ảnh 3D</b><small>1 ảnh chân dung, nổi khối</small></button>
             <button type="button" class="seg-tab" data-mode="motion"><b>Chuyển động</b><small>Video hoặc GIF</small></button>
+            <button type="button" class="seg-tab" data-mode="morph"><b>Biến hình</b><small>Mặt A biến dần thành mặt B</small></button>
           </div>
         </div>
 
@@ -239,6 +240,23 @@
           <div id="frameStrip" class="frame-strip"></div>
           <div id="ghostTip" class="ghost-tip hidden"></div>
 
+          <div id="morphCard" class="sub-panel hidden">
+            <div class="sub-head"><strong>Biến hình</strong><span class="muted small">2 ảnh chân dung, mặt rõ, nhìn thẳng</span></div>
+            <div class="mini-label">Số khung</div>
+            <div class="row-gap" id="morphFrameCountGroup"></div>
+            <label class="row-gap small" style="margin-top:8px; cursor:pointer;">
+              <input type="checkbox" id="morphCropCheck" checked>
+              <span><b>Cắt sát mặt</b> (khuyên dùng): biến hình chỉ nắn được khuôn mặt, thân và nền chỉ mờ chồng lên nhau.</span>
+            </label>
+            <button type="button" id="morphGenerateBtn" class="btn-primary btn-block" style="margin-top:8px;">Tạo biến hình</button>
+            <div id="morphNote" class="note"></div>
+          </div>
+
+          <label id="pingPongWrap" class="row-gap small hidden" style="margin-top:10px; cursor:pointer;">
+            <input type="checkbox" id="pingPongCheck" checked>
+            <span><b>Đi–về</b>: in khung theo thứ tự 1→cuối→1 để nghiêng quá xa không bị nhảy giật từ khung cuối về khung đầu (ít bước hơn, mỗi bước rõ hơn).</span>
+          </label>
+
           <div id="transitionModeWrap" style="margin-top:10px;">
             <div class="mini-label">Kiểu đổi ảnh <span class="muted">(ảnh hưởng bản in)</span></div>
             <div class="segmented-control" id="transitionModeControl">
@@ -360,7 +378,7 @@
                 <div>Độ phân giải: <b>720 DPI</b> <span id="verifyPixels" class="muted"></span></div>
                 <div>Lens: <b id="verifyLpi">—</b></div>
               </div>
-              <div class="note">Muốn chắc máy in đúng 1:1: tab Đo lens → "In tờ kiểm tra kích thước", đo bằng thước thật.</div>
+              <div class="note">Muốn chắc máy in đúng 100% kích thước: tab Đo lens → "In tờ kiểm tra kích thước", đo bằng thước thật.</div>
               <div id="calcDimsText" class="hidden"></div>
             </div>
           </div>
@@ -374,7 +392,7 @@
           </div>
           <div id="cfgOrientWarn" class="warn-box hidden"></div>
           <div class="print-row">
-            <button id="directPrintArtworkBtn" class="btn-primary btn-big" type="button" title="Gửi lệnh in đúng 1:1 tới máy in">
+            <button id="directPrintArtworkBtn" class="btn-primary btn-big" type="button" title="Gửi lệnh in đúng 100% kích thước tới máy in">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
               In ngay
             </button>
@@ -434,7 +452,7 @@
           <div class="guide-box">
             <div class="guide-title"><span class="step-no">2</span> Kiểm tra in đúng kích thước <span class="muted">(không cần lens)</span></div>
             <div class="row-gap wrap small">
-              <button id="printVerifyBtn" class="btn-secondary" type="button" title="Tờ có thước và ô vuông để kiểm tra máy in đúng 1:1">In tờ kiểm tra kích thước</button>
+              <button id="printVerifyBtn" class="btn-secondary" type="button" title="Tờ có thước và ô vuông để kiểm tra máy in đúng 100% kích thước">In tờ kiểm tra kích thước</button>
               <span>Đo thước trên tờ bằng thước thật: đúng số ghi trên tờ là máy in không co giãn. Sai thì xem lại bước 1 trước khi đo lens.</span>
             </div>
           </div>
@@ -573,17 +591,17 @@
             <div>Màu: <b id="ppInfoColor">—</b></div>
             <div>Khổ giấy: <b id="ppSize">—</b></div>
             <div>Lens: <b id="ppLpi">—</b></div>
-            <div>Tỉ lệ: <b class="ok">1:1 cố định</b></div>
+            <div>Tỉ lệ in: <b class="ok">100%, không co giãn</b></div>
           </div>
         </div>
         <button id="ppDialogBtn" class="btn-secondary btn-block" type="button">Đổi loại giấy / chất lượng</button>
         <div class="note center">Máy in nhớ lựa chọn lần trước. Chỉ bấm khi cần đổi.</div>
         <div id="ppOrientWarn" class="warn-box" style="display:none;"></div>
-        <div id="ppAgentWarn" class="warn-box warn-amber" style="display:none;"></div>
+        <div id="ppAgentWarn" class="warn-box" style="display:none;"></div>
       </div>
       <div class="overlay-foot">
         <button id="ppCancelBtn" class="btn-secondary" type="button">Huỷ</button>
-        <button id="ppConfirmBtn" class="btn-primary btn-big" type="button">In 1:1</button>
+        <button id="ppConfirmBtn" class="btn-primary btn-big" type="button">Xác nhận in</button>
       </div>
     </div>
   </div>
