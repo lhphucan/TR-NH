@@ -1256,21 +1256,20 @@ function renderClearTargetOptions() {
     const sel = document.getElementById('clear-target');
     sel.innerHTML = '';
     if (userRole === 'admin') {
+        const allOpt = document.createElement('option');
+        allOpt.value = 'all';
+        allOpt.innerText = 'Tất cả cơ sở';
+        sel.appendChild(allOpt);
         Object.keys(branchesCache).forEach(id => {
             const opt = document.createElement('option');
             opt.value = id;
-            opt.innerText = 'Chỉ dọn ' + (branchesCache[id].name || id);
+            opt.innerText = branchesCache[id].name || id;
             sel.appendChild(opt);
         });
-        const allOpt = document.createElement('option');
-        allOpt.value = 'all';
-        allOpt.style.fontWeight = 'bold';
-        allOpt.innerText = 'DỌN SẠCH TẤT CẢ CƠ SỞ';
-        sel.appendChild(allOpt);
     } else if (br && branchesCache[br]) {
         const opt = document.createElement('option');
         opt.value = br;
-        opt.innerText = 'Chỉ dọn ' + (branchesCache[br].name || br);
+        opt.innerText = branchesCache[br].name || br;
         sel.appendChild(opt);
     }
 }
@@ -2709,31 +2708,160 @@ function load() {
             }); 
         }
         
-        function openClearModal() {
-            if(userRole !== 'admin') return Swal.fire({title: 'Từ chối', text: 'Chỉ Admin mới thao tác được!', icon: 'error', confirmButtonColor: '#111'});
-            document.getElementById('clear-pass').value = '';
-            document.getElementById('clear-modal').style.display = 'flex';
+// ===== Dọn ảnh khách cũ trên Drive =====
+// Giữ 3 tháng gần nhất. Chỉ dọn hai loại thư mục của khách, nhận theo ngày trong tên:
+// - lượt chụp của máy chụp: <thư mục máy chụp>/用户照片文件/<yyyymmdd...> (gồm ảnh ghép,
+//   ảnh lẻ màu frame, ảnh khách tải lên nằm trong lượt). Máy chụp đồng bộ hai chiều nên
+//   ảnh trong máy chụp cũng bị xoá theo (chủ tiệm đã đồng ý).
+// - ảnh khách gửi in: .../<cơ sở>/<dd-MM-yyyy>/ (Apps Script tạo). Tìm thư mục cơ sở bằng
+//   cách lần ngược từ link thư mục của các yêu cầu in, không đoán tên.
+// Không đụng: dữ liệu khách trên Firebase, Frame, bộ lọc màu, mọi thư mục khác.
+// Vào thùng rác Drive (khôi phục được 30 ngày; dung lượng trống sau khi thùng rác tự dọn).
+const DON_THANG = 3;
+let DON = null;   // kết quả xem trước: { moc, ds: [{ b, ten, chup: [{id,name}], gui: [...], loi: [] }] }
+
+function donMoc() {
+    const d = new Date(); d.setHours(0, 0, 0, 0); d.setMonth(d.getMonth() - DON_THANG);
+    return d;
+}
+const donYmd = d => d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+
+function openClearModal() {
+    if (userRole !== 'admin') return Swal.fire({ title: 'Từ chối', text: 'Chỉ Admin mới thao tác được!', icon: 'error', confirmButtonColor: '#111' });
+    const moc = donMoc();
+    document.getElementById('don-mo').innerHTML = `Giữ ảnh <b>${DON_THANG} tháng gần nhất</b> (từ ${getDStr(moc)}). Chỉ dọn ảnh của khách: <b>lượt chụp của máy chụp</b> và <b>ảnh khách gửi in</b>. `
+        + `Dữ liệu khách trên hệ thống, Frame, bộ lọc màu không bị đụng tới. Ảnh vào <b>thùng rác Drive</b>, khôi phục được trong 30 ngày.`;
+    donXoaXem();
+    document.getElementById('clear-modal').style.display = 'flex';
+}
+function donDong() { document.getElementById('clear-modal').style.display = 'none'; }
+function donXoaXem() {
+    DON = null;
+    document.getElementById('don-ket').innerHTML = '';
+    document.getElementById('don-xac').style.display = 'none';
+    document.getElementById('clear-pass').value = '';
+    document.getElementById('don-chay').disabled = true;
+    document.getElementById('don-bar').style.display = 'none';
+}
+
+// Liệt kê đủ (Drive trả tối đa 1000 mỗi trang)
+async function donLietKe(q) {
+    const out = [];
+    let trang = '';
+    do {
+        const url = 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=nextPageToken,files(id,name)&pageSize=1000'
+                  + '&includeItemsFromAllDrives=true&supportsAllDrives=true' + (trang ? '&pageToken=' + encodeURIComponent(trang) : '');
+        let res = await fetch(url, { headers: { Authorization: 'Bearer ' + await driveToken() } });
+        if (res.status === 401) { _driveToken = ''; res = await fetch(url, { headers: { Authorization: 'Bearer ' + await driveToken() } }); }
+        if (!res.ok) throw new Error('Drive từ chối (HTTP ' + res.status + ')');
+        const d = await res.json();
+        out.push(...(d.files || []));
+        trang = d.nextPageToken || '';
+    } while (trang);
+    return out;
+}
+async function donCha(id) {
+    const url = 'https://www.googleapis.com/drive/v3/files/' + id + '?fields=id,name,parents&supportsAllDrives=true';
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + await driveToken() } });
+    if (!res.ok) return null;
+    return res.json();
+}
+
+// Thư mục cơ sở của ảnh khách gửi in: lần ngược từ link thư mục của các yêu cầu in (khách / ngày / cơ sở)
+async function donThuMucGui(b) {
+    const d = (await db.ref('data/' + b).orderByKey().limitToLast(300).once('value')).val() || {};
+    const links = [];
+    Object.values(d).forEach(c => Object.values((c && c.client_uploads) || {}).forEach(u => {
+        const m = String((u && u.folder) || '').match(/folders\/([\w-]+)/);
+        if (m && u.kind !== 'frame') links.push(m[1]);
+    }));
+    const lot = new Set();
+    Object.values(d).forEach(c => Object.values((c && c.links) || {}).forEach(l => { const m = String((l && l.url) || '').match(/folders\/([\w-]+)/); if (m) lot.add(m[1]); }));
+    for (const id of links.reverse().slice(0, 8)) {
+        if (lot.has(id)) continue;   // ảnh thẻ gửi vào thư mục lượt chụp: không phải thư mục gửi in
+        let f = await donCha(id);
+        for (let k = 0; f && k < 3; k++) {
+            if (/^\d{2}-\d{2}-\d{4}$/.test(f.name)) return (f.parents || [])[0] || null;   // cha của thư mục ngày = thư mục cơ sở
+            f = f.parents && f.parents[0] ? await donCha(f.parents[0]) : null;
         }
+    }
+    return null;
+}
 
-        function executeClearData() {
-            const target = document.getElementById('clear-target').value;
-            const pass = document.getElementById('clear-pass').value;
-            if (pass !== 'XOA') return Swal.fire({title: 'Thất bại', text: 'Mã xác nhận không chính xác!', icon: 'error', confirmButtonColor: '#111'});
-
-            let confirmMsg = target === 'all' ? "TẤT CẢ CƠ SỞ" : ((branchesCache[target] && branchesCache[target].name) || target);
-
-            Swal.fire({ title: 'DỌN SẠCH HỆ THỐNG', text: "Hành động này sẽ XÓA SẠCH VÀ VĨNH VIỄN toàn bộ dữ liệu của " + confirmMsg + ".\nBạn chắc chắn chứ?", icon: 'error', showCancelButton: true, confirmButtonColor: '#111', cancelButtonColor: '#fff', confirmButtonText: 'TÔI CHẮC CHẮN XÓA', cancelButtonText: '<span style="color:#111">Hủy</span>' }).then(r => {
-                if (r.isConfirmed) {
-                    if (target === 'all') {
-                        Object.keys(branchesCache).forEach(id => { db.ref('data/' + id).remove(); db.ref('trash/' + id).remove(); });
-                    } else {
-                        db.ref('data/' + target).remove(); db.ref('trash/' + target).remove();
-                    }
-                    document.getElementById('clear-modal').style.display = 'none';
-                    Swal.fire({title: 'Hoàn tất!', text: "Đã dọn sạch hệ thống cho " + confirmMsg, icon: 'success', confirmButtonColor: '#111'});
+async function donXem() {
+    const nut = document.getElementById('don-xem-nut'), ket = document.getElementById('don-ket');
+    donXoaXem();
+    nut.disabled = true; nut.innerText = 'Đang xem...';
+    const target = document.getElementById('clear-target').value;
+    const ids = target === 'all' ? Object.keys(branchesCache) : [target];
+    const moc = donMoc(), mocYmd = donYmd(moc);
+    const ds = [];
+    try {
+        for (const b of ids) {
+            const ten = (branchesCache[b] && branchesCache[b].name) || b;
+            const r = { b, ten, chup: [], gui: [], loi: [] };
+            ket.innerHTML = `<p class="don-cho">Đang xem ${escapeHTML(ten)}...</p>`;
+            // Lượt chụp máy chụp: tên bắt đầu bằng yyyymmdd
+            try {
+                const root = await photoRoot(b);
+                const ds1 = await donLietKe(`'${root}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+                r.chup = ds1.filter(f => /^\d{8}/.test(f.name) && f.name.slice(0, 8) < mocYmd).sort((x, y) => x.name.localeCompare(y.name));
+            } catch (e) { r.loi.push('lượt chụp: ' + e.message); }
+            // Ảnh khách gửi in: thư mục ngày dd-MM-yyyy trong thư mục cơ sở
+            try {
+                const goc = await donThuMucGui(b);
+                if (!goc) r.loi.push('ảnh khách gửi in: chưa thấy yêu cầu in nào để lần ra thư mục');
+                else {
+                    const ds2 = await donLietKe(`'${goc}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+                    r.gui = ds2.filter(f => { const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(f.name); return m && (m[3] + m[2] + m[1]) < mocYmd; })
+                               .sort((x, y) => x.name.split('-').reverse().join('').localeCompare(y.name.split('-').reverse().join('')));
                 }
-            });
+            } catch (e) { r.loi.push('ảnh khách gửi in: ' + e.message); }
+            ds.push(r);
         }
+    } finally { nut.disabled = false; nut.innerText = 'Xem trước'; }
+    DON = { moc, ds };
+    const ngay = n => /^\d{8}/.test(n) ? n.slice(6, 8) + '/' + n.slice(4, 6) + '/' + n.slice(0, 4) : n.replace(/-/g, '/');
+    const khoang = a => a.length ? ` (${ngay(a[0].name)} – ${ngay(a[a.length - 1].name)})` : '';
+    const tong = ds.reduce((t, r) => t + r.chup.length + r.gui.length, 0);
+    ket.innerHTML = ds.map(r => `<div class="don-cs"><b>${escapeHTML(r.ten)}</b>
+            <span>Lượt chụp máy chụp: <b>${r.chup.length.toLocaleString('vi-VN')}</b> thư mục${khoang(r.chup)}</span>
+            <span>Ảnh khách gửi in: <b>${r.gui.length.toLocaleString('vi-VN')}</b> ngày${khoang(r.gui)}</span>
+            ${r.loi.map(l => `<span class="don-loi">Không xem được ${escapeHTML(l)}</span>`).join('')}</div>`).join('')
+        + `<p class="don-tong">${tong ? `Sẽ chuyển <b>${tong.toLocaleString('vi-VN')}</b> thư mục vào thùng rác Drive.` : 'Không có ảnh nào cũ hơn ' + DON_THANG + ' tháng.'}</p>`;
+    document.getElementById('don-xac').style.display = tong ? '' : 'none';
+    document.getElementById('don-chay').disabled = !tong;
+}
+
+async function donChay() {
+    if (!DON) return;
+    if (document.getElementById('clear-pass').value.trim().toUpperCase() !== 'XOA') return Swal.fire({ title: 'Chưa xác nhận', text: 'Gõ XOA vào ô xác nhận.', icon: 'warning', confirmButtonColor: '#111' });
+    const viec = [];
+    DON.ds.forEach(r => [...r.chup, ...r.gui].forEach(f => viec.push(f)));
+    if (!viec.length) return;
+    const ok = await Swal.fire({ title: 'Chuyển vào thùng rác?', text: `${viec.length.toLocaleString('vi-VN')} thư mục ảnh khách cũ hơn ${DON_THANG} tháng. Khôi phục được trong 30 ngày ở Thùng rác Drive.`,
+        icon: 'warning', showCancelButton: true, confirmButtonText: 'Chuyển vào thùng rác', cancelButtonText: '<span style="color:#111">Huỷ</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff' });
+    if (!ok.isConfirmed) return;
+    const nut = document.getElementById('don-chay'), bar = document.getElementById('don-bar');
+    nut.disabled = true; bar.style.display = '';
+    let xong = 0, loi = 0, i = 0;
+    const mot = async f => {
+        const url = 'https://www.googleapis.com/drive/v3/files/' + f.id + '?supportsAllDrives=true';
+        const goi = async () => fetch(url, { method: 'PATCH', headers: { Authorization: 'Bearer ' + await driveToken(), 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) });
+        let res = await goi();
+        if (res.status === 401) { _driveToken = ''; res = await goi(); }
+        if (res.status === 429 || res.status >= 500) { await new Promise(r => setTimeout(r, 1500)); res = await goi(); }
+        if (res.ok) xong++; else loi++;
+        bar.firstElementChild.style.width = Math.round((xong + loi) / viec.length * 100) + '%';
+        nut.innerText = `Đang chuyển ${xong + loi}/${viec.length}`;
+    };
+    // 4 luồng một lúc: nhanh mà không bị Drive chặn vì gọi dồn
+    await Promise.all([0, 1, 2, 3].map(async () => { while (i < viec.length) await mot(viec[i++]); }));
+    nut.innerText = 'Chuyển vào thùng rác';
+    donXoaXem();
+    Swal.fire({ title: loi ? 'Xong một phần' : 'Đã dọn xong', icon: loi ? 'warning' : 'success', confirmButtonColor: '#111',
+        text: `Đã chuyển ${xong.toLocaleString('vi-VN')} thư mục vào thùng rác Drive.` + (loi ? ` ${loi} thư mục không chuyển được (có thể không có quyền), bấm Xem trước rồi thử lại.` : '') });
+}
 
 function moveCustomer(clientId, clientName) {
     if (userRole !== 'admin') return Toast.fire({ icon: 'error', title: 'Chỉ Quản trị viên thao tác được' });

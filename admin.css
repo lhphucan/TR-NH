@@ -513,3 +513,51 @@ input[type=checkbox], input[type=radio], input[type=range] { accent-color: #1818
 .in-giay { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 0 2px; }
 .in-giay b { font-size: 40px; font-weight: 800; letter-spacing: 1px; color: #111; line-height: 1.1; }
 .in-giay span { font-size: 14px; color: #52525b; }
+
+/* ===== Thanh đầu trang: hàng tiêu đề + một hàng menu ===== */
+.admin-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.admin-title { margin: 0; font-size: 18px; letter-spacing: 1px; display: flex; align-items: center; white-space: nowrap; }
+#role-badge { font-size: 11px; background: #18181b; color: #fff; padding: 4px 10px; border-radius: 20px; margin-left: 12px; font-weight: 600; letter-spacing: .5px; }
+.admin-top-right { display: flex; align-items: center; gap: 8px; flex: none; }
+.btn-logout { flex: none; white-space: nowrap; color: #111; background: #fff; border: 1px solid #d4d4d8; padding: 8px 14px; border-radius: 8px; cursor: pointer; font: 700 11px 'Inter', sans-serif; transition: .2s; display: flex; align-items: center; gap: 4px; }
+.btn-logout:hover { border-color: #111; }
+.admin-menu { display: flex; align-items: center; gap: 0; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #e4e4e7;
+              overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.admin-menu::-webkit-scrollbar { display: none; }
+.nav-group { display: flex; align-items: center; gap: 0; flex: none; }
+.nav-btn { flex: none; white-space: nowrap; display: flex; align-items: center; gap: 5px; padding: 7px 6px; border: 0; border-radius: 8px; background: none;
+           color: #52525b; cursor: pointer; font: 600 13px 'Inter', sans-serif; transition: .15s; }
+.nav-btn:hover { background: #f4f4f5; color: #111; }
+.nav-btn .icon-svg { margin: 0; }
+.nav-chia { flex: none; width: 1px; height: 18px; background: #e4e4e7; margin: 0 6px; }
+.admin-menu > :first-child .nav-btn:first-child { padding-left: 0; }   /* thẳng lề với tiêu đề */
+@media (max-width: 1100px) { .nav-btn { padding: 7px 4px; } .nav-chia { margin: 0 4px; } }
+@media (max-width: 600px) {
+    #chuong-chu { display: none; }      /* màn hẹp: chuông chỉ còn biểu tượng */
+    .admin-title { font-size: 16px; }
+}
+.revenue-btn { color: #111; display: none; }   /* hiện cho admin + tài khoản xem thu nhập (luật đầu file) */
+
+/* Dọn ảnh khách cũ trên Drive */
+.don-hop { max-width: 520px; }
+.don-ti { margin: 0 0 8px; font-size: 16px; color: #111; }
+.don-mo { font-size: 13px; color: #52525b; line-height: 1.55; margin: 0 0 16px; }
+.don-nhan { font-size: 12px; font-weight: 600; margin: 0 0 6px; display: block; color: #111; }
+.don-hang { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
+.don-hang select { flex: 1; height: 40px; border: 1px solid #d4d4d8; }
+#clear-pass { width: 100%; height: 40px; border: 1px solid #d4d4d8; box-sizing: border-box; margin-bottom: 14px; }
+.don-nut { padding: 11px 16px; border-radius: 8px; border: 1px solid #d4d4d8; background: #fff; color: #111; cursor: pointer; font: 600 13px 'Inter', sans-serif; white-space: nowrap; }
+.don-nut.den { background: #111; color: #fff; border-color: #111; font-weight: 700; }
+.don-nut.nhat { background: #f4f4f5; border-color: #f4f4f5; }
+.don-nut:disabled { opacity: .45; cursor: default; }
+.don-cuoi { margin: 4px 0 0; }
+.don-cuoi .don-nut { flex: 1; }
+.don-ket:empty { display: none; }
+.don-ket { border: 1px solid #e4e4e7; border-radius: 10px; padding: 4px 14px; margin-bottom: 14px; max-height: 260px; overflow-y: auto; }
+.don-cs { display: flex; flex-direction: column; gap: 3px; padding: 10px 0; border-bottom: 1px solid #f4f4f5; font-size: 13px; color: #3f3f46; }
+.don-cs > b { color: #111; }
+.don-loi { color: #ef4444; font-size: 12px; }
+.don-tong { font-size: 13px; color: #111; margin: 10px 0; }
+.don-cho { font-size: 13px; color: #71717a; }
+.don-bar { height: 6px; background: #f4f4f5; border-radius: 3px; overflow: hidden; margin-bottom: 14px; }
+.don-bar span { display: block; height: 100%; width: 0; background: #111; transition: width .2s; }
