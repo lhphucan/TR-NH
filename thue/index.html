@@ -1,0 +1,413 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noir Tax</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="../logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=web1">
+</head>
+<body>
+    <!-- TOPBAR -->
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-mark">N</div>
+            <div class="brand-text">
+                <b>Noir Tax</b>
+                <span>Đối soát &amp; Khai thuế S2A-HKD</span>
+            </div>
+        </div>
+        <a class="back-link" href="../admin.html">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Trang quản lý
+        </a>
+    </header>
+
+    <!-- Chặn: chỉ tài khoản quản trị (gate.js) -->
+    <div class="gate" id="gate">
+        <p id="gateMsg">Đang kiểm tra tài khoản…</p>
+        <a id="gateLink" class="btn btn-primary hidden" href="../admin.html">Về trang quản lý để đăng nhập</a>
+    </div>
+
+    <main class="container hidden" id="appMain">
+
+        <!-- ① UPLOAD -->
+        <section class="panel" id="uploadPanel">
+            <div class="panel-head">
+                <span class="step-badge">1</span>
+                <div>
+                    <h2>Tải dữ liệu đầu vào</h2>
+                    <p>Cần ít nhất 1 file. Chọn được NHIỀU file để gộp 1 kỳ (vd 6 tháng): mọi Excel máy + mọi PDF sao kê đối soát chung trong 1 báo cáo.</p>
+                    <p class="privacy-note">File đọc và tính ngay trên máy này — không tải lên mạng.</p>
+                </div>
+            </div>
+
+            <div class="upload-grid" id="uploadGrid">
+                <label class="dropzone" id="dz-excel">
+                    <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+                    <span class="dz-tag">Dữ liệu máy</span>
+                    <span class="dz-title">Excel / CSV máy in ảnh</span>
+                    <span class="dz-sub" id="lbl-excel">Kéo thả hoặc nhấp để chọn (được nhiều file)</span>
+                    <input type="file" id="excelFile" multiple accept=".csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+                </label>
+
+                <label class="dropzone" id="dz-pdf">
+                    <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h1.5a1.5 1.5 0 0 1 0 3H10v-3zM10 12v6"/></svg>
+                    <span class="dz-tag">Sao kê ngân hàng</span>
+                    <span class="dz-title">Sao kê MB (PDF/Excel) · Vietinbank (Excel)</span>
+                    <span class="dz-sub" id="lbl-pdf">Kéo thả hoặc nhấp để chọn (được nhiều file · nhận PDF và Excel)</span>
+                    <input type="file" id="pdfFile" multiple accept="application/pdf,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+                </label>
+            </div>
+
+            <!-- Chọn loại máy: quyết định CÔNG THỨC tính doanh thu -->
+            <div class="mode-bar" id="modeBar">
+                <div class="mode-q">Máy chụp có chức năng <b>chuyển khoản (QR)</b> không?</div>
+                <div class="mode-opts">
+                    <label class="mode-opt">
+                        <input type="radio" name="machineMode" id="modeBank" value="bank" checked>
+                        <span><b>Có QR</b> — tiền về thẳng ngân hàng<small>Doanh thu = tiền mặt máy + chuyển khoản ngân hàng</small></span>
+                    </label>
+                    <label class="mode-opt">
+                        <input type="radio" name="machineMode" id="modeMachine" value="machine">
+                        <span><b>Không QR</b> — khách chuyển khoản cho nhân viên đổi tiền mặt<small>Doanh thu = tổng lượt máy · sao kê chỉ để đối chiếu, không cộng thêm</small></span>
+                    </label>
+                </div>
+            </div>
+
+            <button id="processBtn" class="btn btn-primary btn-lg btn-block">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.2-8.5"/><polyline points="21 3 21 9 15 9"/></svg>
+                Tiến hành đối soát
+            </button>
+
+            <!-- Collapsed bar (after reconcile) -->
+            <div class="upload-summary hidden" id="uploadSummary">
+                <div class="file-chips" id="fileChips"></div>
+                <button id="resetBtn" class="btn btn-ghost">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    Đối soát lại
+                </button>
+            </div>
+        </section>
+
+        <!-- RESULT -->
+        <div id="resultSection" class="hidden">
+
+            <!-- ① KIỂM TRA CHỐT — ô cảnh báo thông minh (3 phép cân), LÊN ĐẦU -->
+            <div id="checksBox" class="checks-box hidden"></div>
+
+            <!-- ② HERO — doanh thu quán (số liệu thực) + hành động xuất -->
+            <section class="panel hero animate-fade">
+                <div class="hero-main">
+                    <span class="hero-label">Doanh thu quán</span>
+                    <div class="hero-figure"><span id="heroRevenue">0</span><small>đ</small></div>
+                    <div class="hero-note" id="heroNote">Tiền mặt + Chuyển khoản</div>
+                </div>
+                <div class="hero-taxes">
+                    <div class="tax-cell">
+                        <span>Tiền mặt</span>
+                        <b class="tabular-nums" id="hfMachine">0</b>
+                    </div>
+                    <div class="tax-cell">
+                        <span>CK Photobooth</span>
+                        <b class="tabular-nums" id="hfBooth">0</b>
+                    </div>
+                    <div class="tax-cell">
+                        <span>CK kinh doanh khác</span>
+                        <b class="tabular-nums" id="hfOtherBiz">0</b>
+                    </div>
+                    <div class="tax-cell total">
+                        <span>Số ngày</span>
+                        <b class="tabular-nums" id="hfDays">0</b>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ③ STAT STRIP -->
+            <section class="stat-strip animate-fade">
+                <div class="stat">
+                    <div class="stat-label">Tiền mặt</div>
+                    <div class="stat-value tabular-nums" id="stCash">0</div>
+                    <div class="stat-sub" id="stCashTx">0 giao dịch</div>
+                </div>
+                <div class="stat stat--in">
+                    <div class="stat-label">Doanh thu chuyển khoản</div>
+                    <div class="stat-value tabular-nums" id="stOther">0</div>
+                    <div class="stat-sub" id="stOtherTx">0 khoản (từ ngân hàng)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">QR máy (đối chiếu)</div>
+                    <div class="stat-value tabular-nums" id="stTransfer">0</div>
+                    <div class="stat-sub" id="stTransferTx">0 giao dịch</div>
+                </div>
+                <div class="stat stat--ok">
+                    <div class="stat-label">Đã khớp sao kê</div>
+                    <div class="stat-value tabular-nums" id="stVerified">0</div>
+                    <div class="stat-sub">QR về ngân hàng</div>
+                </div>
+                <div class="stat" id="stWarnBox">
+                    <div class="stat-label">Cần kiểm tra</div>
+                    <div class="stat-value tabular-nums" id="stUnverified">0</div>
+                    <div class="stat-sub">máy chưa khớp NH</div>
+                </div>
+            </section>
+
+            <!-- ③·² CẦN XÁC NHẬN — khoản tiền vào KHÔNG có mã loa -->
+            <section class="panel confirm-panel hidden" id="confirmPanel">
+                <div class="panel-head">
+                    <span class="badge-alert">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </span>
+                    <div>
+                        <h2>Cần xác nhận đưa vào kê khai</h2>
+                        <p>Khoản CK KHÔNG phải photobooth: <b>kinh doanh khác</b> + <b>lãi ngân hàng</b>. Mặc định KHÔNG tính. Tick khoản là doanh thu cần kê khai. Nếu là <b>lượt chụp trả thiếu</b> (khách CK 1 phần + tiền mặt), chọn giá lượt ở cột "Bù lượt" để tự thêm tiền mặt còn thiếu.</p>
+                    </div>
+                </div>
+                <div class="price-bar">
+                    <label for="priceList">Bảng giá lượt chụp (đ, cách nhau dấu phẩy):</label>
+                    <input id="priceList" type="text" placeholder="VD: 70000, 80000, 100000, 120000" inputmode="numeric">
+                    <label class="fill-mode">
+                        <span>Kiểu bù:</span>
+                        <select id="fillMode">
+                            <option value="manual">Chọn tay từng lượt</option>
+                            <option value="random">Tự động (random theo bảng giá)</option>
+                        </select>
+                    </label>
+                </div>
+                <!-- Phân bổ tiền bù theo TỔNG mong muốn (khóa cố định, lưu để in lại y hệt) -->
+                <div class="price-bar fill-target-bar">
+                    <label for="fillTarget">Tổng tiền mặt bù mong muốn (đ):</label>
+                    <input id="fillTarget" type="text" inputmode="numeric" placeholder="VD: 2.000.000">
+                    <button id="fillAllocBtn" class="btn btn-export-black" type="button">Phân bổ tự động</button>
+                    <button id="fillResetBtn" class="btn btn-ghost" type="button">Bỏ khóa</button>
+                    <span id="fillAllocInfo" class="fill-alloc-info"></span>
+                </div>
+                <div class="confirm-toolbar">
+                    <label class="check-all">
+                        <input type="checkbox" class="chk" id="confirmAll">
+                        <span>Chọn tất cả</span>
+                    </label>
+                    <span class="confirm-count muted" id="confirmCount"></span>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr>
+                            <th style="width:64px" class="text-center">Đưa vào</th>
+                            <th class="text-left">Ngày</th>
+                            <th class="text-left" style="width:84px">Loại</th>
+                            <th class="text-left">Nội dung chuyển khoản (từ sao kê)</th>
+                            <th class="text-right">Số tiền CK</th>
+                            <th class="text-left" style="width:150px">Bù lượt (giá)</th>
+                            <th class="text-right" style="width:110px">Tiền mặt bù</th>
+                        </tr></thead>
+                        <tbody id="confirmBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ⑤ THUẾ PHẢI NỘP (sau khi chốt doanh thu + kiểm tra) -->
+            <section class="panel tax-panel animate-fade" id="taxPanel">
+                <div class="panel-head">
+                    <span class="step-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+                    </span>
+                    <div>
+                        <h2>Thuế phải nộp (cả kỳ)</h2>
+                        <p>Sửa % nếu cần — áp dụng cho cả số liệu web lẫn file Excel xuất ra.</p>
+                    </div>
+                </div>
+                <div class="tax-row">
+                    <div class="tax-box">
+                        <label>Thuế GTGT</label>
+                        <div class="rate-input">
+                            <input id="rateGtgt" type="number" step="0.1" min="0" value="3" inputmode="decimal">
+                            <span>%</span>
+                        </div>
+                        <b class="tabular-nums" id="amtGtgt">0 đ</b>
+                    </div>
+                    <div class="tax-box">
+                        <label>Thuế TNCN</label>
+                        <div class="rate-input">
+                            <input id="rateTncn" type="number" step="0.1" min="0" value="1.5" inputmode="decimal">
+                            <span>%</span>
+                        </div>
+                        <b class="tabular-nums" id="amtTncn">0 đ</b>
+                    </div>
+                    <div class="tax-box total">
+                        <label>Tổng thuế phải nộp</label>
+                        <div class="tax-base" id="taxBaseNote">Trên doanh thu 0 đ</div>
+                        <b class="tabular-nums" id="amtTotal">0 đ</b>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ⑥ THÔNG TIN TỜ KHAI + XUẤT (cuối cùng) -->
+            <section class="panel animate-fade" id="exportPanel">
+                <div class="panel-head">
+                    <span class="step-badge info">i</span>
+                    <div>
+                        <h2>Thông tin tờ khai &amp; Xuất</h2>
+                        <p>Điền để in vào đầu form S2A-HKD. Tự động lưu cho lần xuất sau.</p>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="mBusiness">Tên hộ / cá nhân kinh doanh</label>
+                        <input id="mBusiness" type="text" placeholder="VD: NGUYỄN VĂN A">
+                    </div>
+                    <div class="field">
+                        <label for="mTaxcode">Mã số thuế</label>
+                        <input id="mTaxcode" type="text" placeholder="VD: 8012345678" inputmode="numeric">
+                    </div>
+                    <div class="field col-span">
+                        <label for="mAddress">Địa chỉ</label>
+                        <input id="mAddress" type="text" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/TP">
+                    </div>
+                    <div class="field col-span">
+                        <label for="mLocation">Địa điểm kinh doanh</label>
+                        <input id="mLocation" type="text" placeholder="Tên / địa chỉ điểm kinh doanh">
+                    </div>
+                    <div class="field">
+                        <label for="mPeriod">Kỳ kê khai</label>
+                        <input id="mPeriod" type="text" placeholder="VD: Tháng 05/2026">
+                    </div>
+                    <div class="field">
+                        <label for="mUnit">Đơn vị tính</label>
+                        <input id="mUnit" type="text" value="VNĐ">
+                    </div>
+                    <div class="field col-span">
+                        <label for="mSignDate">Ngày ký tờ khai</label>
+                        <input id="mSignDate" type="text" placeholder="VD: Ngày 31 tháng 05 năm 2026">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <p class="muted">Đã kiểm tra số liệu ở các bảng phía trên. Chọn loại tờ khai để xuất:</p>
+                    <div class="form-actions-buttons">
+                        <button id="exportDailyBtn" class="btn btn-export-black btn-lg">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            Xuất báo cáo theo ngày
+                        </button>
+                        <button id="exportTaxBtn" class="btn btn-export-black btn-lg">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+                            Xuất tờ khai S2A-HKD 6 Tháng
+                        </button>
+                        <button id="exportBtn" class="btn btn-export-black btn-lg">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Xuất tờ khai S2A-HKD chi tiết
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ④ TABBED WORKSPACE (kiểm tra chi tiết) -->
+            <section class="panel animate-fade" id="workspacePanel">
+                <nav class="tabs" role="tablist">
+                    <button class="tab active" data-tab="review" role="tab">
+                        Cần kiểm tra <span class="pill warn" id="cntReview">0</span>
+                    </button>
+                    <button class="tab" data-tab="daily" role="tab">Sổ tiền theo ngày</button>
+                    <button class="tab" data-tab="other" role="tab">
+                        Doanh thu chuyển khoản <span class="pill" id="cntOther">0</span>
+                    </button>
+                    <button class="tab" data-tab="ledger" role="tab">
+                        Toàn bộ giao dịch <span class="pill" id="cntLedger">0</span>
+                    </button>
+                </nav>
+
+                <!-- Pane: Review (chưa đối soát) -->
+                <div class="tabpane active" id="pane-review" role="tabpanel">
+                    <div class="table-wrap" id="reviewWrap">
+                        <table>
+                            <thead><tr>
+                                <th class="text-left">Thời gian</th>
+                                <th class="text-left">Buồng chụp</th>
+                                <th class="text-left">Phương thức</th>
+                                <th class="text-left">Lý do cần kiểm tra</th>
+                                <th class="text-right">Số tiền</th>
+                            </tr></thead>
+                            <tbody id="reviewBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pane: Daily -->
+                <div class="tabpane" id="pane-daily" role="tabpanel">
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr>
+                                <th class="text-left">Ngày</th>
+                                <th class="text-right">Tiền mặt</th>
+                                <th class="text-right">CK photobooth</th>
+                                <th class="text-right">DT khác CK</th>
+                                <th class="text-right">Tổng thu</th>
+                            </tr></thead>
+                            <tbody id="dailyBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pane: Other income -->
+                <div class="tabpane" id="pane-other" role="tabpanel">
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr>
+                                <th class="text-left">Ngày</th>
+                                <th class="text-left">Nội dung / Người chuyển (từ sao kê)</th>
+                                <th class="text-right">Số tiền</th>
+                            </tr></thead>
+                            <tbody id="otherBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pane: Full ledger -->
+                <div class="tabpane" id="pane-ledger" role="tabpanel">
+                    <div class="toolbar">
+                        <div class="search">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input type="text" id="ledgerSearch" placeholder="Tìm buồng chụp, diễn giải, lý do...">
+                        </div>
+                        <div class="chips" id="methodChips">
+                            <button class="chip active" data-f="all">Tất cả</button>
+                            <button class="chip" data-f="Tiền mặt">Tiền mặt</button>
+                            <button class="chip" data-f="Mã QR">Mã QR</button>
+                            <button class="chip" data-f="Miễn phí">Miễn phí</button>
+                            <button class="chip" data-f="warn">Chưa đối soát</button>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr>
+                                <th class="text-left">Thời gian</th>
+                                <th class="text-left">Buồng chụp</th>
+                                <th class="text-left">Phương thức</th>
+                                <th class="text-left">Diễn giải</th>
+                                <th class="text-center">Trạng thái</th>
+                                <th class="text-right">Số tiền</th>
+                            </tr></thead>
+                            <tbody id="ledgerBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Toast + overlay -->
+    <div id="toast" class="toast"></div>
+    <div id="loadingOverlay" class="overlay">
+        <div class="spinner"></div>
+        <div class="overlay-text" id="overlayText">Đang xử lý thuật toán đối soát…</div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="gate.js?v=web1"></script>
+    <script src="engine.js?v=web1"></script>
+    <script src="export.js?v=web1"></script>
+    <script src="app.js?v=web1"></script>
+</body>
+</html>

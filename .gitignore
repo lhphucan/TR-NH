@@ -27,3 +27,5 @@
 !lenticular/
 !lenticular/**
 lenticular/**/*.map
+!thue/
+!thue/**
