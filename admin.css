@@ -569,3 +569,8 @@ input[type=checkbox], input[type=radio], input[type=range] { accent-color: #1818
 .rev-ck { color: #047857; }   /* chuyển khoản: xanh lá đậm */
 .rev-nhan { font-size: 11px; color: #666; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
 .rev-cham { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: currentColor; }
+
+/* Nhắc phần mềm in ở máy quầy đã cũ (in-anh.js) */
+.in-ban-cu { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border: 1px solid #d4d4d8; border-left: 3px solid #18181b; border-radius: 10px; padding: 10px 14px; margin: -8px 0 16px; font-size: 13px; color: #3f3f46; }
+.in-ban-cu span { flex: 1; min-width: 220px; }
+.in-ban-cu-nut { flex: none; background: #111; color: #fff; text-decoration: none; font-weight: 700; font-size: 12px; padding: 8px 14px; border-radius: 8px; }

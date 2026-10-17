@@ -11,6 +11,7 @@
 const IN_AGENT = 'http://localhost:9100';
 const IN_DPI = 720;                 // Epson L8050; máy in khác DPI thì phần mềm in chặn và báo
 const IN_BAN_TOI_THIEU = '2.3.0';   // 2.3.0: chỉ nhận lệnh từ trang của tiệm
+const IN_BAN_TU_CAP_NHAT = '2.4.0'; // từ bản này phần mềm in tự cập nhật, nhân viên không phải làm gì
 const IN_TAI = 'https://github.com/lhphucan/TR-NH/releases/latest/download/LenticularPrintAgent.exe';
 const IN_GIAY = {
     '4x6': { ten: '10×15', mo: '10×15 cm (4×6 inch)', w: 101.6, h: 152.4 },
@@ -81,6 +82,7 @@ async function inLam({ cId, uId, id, kho, ban, viec }) {
         let st = null;
         try { st = await (await fetch(IN_AGENT + '/health', { cache: 'no-store' })).json(); } catch (e) {}
         if (!st || !st.ok) return inBaoTai('Chưa mở phần mềm in', 'Máy này chưa cài hoặc chưa bật phần mềm in.');
+        inGhiMayQuay();
         if (inBanCu(st.version, IN_BAN_TOI_THIEU)) return inBaoTai('Cần cập nhật phần mềm in', `Máy đang chạy bản ${st.version}, cần bản ${IN_BAN_TOI_THIEU} trở lên.`);
 
         Swal.fire({ title: 'Đang chuẩn bị tờ in...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
@@ -149,3 +151,34 @@ async function inDungTo(im, g) {
     if (!png) throw new Error('Máy không dựng được tờ in (thiếu bộ nhớ)');
     return { png, W, H };
 }
+
+// ---------- Báo phần mềm in ở máy quầy đã cũ ----------
+// Mở trang nhân viên ở máy quầy: hỏi phần mềm in trên máy đó, bản cũ hơn 2.4.0 (chưa biết tự
+// cập nhật) thì hiện một dòng nhắc tải bản mới. Chỉ hỏi ở máy quầy (từng dùng app In ảnh Lens
+// hoặc nút In): máy khác hỏi localhost thì Chrome bật hộp xin quyền "mạng cục bộ" vô cớ.
+const inLaMayQuay = () => { try { return localStorage.getItem('pn_may_in') === '1' || Object.keys(localStorage).some(k => k.startsWith('lenticular_')); } catch (e) { return false; } };
+function inGhiMayQuay() { try { localStorage.setItem('pn_may_in', '1'); } catch (e) {} }
+
+async function inKiemBanMay() {
+    if (!userRole || userRole === 'viewer' || !inLaMayQuay()) return;
+    let st = null;
+    try {
+        const ac = new AbortController();
+        setTimeout(() => ac.abort(), 2500);
+        st = await (await fetch(IN_AGENT + '/health', { cache: 'no-store', signal: ac.signal })).json();
+    } catch (e) { return; }   // phần mềm in chưa bật: để lúc bấm In hãy báo
+    if (!st || !st.ok) return;
+    inGhiMayQuay();
+    let bar = document.getElementById('in-ban-cu');
+    if (!inBanCu(st.version, IN_BAN_TU_CAP_NHAT)) { if (bar) bar.remove(); return; }
+    if (!bar) {
+        const menu = document.querySelector('.admin-menu');
+        if (!menu) return;
+        menu.insertAdjacentHTML('afterend', `<div id="in-ban-cu" class="in-ban-cu">
+            <span>Phần mềm in trên máy này là bản <b>${escapeHTML(st.version)}</b>, đã cũ. Tải bản mới, nhấp đúp file tải về <b>một lần</b> — từ bản ${IN_BAN_TU_CAP_NHAT} máy tự cập nhật.</span>
+            <a class="in-ban-cu-nut" href="${IN_TAI}" target="_blank" rel="noopener">Tải bản mới</a>
+        </div>`);
+    }
+}
+// Chờ đăng nhập xong (userRole có giá trị) rồi kiểm một lần
+(function cho(n) { if (typeof userRole !== 'undefined' && userRole) inKiemBanMay(); else if (n < 60) setTimeout(() => cho(n + 1), 1000); })(0);
