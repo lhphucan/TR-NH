@@ -495,3 +495,14 @@ button, .btn, label[for] { touch-action: manipulation; }
 
 /* Ô tick, thanh kéo: màu của trang thay cho xanh mặc định của trình duyệt */
 input[type=checkbox], input[type=radio], input[type=range] { accent-color: #18181b; }
+
+/* Sửa nhóm frame (frame-admin.js) */
+.fa-nh-hint { font-size: 12px; color: #52525b; text-align: left; margin: 0 0 10px; }
+.fa-nh { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f4f4f5; font-size: 12px; }
+.fa-nh input[type=text] { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid #d4d4d8; border-radius: 8px; font: 13px 'Inter', sans-serif; }
+.fa-nh label { display: flex; align-items: center; gap: 4px; white-space: nowrap; color: #3f3f46; cursor: pointer; }
+.fa-nh-so { color: #a1a1aa; white-space: nowrap; min-width: 52px; text-align: right; }
+.fa-nh-x { width: 28px; height: 28px; border-radius: 8px; border: 1px solid #e5e5e5; background: #fff; color: #ef4444; cursor: pointer; }
+
+/* Chọn nhóm frame cho khách (nút Frame trên thẻ khách khi có nhiều nhóm) */
+.goi-chon { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }

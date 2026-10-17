@@ -309,7 +309,6 @@ async function nvMo(cId, uId) {
         });
         NV_KHACH = files.filter(x => laAnhKhach(x.name)).map(x => ({ id: x.id, name: x.name })).concat(gui);
         NV = { br, cId, uId, goc: up.bo };
-        FK_GOI = 'cao';   // nhân viên dùng được mọi frame
         fkBuild();
         nvGan();
         FKF = Object.assign({ id: bo.frame }, f);

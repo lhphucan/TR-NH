@@ -9,6 +9,7 @@ const FRAME_FOLDER = 'PHOTONOIR - Frame';
 let FA_LIST = {};     // frames trên Firebase
 let FA = null;        // frame đang sửa
 let FA_SEL = -1;      // ô đang chọn
+let FA_NHOM = FR.nhomDs(null);   // nhóm frame (config/frame_nhom)
 
 function faEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -48,10 +49,21 @@ async function openFrameManager() {
                             </div>
                         </div>
                         <div>
-                            <label class="fr-label">Loại frame</label>
+                            <label class="fr-label">Nhóm frame</label>
                             <div class="fr-row">
-                                <button class="fr-btn" id="fa-thuong" onclick="faSetCao(false)">Thường</button>
-                                <button class="fr-btn" id="fa-cao" onclick="faSetCao(true)">Cao cấp</button>
+                                <select id="fa-nhom" class="fr-select" onchange="FA.nhom = this.value"></select>
+                                <button class="fr-btn" onclick="faNhomSua()">Sửa nhóm…</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="fr-label">Khổ in</label>
+                            <div class="fr-row">
+                                <select id="fa-kho" class="fr-select" onchange="FA.kho = this.value; faKhoNhan()">
+                                    <option value="">Chưa chắc – chọn khổ</option>
+                                    <option value="A5">A5 (148×210 mm)</option>
+                                    <option value="A4">A4 (210×297 mm)</option>
+                                </select>
+                                <span id="fa-kho-nhan" class="fr-hint" style="margin:0;"></span>
                             </div>
                         </div>
                         <div>
@@ -131,6 +143,7 @@ async function faLoad() {
     try {
         FA_LIST = (await db.ref('frames').once('value')).val() || {};
         FT_LIST = (await db.ref('config/filters').once('value')).val() || {};
+        FA_NHOM = FR.nhomDs((await db.ref('config/frame_nhom').once('value')).val());
     }
     catch (e) { box.innerHTML = '<p class="fr-hint">Không đọc được danh sách frame. Kiểm tra đã dán luật Firebase mới chưa.</p>'; return; }
     faRenderList();
@@ -146,9 +159,9 @@ function faRenderList() {
             <span class="fr-fgrip" title="Kéo để xếp thứ tự khách thấy">⠿</span>
             <button class="fr-fitem${f.on === false ? ' off' : ''}" onclick="faOpen('${faEsc(id)}')">
                 <span class="fr-fimg">${FR.thumbHtml(f)}</span>
-                <b>${faEsc(f.name)}${f.cao ? ' <span class="fr-cao">Cao cấp</span>' : ''}</b>
+                <b>${faEsc(f.name)}${(n => FA_NHOM[n] && !FA_NHOM[n].mo ? ` <span class="fr-cao">${faEsc(FA_NHOM[n].name)}</span>` : '')(FR.nhomCua(f, FA_NHOM))}</b>
                 <span class="fr-meta">${(f.slots || []).length} ô${(f.layers || []).filter(l => l && l.k === 'fx').length ? ' · ' + (f.layers || []).filter(l => l && l.k === 'fx').length + ' lớp PNG' : ''} · ${f.on === false ? 'đang ẩn' : 'đang dùng'}${f.filter && FT_LIST[f.filter] ? ' · ' + faEsc(FT_LIST[f.filter].name) : ''}</span>
-                <span class="fr-meta">${cs.length ? faEsc(cs.join(', ')) : 'chưa chọn cơ sở'}</span>
+                <span class="fr-meta">${cs.length ? faEsc(cs.join(', ')) : 'chưa chọn cơ sở'} · ${f.kho || FR.khoDoan(f.w, f.h) || 'chưa chọn khổ'}</span>
             </button>
             <button class="fr-fdel" onclick="faDelete('${faEsc(id)}')" aria-label="Xoá frame">✕</button>
         </div>`;
@@ -240,7 +253,11 @@ function faShow(src) {
     FA_TRASH = [];
     faSetAll(FA.all !== false);
     faSetOn(FA.on !== false);
-    faSetCao(!!FA.cao);
+    FA.nhom = FR.nhomCua(FA, FA_NHOM);
+    faNhomSelect();
+    FA.kho = FA.kho || FR.khoDoan(FA.w, FA.h);
+    document.getElementById('fa-kho').value = FA.kho || '';
+    faKhoNhan();
     faLayersRender();
     faRender();
     faFilterSelect();
@@ -370,11 +387,63 @@ function faToggleBranch(el) {
     el.classList.toggle('on', !!FA.branches[b]);
 }
 
-// Frame cao cấp: khách chỉ dùng được khi nhân viên chọn "Cao cấp" cho lượt đó
-function faSetCao(v) {
-    FA.cao = !!v;
-    document.getElementById('fa-cao').classList.toggle('solid', !!v);
-    document.getElementById('fa-thuong').classList.toggle('solid', !v);
+// Nhóm của frame: nhóm "mở sẵn" ai cũng dùng; nhóm khác nhân viên mở cho từng khách
+function faNhomSelect() {
+    document.getElementById('fa-nhom').innerHTML = FR.nhomThuTu(FA_NHOM).map(n =>
+        `<option value="${faEsc(n)}"${n === FA.nhom ? ' selected' : ''}>${faEsc(FA_NHOM[n].name || n)}${FA_NHOM[n].mo ? ' (mở sẵn)' : ''}</option>`).join('');
+}
+
+// Khổ in: tự nhận theo kích thước; không chắc thì admin chọn
+function faKhoNhan() {
+    const doan = FR.khoDoan(FA.w, FA.h);
+    const mm = FR.KHO_MM[FA.kho];
+    document.getElementById('fa-kho-nhan').innerText = !FA.kho ? 'Kích thước lạ, chọn giúp khổ in'
+        : (doan === FA.kho ? 'tự nhận' : 'đã chọn') + ` · ${FA.w}×${FA.h} ≈ ${Math.round(Math.max(FA.w, FA.h) / (mm[1] / 25.4))} DPI`;
+}
+
+// Sửa nhóm: đổi tên, mở sẵn cho mọi khách, thêm, xoá (nhóm còn frame thì không xoá được)
+async function faNhomSua() {
+    const ds = JSON.parse(JSON.stringify(FA_NHOM));
+    const dung = n => Object.keys(FA_LIST).filter(id => FR.nhomCua(FA_LIST[id], FA_NHOM) === n).length + (FA && FA.nhom === n && !FA_LIST[FA.id] ? 1 : 0);
+    const dong = n => `<div class="fa-nh" data-n="${faEsc(n)}">
+            <input type="text" value="${faEsc(ds[n].name || '')}" maxlength="30" placeholder="Tên nhóm">
+            <label><input type="checkbox"${ds[n].mo ? ' checked' : ''}> Mở sẵn</label>
+            <span class="fa-nh-so">${dung(n)} frame</span>
+            ${n === 'thuong' || dung(n) ? '' : `<button type="button" class="fa-nh-x" onclick="this.closest('.fa-nh').remove()" aria-label="Xoá nhóm">✕</button>`}
+        </div>`;
+    const r = await Swal.fire({
+        title: 'Nhóm frame', width: 520, showCancelButton: true, confirmButtonText: 'Lưu', cancelButtonText: '<span style="color:#111">Huỷ</span>',
+        confirmButtonColor: '#111', cancelButtonColor: '#fff',
+        html: `<p class="fa-nh-hint">Nhóm <b>mở sẵn</b>: khách nào cũng dùng. Nhóm khác: nhân viên mở cho từng khách (nút "Frame" trên thẻ khách).</p>
+            <div id="fa-nh-ds">${FR.nhomThuTu(ds).map(dong).join('')}</div>
+            <button type="button" class="fr-btn" style="margin-top:8px;" onclick="document.getElementById('fa-nh-ds').insertAdjacentHTML('beforeend', faNhomDongMoi())">+ Thêm nhóm</button>`,
+        preConfirm: () => {
+            const o = {};
+            document.querySelectorAll('#fa-nh-ds .fa-nh').forEach((el, i) => {
+                const ten = el.querySelector('input[type=text]').value.trim();
+                if (!ten) return;
+                o[el.dataset.n] = { name: ten.slice(0, 30), order: i, mo: el.querySelector('input[type=checkbox]').checked || null };
+            });
+            if (!o.thuong) { Swal.showValidationMessage('Nhóm đầu (Thường) cần có tên'); return false; }
+            return o;
+        }
+    });
+    if (!r.isConfirmed) return;
+    try {
+        await db.ref('config/frame_nhom').set(r.value);
+        FA_NHOM = FR.nhomDs(r.value);
+        // Trang khách bản cũ còn đọc cờ cao: giữ đúng theo nhóm mở sẵn hay không
+        const sua = {};
+        Object.keys(FA_LIST).forEach(id => { const cao = !(FA_NHOM[FR.nhomCua(FA_LIST[id], FA_NHOM)] || {}).mo; if (!!FA_LIST[id].cao !== cao) { sua[id + '/cao'] = cao; FA_LIST[id].cao = cao; } });
+        if (Object.keys(sua).length) await db.ref('frames').update(sua);
+        if (FA) faNhomSelect();
+        faRenderList();
+        Toast.fire({ icon: 'success', title: 'Đã lưu nhóm frame' });
+    } catch (e) { Swal.fire('Lỗi', e.message, 'error'); }
+}
+function faNhomDongMoi() {
+    const n = 'n' + Date.now().toString(36);
+    return `<div class="fa-nh" data-n="${n}"><input type="text" value="" maxlength="30" placeholder="Tên nhóm mới"><label><input type="checkbox"> Mở sẵn</label><span class="fa-nh-so">0 frame</span><button type="button" class="fa-nh-x" onclick="this.closest('.fa-nh').remove()" aria-label="Xoá nhóm">✕</button></div>`;
 }
 
 // Ẩn thay vì xoá: frame theo mùa, hết đợt thì ẩn, đợt sau bật lại
@@ -570,6 +639,7 @@ async function faSave() {
     const branches = {};
     if (!FA.all) Object.keys(FA.branches).forEach(b => { if (FA.branches[b]) branches[b] = true; });
 
+    if (!FA.kho) { document.getElementById('fa-kho').focus(); return Toast.fire({ icon: 'warning', title: 'Chọn khổ in cho frame (A5 / A4)' }); }
     const btn = document.getElementById('fa-save'), bar = document.getElementById('fa-bar');
     btn.disabled = true;
     const L = FA.layers || FR.layersOf(FA);
@@ -578,7 +648,9 @@ async function faSave() {
         name: FA.name.slice(0, 60), w: FA.w, h: FA.h, front: L.findIndex(l => l.k === 'frame') > L.findIndex(l => l.k === 'photos'),
         on: FA.on !== false, all: FA.all !== false, branches,
         slots: FA.slots.map(s => ({ cx: Math.round(s.cx), cy: Math.round(s.cy), w: Math.round(s.w), h: Math.round(s.h), rot: +s.rot || 0 })),
-        file: FA.file || '', prev: FA.prev || '', filter: FA.filter || '', cao: !!FA.cao, at: Date.now()
+        file: FA.file || '', prev: FA.prev || '', filter: FA.filter || '',
+        // cao vẫn ghi cho trang khách bản cũ: nhóm không mở sẵn = khoá như frame cao cấp
+        nhom: FA.nhom || 'thuong', cao: !(FA_NHOM[FA.nhom] || {}).mo, kho: FA.kho || null, at: Date.now()
     };
     if (FA_LIST[FA.id] && FA_LIST[FA.id].order != null) rec.order = FA_LIST[FA.id].order;
     try {

@@ -199,3 +199,7 @@
     .fr-eslot { --hs: 26px; }
 }
 @media (max-width: 560px) { .fr-grid5 { grid-template-columns: repeat(3, 1fr); } }
+
+/* Tiêu đề nhóm frame trong danh sách khách chọn */
+.fr-nhom-ti { grid-column: 1 / -1; font: 700 12px 'Inter', sans-serif; text-transform: uppercase; letter-spacing: .5px; color: #111; margin: 6px 0 -2px; }
+.fr-nhom-ti span { font-weight: 500; text-transform: none; letter-spacing: 0; color: #71717a; }

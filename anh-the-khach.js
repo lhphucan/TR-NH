@@ -8,6 +8,7 @@ let AT_REF = null;      // theo dõi nhân viên bật/tắt ảnh thẻ
 let AT_KHUNG = null;    // iframe anh-the.html
 let AT_SAN = false;     // trang ảnh thẻ đã sẵn sàng nhận tin
 let AT_ALBUM = null;    // ảnh của lượt chụp: [{ id, name }]
+const AT_BAN = '20261017a';   // đổi khi sửa anh-the.html: máy khách bỏ bản cũ trong bộ nhớ đệm
 
 function atSessionReady(data, branch) {
     const btn = document.getElementById('at-entry');
@@ -31,7 +32,7 @@ function atTao() {
     if (AT_KHUNG) return;
     const lop = document.createElement('div');
     lop.id = 'at-lop';
-    lop.innerHTML = '<iframe id="at-khung" src="./anh-the.html" title="Làm ảnh thẻ" allow="clipboard-write"></iframe>';
+    lop.innerHTML = '<iframe id="at-khung" src="./anh-the.html?v=' + AT_BAN + '" title="Làm ảnh thẻ" allow="clipboard-write"></iframe>';
     document.body.appendChild(lop);
     AT_KHUNG = lop.firstElementChild;
 }
@@ -43,6 +44,7 @@ async function atOpen() {
     atTao();
     document.getElementById('at-lop').classList.add('on');
     document.body.classList.add('at-mo');
+    atKhoaPhong(true);
     // nút Back của điện thoại đóng màn ảnh thẻ: dùng chung cơ chế "màn đang mở" của trang khách (app.js)
     if (typeof moLop === 'function') moLop('anhthe', atDong);
     if (AT_SAN) { await atNapAlbum(); atGui({ t: 'mo' }); }
@@ -53,6 +55,19 @@ function atDong() {
     if (!lop || !lop.classList.contains('on')) return;
     lop.classList.remove('on');
     document.body.classList.remove('at-mo');
+    atKhoaPhong(false);
+}
+
+// Nút × trong khung gọi thẳng hàm này (cùng nguồn): đóng ngay rồi dọn lịch sử
+window.atDongTuKhung = () => { atDong(); if (typeof dongLop === 'function') dongLop('anhthe'); };
+
+// Đang mở ảnh thẻ: khoá phóng to cả trang ngoài (iPhone chụm trong khung là phóng cả trang)
+let AT_VP = null;
+function atKhoaPhong(khoa) {
+    const m = document.querySelector('meta[name="viewport"]');
+    if (!m) return;
+    if (khoa) { if (AT_VP === null) AT_VP = m.getAttribute('content'); m.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'); }
+    else if (AT_VP !== null) { m.setAttribute('content', AT_VP); AT_VP = null; }
 }
 
 // Ảnh của lượt chụp (bỏ bản ghép khung có sẵn và ảnh lẻ màu frame), gửi danh sách cho trang ảnh thẻ

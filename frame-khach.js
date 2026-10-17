@@ -13,8 +13,9 @@ let FK_LOCAL = [];      // ảnh khách chọn từ máy (đã tải về chỉn
 let FK_TAB = 'album';   // bảng chọn ảnh đang ở thẻ nào: album | may
 let FK_SESSION = null;  // lượt chụp mới nhất của phiên đang mở, cho nút ghép ở ngoài album
 let FKB = null;         // bộ lọc màu của frame đang ghép: { id, name, baked } hoặc null
-let FK_GOI = '';        // gói frame của lượt: 'cao' thì dùng được frame cao cấp
-let FK_GOI_REF = null;  // theo dõi gói: nhân viên mở khoá là máy khách mở ngay
+let FK_NHOM = FR.nhomDs(null);   // nhóm frame (config/frame_nhom)
+let FK_MO = new Set(['thuong']);  // nhóm khách của lượt này dùng được
+let FK_GOI_REF = null;  // theo dõi nhóm được mở: nhân viên mở khoá là máy khách mở ngay
 const FK_FILT = {};     // bộ lọc đã nạp, theo mã
 const FK_PVF = {};      // ảnh xem trước đã lọc: '<mã lọc>|<mã ảnh>' -> { url }
 
@@ -26,6 +27,7 @@ async function fkLoadFrames() {
     if (!FK_FRAMES) {
         try { FK_FRAMES = (await db.ref('frames').once('value')).val() || {}; }
         catch (e) { FK_FRAMES = {}; }
+        try { FK_NHOM = FR.nhomDs((await db.ref('config/frame_nhom').once('value')).val()); } catch (e) {}
     }
     return FK_FRAMES;
 }
@@ -139,27 +141,36 @@ async function frOpen() {
     fkStep('pick');
     // Gói frame của đúng lượt này; nhân viên đổi gói thì danh sách mở khoá ngay
     if (FK_GOI_REF) FK_GOI_REF.off();
-    FK_GOI_REF = db.ref('data/' + _albCtx.branch + '/' + _albCtx.clientId + '/goi');
+    // Theo dõi cả phiên chỉ để lấy goi (lượt cũ) và nhom; nhân viên mở nhóm là khách thấy ngay
+    FK_GOI_REF = db.ref('data/' + _albCtx.branch + '/' + _albCtx.clientId);
     let dau = true;
     FK_GOI_REF.on('value', s => {
-        FK_GOI = s.val() === 'cao' ? 'cao' : '';
+        const d = s.val() || {};
+        FK_MO = FR.nhomMo({ goi: d.goi, nhom: d.nhom }, FK_NHOM);
         fkListRender();
         // Chỉ có một frame dùng được thì vào luôn (lần đầu mở)
         if (dau) { dau = false; const ok = fkFramesFor(_albCtx.branch).filter(f => !fkKhoa(f)); if (ok.length === 1 && fkFramesFor(_albCtx.branch).length === 1) fkOpenFrame(ok[0].id); }
-    }, () => { FK_GOI = ''; fkListRender(); });
+    }, () => { FK_MO = FR.nhomMo(null, FK_NHOM); fkListRender(); });
 }
 
-const fkKhoa = f => !!f.cao && FK_GOI !== 'cao';
+// Nhân viên chỉnh lại (frame-nv.js) dùng được mọi frame
+const fkKhoa = f => !window.FK_NV && !FK_MO.has(FR.nhomCua(f, FK_NHOM));
 
 function fkListRender() {
     const box = document.getElementById('fk-list');
     if (!box) return;
-    box.innerHTML = fkFramesFor(_albCtx.branch).map(f => `
+    const item = f => `
         <button class="fr-fitem${fkKhoa(f) ? ' khoa' : ''}" onclick="fkOpenFrame('${fkEsc(f.id)}')">
             <span class="fr-fimg">${FR.thumbHtml(f)}${fkKhoa(f) ? `<span class="fr-lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></span>` : ''}</span>
             <b>${fkEsc(f.name)}</b>
             <span class="fr-meta">${f.slots.length} ảnh</span>
-        </button>`).join('');
+        </button>`;
+    // Chia theo nhóm (đúng thứ tự admin xếp); chỉ một nhóm thì khỏi tiêu đề
+    const ds = fkFramesFor(_albCtx.branch), theo = {};
+    ds.forEach(f => { const n = FR.nhomCua(f, FK_NHOM); (theo[n] = theo[n] || []).push(f); });
+    const nhom = FR.nhomThuTu(FK_NHOM).filter(n => theo[n]);
+    box.innerHTML = nhom.length <= 1 ? ds.map(item).join('')
+        : nhom.map(n => `<div class="fr-nhom-ti">${fkEsc(FK_NHOM[n].name || n)}${FK_MO.has(n) ? '' : ' <span>· nhờ nhân viên mở</span>'}</div>` + theo[n].map(item).join('')).join('');
 }
 
 function fkClose(tuBack) {

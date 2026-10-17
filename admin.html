@@ -18,8 +18,8 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
 
-    <link rel="stylesheet" href="./admin.css?v=20261016f">
-    <link rel="stylesheet" href="./frame.css">
+    <link rel="stylesheet" href="./admin.css?v=20261017b">
+    <link rel="stylesheet" href="./frame.css?v=20261017b">
 </head>
 <body>
     <div id="login-screen">
@@ -352,10 +352,7 @@
 
             <div style="margin-bottom:18px;">
                 <label style="font-size:11px; font-weight:700; color:#666; display:block; margin-bottom:6px; text-transform:uppercase;">Frame cho khách</label>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                    <button type="button" class="goi-opt" data-goi="" onclick="selectGoi('')">Thường</button>
-                    <button type="button" class="goi-opt" data-goi="cao" onclick="selectGoi('cao')">Cao cấp</button>
-                </div>
+                <div id="goi-opts" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:8px;"></div>
             </div>
 
             <div style="margin-bottom:18px;">
@@ -373,10 +370,10 @@
         </div>
     </div>
 
-    <script src="./admin.js?v=20261016f" defer></script>
-    <script src="./frame-core.js" defer></script>
-    <script src="./frame-admin.js" defer></script>
-    <script src="./frame-nv.js?v=20261016f" defer></script>
-    <script src="./frame-khach.js?v=20261016f" defer></script>
+    <script src="./admin.js?v=20261017b" defer></script>
+    <script src="./frame-core.js?v=20261017b" defer></script>
+    <script src="./frame-admin.js?v=20261017b" defer></script>
+    <script src="./frame-nv.js?v=20261017b" defer></script>
+    <script src="./frame-khach.js?v=20261017b" defer></script>
 </body>
 </html>

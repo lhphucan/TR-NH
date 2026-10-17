@@ -985,6 +985,15 @@ async function setupUI() {
         if (inp && inp !== document.activeElement) inp.value = k;
     }, () => { /* không đọc được -> dùng key dự phòng */ });
 
+    // Nhóm frame: tên nhóm hiện trên nút "Frame: ..." của thẻ khách
+    db.ref('config/frame_nhom').on('value', s => {
+        FR_NHOM = FR.nhomDs(s.val());
+        document.querySelectorAll('[id^="goi_"]').forEach(b => {
+            const c = currentData && currentData[b.id.slice(4)];
+            if (c) { b.innerText = goiNhan(c); b.classList.toggle('cao', nhomCuaKhach(c).length > 0); }
+        });
+    }, () => {});
+
     // Nơi lưu ảnh khách gửi: có link Apps Script thì dùng Drive, để trống thì imgbb
     db.ref('config/gs_url').on('value', s => {
         GS_URL = (s.val() || '').trim();
@@ -1630,8 +1639,8 @@ function patchCard(clientId, c) {
 
     const goiBtn = document.getElementById('goi_' + clientId);
     if (goiBtn) {
-        goiBtn.classList.toggle('cao', c.goi === 'cao');
-        goiBtn.innerText = 'Frame: ' + (c.goi === 'cao' ? 'Cao cấp' : 'Thường');
+        goiBtn.classList.toggle('cao', nhomCuaKhach(c).length > 0);
+        goiBtn.innerText = goiNhan(c);
     }
     const theBtn = document.getElementById('the_' + clientId);
     if (theBtn) {
@@ -1852,7 +1861,7 @@ function load() {
                                         <option value="Miễn phí" ${isFree ? 'selected' : ''}>Miễn phí</option>
                                     </select>
                                 </div>
-                                ${dbPath === 'data/' ? `<button type="button" id="goi_${client.id}" class="goi-btn${client.goi === 'cao' ? ' cao' : ''}" onclick="doiGoi('${client.id}')" title="Bấm để đổi">Frame: ${client.goi === 'cao' ? 'Cao cấp' : 'Thường'}</button>
+                                ${dbPath === 'data/' ? `<button type="button" id="goi_${client.id}" class="goi-btn${nhomCuaKhach(client).length ? ' cao' : ''}" onclick="doiGoi('${client.id}')" title="Bấm để đổi">${escapeHTML(goiNhan(client))}</button>
                                     <button type="button" id="the_${client.id}" class="goi-btn${client.the === true ? ' cao' : ''}" onclick="doiThe('${client.id}')" title="Bấm để đổi">Ảnh thẻ: ${client.the === true ? 'Bật' : 'Tắt'}</button>` : ''}
                             </div>
 
@@ -3151,11 +3160,38 @@ function pickQuickPrice(v) {
     confirmPrice();
 }
 
-// Gói frame của lượt: '' thường, 'cao' cao cấp (khách dùng được frame cao cấp)
-let _goiChon = '';
+// ===== Nhóm frame khách được dùng =====
+// Nhóm "mở sẵn" ai cũng dùng; nhóm khác nhân viên mở cho từng khách:
+// data/<cơ sở>/<phiên>/nhom = { <mã nhóm>: true }. goi = 'cao' (khi có nhóm nào được mở)
+// vẫn ghi cho trang khách bản cũ còn trong bộ nhớ đệm.
+let FR_NHOM = null;
+const nhomDs = () => FR_NHOM || (typeof FR !== 'undefined' ? FR.nhomDs(null) : {});
+const nhomKhoa = () => { const ds = nhomDs(); return FR.nhomThuTu(ds).filter(n => !ds[n].mo); };
+const nhomCuaKhach = c => { const mo = FR.nhomMo(c || {}, nhomDs()); return nhomKhoa().filter(n => mo.has(n)); };
+function goiNhan(c) {
+    const ds = nhomDs(), mo = nhomCuaKhach(c);
+    return 'Frame: ' + (mo.length ? mo.map(n => ds[n].name || n).join(' + ') : (ds.thuong && ds.thuong.name) || 'Thường');
+}
+function nhomGhi(mo) {
+    const o = {};
+    mo.forEach(n => { o[n] = true; });
+    return { nhom: mo.length ? o : null, goi: mo.length ? 'cao' : null };
+}
+
+// Bảng nhập giá: chọn nhóm frame cho khách (bấm để bật / tắt, "Thường" = không mở thêm)
+let _goiChon = new Set();
 function selectGoi(g) {
-    _goiChon = g === 'cao' ? 'cao' : '';
-    document.querySelectorAll('#price-modal .goi-opt[data-goi]').forEach(b => b.classList.toggle('active', b.getAttribute('data-goi') === _goiChon));
+    if (!g) _goiChon.clear();
+    else if (_goiChon.has(g)) _goiChon.delete(g);
+    else _goiChon.add(g);
+    goiOptVe();
+}
+function goiOptVe() {
+    const box = document.getElementById('goi-opts');
+    if (!box) return;
+    const ds = nhomDs();
+    box.innerHTML = `<button type="button" class="goi-opt${_goiChon.size ? '' : ' active'}" onclick="selectGoi('')">${escapeHTML((ds.thuong && ds.thuong.name) || 'Thường')}</button>`
+        + nhomKhoa().map(n => `<button type="button" class="goi-opt${_goiChon.has(n) ? ' active' : ''}" onclick="selectGoi('${escapeHTML(n)}')">${escapeHTML(ds[n].name || n)}</button>`).join('');
 }
 
 // Ảnh thẻ của lượt: bật thì khách thấy nút LÀM ẢNH THẺ (tự xoá phông, chỉnh, gửi tờ in cho tiệm)
@@ -3176,20 +3212,37 @@ function doiThe(clientId) {
         .catch(err => Swal.fire('Lỗi', err.message, 'error'));
 }
 
-// Nút "Frame: Thường / Cao cấp" trên thẻ khách: bấm để đổi
-function doiGoi(clientId) {
+// Nút "Frame: ..." trên thẻ khách. Chỉ một nhóm cần mở thì bấm là bật / tắt luôn;
+// nhiều nhóm thì hiện bảng nhỏ bấm chọn từng nhóm.
+async function doiGoi(clientId) {
     if (userRole === 'viewer') return;
     const c = currentData && currentData[clientId];
     if (!c) return;
-    const moi = c.goi === 'cao' ? null : 'cao';
-    db.ref(dbPath + br + '/' + clientId + '/goi').set(moi)
-        .then(() => Toast.fire({ icon: 'success', title: moi ? 'Đã mở frame cao cấp cho khách' : 'Đã về frame thường' }))
+    const khoa = nhomKhoa(), ds = nhomDs();
+    if (!khoa.length) return Toast.fire({ icon: 'info', title: 'Chưa có nhóm frame nào cần mở' });
+    let mo = nhomCuaKhach(c);
+    if (khoa.length === 1) mo = mo.length ? [] : [khoa[0]];
+    else {
+        const chon = new Set(mo);
+        const r = await Swal.fire({
+            title: 'Frame cho khách', showCancelButton: true, confirmButtonText: 'Lưu', cancelButtonText: '<span style="color:#111">Huỷ</span>',
+            confirmButtonColor: '#111', cancelButtonColor: '#fff',
+            html: `<div class="goi-chon">${khoa.map(n => `<button type="button" class="goi-opt${chon.has(n) ? ' active' : ''}" data-n="${escapeHTML(n)}">${escapeHTML(ds[n].name || n)}</button>`).join('')}</div>`,
+            didOpen: el => el.querySelectorAll('.goi-chon .goi-opt').forEach(b => b.onclick = () => b.classList.toggle('active')),
+            preConfirm: () => [...document.querySelectorAll('.goi-chon .goi-opt.active')].map(b => b.dataset.n)
+        });
+        if (!r.isConfirmed) return;
+        mo = r.value;
+    }
+    db.ref(dbPath + br + '/' + clientId).update(nhomGhi(mo))
+        .then(() => Toast.fire({ icon: 'success', title: mo.length ? 'Đã mở frame ' + mo.map(n => ds[n].name || n).join(', ') : 'Đã về frame ' + ((ds.thuong && ds.thuong.name) || 'thường') }))
         .catch(err => Swal.fire('Lỗi', err.message, 'error'));
 }
 
 function openPriceModal(clientId, currentPay) {
     _priceClientId = clientId;
-    selectGoi(((currentData && currentData[clientId]) || {}).goi);
+    _goiChon = new Set(nhomCuaKhach((currentData && currentData[clientId]) || {}));
+    goiOptVe();
     selectThe(((currentData && currentData[clientId]) || {}).the === true);
     _paySelected = (currentPay === 'Chuyển khoản') ? 'Chuyển khoản' : 'Tiền mặt';
     document.getElementById('price-amount-input').value = '';
@@ -3228,7 +3281,7 @@ function confirmPrice() {
     document.getElementById('price-modal').style.display = 'none';
     if (_priceResolve) { _priceResolve(true); _priceResolve = null; }
 
-    db.ref(dbPath + br + '/' + cid).update({ price, payment, goi: _goiChon || null, the: _theChon || null })
+    db.ref(dbPath + br + '/' + cid).update(Object.assign({ price, payment, the: _theChon || null }, nhomGhi([..._goiChon])))
         .catch(err => Swal.fire('Lỗi', 'Không lưu được giá: ' + err.message, 'error'));
 }
 

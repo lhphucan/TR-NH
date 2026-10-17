@@ -498,6 +498,49 @@ const FR = (() => {
         return bakeFilter(rec, lut);
     }
 
-    return { gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, layersOf, thumbHtml, frameOrder, upload, uploadTo, makePublic,
+    // ---------- Nhóm frame ----------
+    // config/frame_nhom/<mã> = { name, order, mo }: mo = mở sẵn cho mọi khách. Hai nhóm gốc
+    // luôn có: thuong (mở sẵn) và cao (nhân viên mở cho từng khách). Frame ghi nhom = <mã>;
+    // frame cũ chưa có thì suy từ cờ cao. Khách: data/<cơ sở>/<phiên>/nhom = { <mã>: true },
+    // lượt cũ goi = 'cao' vẫn tính là mở nhóm cao.
+    const NHOM_GOC = { thuong: { name: 'Thường', order: 0, mo: true }, cao: { name: 'Cao cấp', order: 1 } };
+    function nhomDs(rec) {
+        const o = {};
+        Object.keys(NHOM_GOC).forEach(k => { o[k] = Object.assign({}, NHOM_GOC[k]); });
+        Object.keys(rec || {}).forEach(k => { if (rec[k] && typeof rec[k] === 'object') o[k] = Object.assign({}, o[k] || {}, rec[k]); });
+        return o;
+    }
+    const nhomThuTu = ds => Object.keys(ds || {}).sort((a, b) => (+ds[a].order || 0) - (+ds[b].order || 0) || a.localeCompare(b));
+    // Nhóm của frame; nhóm đã bị xoá thì về Thường
+    function nhomCua(f, ds) {
+        const id = (f && f.nhom) || (f && f.cao ? 'cao' : 'thuong');
+        return ds && !ds[id] ? 'thuong' : id;
+    }
+    // Các nhóm khách của lượt này dùng được
+    function nhomMo(sess, ds) {
+        const s = new Set();
+        Object.keys(ds || {}).forEach(k => { if (ds[k].mo) s.add(k); });
+        // goi = 'cao' chỉ tính với lượt cũ; đã có nhom thì goi chỉ là dấu cho trang khách bản cũ
+        if (sess && sess.nhom) Object.keys(sess.nhom).forEach(k => { if (sess.nhom[k]) s.add(k); });
+        else if (sess && sess.goi === 'cao') s.add('cao');
+        return s;
+    }
+
+    // ---------- Khổ in của frame ----------
+    // A5 và A4 cùng tỉ lệ nên không đoán được từ tỉ lệ; đoán theo độ nét quen dùng của tiệm
+    // (frame A5 6250×4405 ≈ 756 DPI). Chỉ khổ nào ra độ nét gần mốc đó (±12%) mới coi là chắc.
+    const KHO_MM = { A5: [148, 210], A4: [210, 297] };
+    const DPI_TIEM = 756;
+    function khoDoan(w, h) {
+        const dai = Math.max(w, h), ngan = Math.min(w, h);
+        const hop = Object.keys(KHO_MM).filter(k => {
+            const [a, b] = KHO_MM[k];
+            if (Math.abs(dai / ngan - b / a) > 0.015 * (b / a)) return false;
+            return Math.abs(dai / (b / 25.4) - DPI_TIEM) <= DPI_TIEM * 0.12;
+        });
+        return hop.length === 1 ? hop[0] : '';
+    }
+
+    return { NHOM_GOC, nhomDs, nhomThuTu, nhomCua, nhomMo, KHO_MM, khoDoan, gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, layersOf, thumbHtml, frameOrder, upload, uploadTo, makePublic,
              haldIdentity, lutFromHald, lutFromCube, lutToHald, lutIsIdentity, bakeFilter, hasAdj, filterRect, filterSlot, filterCanvas, loadFilter };
 })();
