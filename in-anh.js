@@ -52,7 +52,7 @@ async function inGhep(cId, uId, ban) {
     if (!ban) ban = nv ? 'tiem' : 'khach';
     const id = ban === 'tiem' ? nv && nv.id : Array.isArray(up.drive) && up.drive[0] && up.drive[0].id;
     await fkLoadFrames().catch(() => {});
-    await inLam({ cId, uId, id, kho: inKhoGhep(cId, up), ban, viec: 'ảnh ghép frame' + (ban === 'tiem' ? ' (bản tiệm chỉnh)' : '') });
+    await inLam({ cId, uId, id, kho: inKhoGhep(cId, up), ban, le: IN_LE_FRAME_MM, viec: 'ảnh ghép frame' + (ban === 'tiem' ? ' (bản tiệm chỉnh)' : '') });
 }
 
 async function inThe(cId, uId) {
@@ -61,7 +61,7 @@ async function inThe(cId, uId) {
     await inLam({ cId, uId, id, kho: '4x6', viec: 'ảnh thẻ' });
 }
 
-async function inLam({ cId, uId, id, kho, ban, viec }) {
+async function inLam({ cId, uId, id, kho, ban, viec, le = 0 }) {
     if (userRole === 'viewer' || IN_DANG || !id) return;
     // Khổ chưa biết (frame chưa chọn khổ in): hỏi một lần cho lần in này
     if (!IN_GIAY[kho]) {
@@ -100,7 +100,7 @@ async function inLam({ cId, uId, id, kho, ban, viec }) {
         let png, W, H;
         try {
             const im = await FR.loadImg(u);
-            ({ png, W, H } = await inDungTo(im, g));
+            ({ png, W, H } = await inDungTo(im, g, le));
             im.src = '';
         } finally { URL.revokeObjectURL(u); }
 
@@ -160,20 +160,33 @@ async function inTaiAnh(id) {
     return res.blob();
 }
 
-// Nguyên tờ giấy dọc ở DPI máy in; ảnh ngang thì xoay cho khớp giấy. Ảnh phủ đúng cả tờ
-// (ảnh đã đúng khổ), thu / phóng một lần bằng trình duyệt cho mịn.
-async function inDungTo(im, g) {
+// Nguyên tờ giấy dọc ở DPI máy in; ảnh ngang thì xoay cho khớp giấy. Thu / phóng một lần bằng
+// trình duyệt cho mịn.
+// le = 0 (tờ ảnh thẻ, đã tự chừa lề): ảnh phủ đúng cả tờ.
+// le > 0 (ảnh ghép frame, thiết kế sát mép): như app In ảnh Lens (PAPER_SAFE_MARGIN_MM), không để
+// hình chạm dải le mm sát mép giấy, nơi Epson không in tới (lề cứng ~3 mm) -> thu ảnh vừa khung
+// giấy trừ le mỗi cạnh, giữ tỉ lệ, đặt giữa tờ. Đủ toàn bộ thiết kế, viền trắng đều 4 cạnh.
+const IN_LE_FRAME_MM = 3.5;
+async function inDungTo(im, g, le = 0) {
     const W = Math.round(g.w / 25.4 * IN_DPI), H = Math.round(g.h / 25.4 * IN_DPI);
     const iw = im.naturalWidth, ih = im.naturalHeight, ngang = iw > ih;
     const tiLe = Math.max(iw, ih) / Math.min(iw, ih), tiLeGiay = Math.max(g.w, g.h) / Math.min(g.w, g.h);
     if (Math.abs(tiLe - tiLeGiay) > tiLeGiay * 0.02) throw new Error(`Ảnh ${iw}×${ih} không đúng tỉ lệ khổ ${g.ten}, in ra sẽ méo. Kiểm tra khổ in của frame.`);
+    // Chỗ ảnh nằm trên tờ (theo chiều giấy, sau khi xoay)
+    let dw = W, dh = H;
+    if (le > 0) {
+        const L = le / 25.4 * IN_DPI, fw = ngang ? ih : iw, fh = ngang ? iw : ih;
+        const s = Math.min((W - 2 * L) / fw, (H - 2 * L) / fh);
+        dw = Math.round(fw * s); dh = Math.round(fh * s);
+    }
+    const ox = Math.round((W - dw) / 2), oy = Math.round((H - dh) / 2);
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
     const x = c.getContext('2d');
     x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
     x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
-    if (ngang) { x.translate(W, 0); x.rotate(Math.PI / 2); x.drawImage(im, 0, 0, H, W); }
-    else x.drawImage(im, 0, 0, W, H);
+    if (ngang) { x.translate(ox + dw, oy); x.rotate(Math.PI / 2); x.drawImage(im, 0, 0, dh, dw); }
+    else x.drawImage(im, ox, oy, dw, dh);
     const png = await new Promise(r => c.toBlob(r, 'image/png'));
     c.width = c.height = 0;
     if (!png) throw new Error('Máy không dựng được tờ in (thiếu bộ nhớ)');

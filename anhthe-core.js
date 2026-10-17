@@ -1231,13 +1231,15 @@ export function catThe(r, kho, nen, dau, tren, dpi, lech) {
 // ---------- 5b. Tờ in 10x15 nhiều khổ ----------
 // ds: [{ c: ảnh thẻ, so: số tấm }]. Xếp theo hàng (khổ to trước), thử tờ dọc và ngang,
 // chọn chiều xếp được nhiều hơn. Trả { c, xep: số tấm đã xếp, tong: số tấm muốn xếp }.
+// Lề an toàn sát mép giấy: máy in (Epson L8050) không in được 2,96 mm sát mép. Như app In ảnh Lens
+// (PAPER_SAFE_MARGIN_MM) và ảnh ghép frame (in-anh.js IN_LE_FRAME_MM): không để ảnh chạm dải 3,5 mm
+// sát mép, chừa 0,5 mm cho giấy kéo lệch. Khe giữa các ảnh 1,5 mm: với lề 3,5 mm vẫn giữ đủ số ảnh
+// mỗi tờ như cũ (khe 2 mm thì 3.5×4.5 tụt từ 8 xuống 6 ảnh).
+export const LE_MEP_MM = 3.5, KHE_ANH_MM = 1.5;
 export function xepTo(ds, dpi) {
     dpi = dpi || 300;
-    const gap = Math.round(2 / 25.4 * dpi);
-    // Lề mép tối thiểu 3 mm: máy in (Epson L8050) không in được ~3 mm sát mép giấy. Tờ một cỡ
-    // ảnh vốn đã cách mép ≥ 3,2 mm nhờ canh giữa, số ảnh mỗi tờ không đổi; chỉ chặn tờ trộn
-    // nhiều cỡ bị xếp sát mép (ảnh ngoài cùng mất mép, sai cỡ).
-    const le = Math.round(3 / 25.4 * dpi);
+    const gap = Math.round(KHE_ANH_MM / 25.4 * dpi);
+    const le = Math.round(LE_MEP_MM / 25.4 * dpi);
     const tam = [];
     ds.filter(d => d.so > 0).sort((a, b) => b.c.height - a.c.height).forEach(d => { for (let i = 0; i < d.so; i++) tam.push(d.c); });
     const thu = (PW, PH) => {
