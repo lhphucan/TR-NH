@@ -32,7 +32,10 @@
 
     "data": {
       "$branchId": {
-        ".read": true,
+        // Không đăng nhập: chỉ được TRA THEO ĐÚNG MỘT SỐ ĐIỆN THOẠI (cách trang khách tra cứu).
+        // Trước đây ".read": true -> ai cũng tải được toàn bộ danh sách khách (tên, SĐT, giá,
+        // link thư mục ảnh) chỉ bằng một lệnh. Nhân viên / admin đăng nhập vẫn đọc như cũ.
+        ".read": "auth != null || (query.orderByChild == 'phone' && query.equalTo != null)",
 
         // Khách tra theo SĐT: có index thì Firebase lọc sẵn ở máy chủ,
         // không phải tải cả nhánh về máy khách (đang 371 KB chỉ riêng Phúc Yên).
@@ -45,6 +48,8 @@
         ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))",
 
         "$clientId": {
+          // Đọc đúng một lượt khi đã biết mã lượt (trang khách theo dõi lượt của mình, mở lại sau F5)
+          ".read": true,
           // Nhân viên/admin: toàn quyền trên cơ sở của mình.
           // Khách (auth == null): chỉ được TẠO phiên mới, không sửa/xoá phiên đã có.
           ".write": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('branch').val() == $branchId && root.child('users').child(auth.uid).child('role').val() != 'viewer'))) || (auth == null && !data.exists() && newData.exists())",
