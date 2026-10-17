@@ -654,3 +654,25 @@ tr.row-flash td { animation: rowFlash 2.6s ease; }
   color: var(--c-ink-soft); font-size: .95rem;
 }
 .gate .btn { text-decoration: none; }
+
+/* ===== Màu cho con số tiền (chủ quán 17/10/2026: giao diện đen trắng xám, riêng
+   số tiền được có màu theo nghĩa cho dễ nhìn, tông đậm hợp web; giống bảng Thu nhập
+   ở trang quản lý). Trên nền đen của ô doanh thu dùng bản sáng của cùng màu. ===== */
+:root { --m-tm: #b45309; --m-ck: #047857; --m-tm-toi: #fbbf24; --m-ck-toi: #34d399; }
+.m-tm { color: var(--m-tm); }                 /* tiền mặt */
+.m-ck { color: var(--m-ck); }                 /* chuyển khoản */
+.m-ok { color: var(--m-ck); }                 /* đã khớp sao kê */
+.hero .m-tm { color: var(--m-tm-toi); }
+.hero .m-ck { color: var(--m-ck-toi); }
+.m-cham { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: currentColor; margin-right: 6px; vertical-align: 1px; }
+.stat-label .m-cham.m-tm, .tax-cell .m-cham.m-tm { color: var(--m-tm); }
+.stat-label .m-cham.m-ck, .tax-cell .m-cham.m-ck { color: var(--m-ck); }
+.hero .tax-cell .m-cham.m-tm { color: var(--m-tm-toi); }
+.hero .tax-cell .m-cham.m-ck { color: var(--m-ck-toi); }
+.stat--in { border-left-color: var(--m-ck); }
+.stat--in .stat-value { color: var(--m-ck); }
+.stat--ok { border-left-color: var(--m-ck); }
+.stat--ok .stat-value { color: var(--m-ck); }
+/* Cần kiểm tra: có số thì đỏ */
+.stat.is-warn { background: #fef2f2; border-color: #fca5a5; }
+.stat.is-warn .stat-value { color: #ef4444; }
