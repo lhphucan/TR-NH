@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Tách nền người cho Ảnh 3D (MediaPipe, chạy trên máy) -->
   <script src="./mediapipe/selfie_segmentation.js"></script>
-  <script type="module" crossorigin src="./assets/index-N-BY9WZi.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-BdFwXHyG.css">
+  <script type="module" crossorigin src="./assets/index-BQc5MFb8.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CpkHcr3k.css">
 </head>
 <body>
   <!-- ===== THANH TRÊN (cùng kiểu .admin-header của trang Quản lý PHOTONOIR) ===== -->
@@ -20,6 +20,12 @@
       IN ẢNH LENS
       <span id="roleBadge" class="role-badge"></span>
     </h2>
+    <!-- Tab nằm cùng hàng tiêu đề để nhường chỗ cho vùng làm việc -->
+    <nav class="tabs page-tabs">
+      <button id="tabStudioBtn" class="tab-btn active" type="button">Tạo &amp; In</button>
+      <button id="tabHistoryBtn" class="tab-btn" type="button">Lịch sử in</button>
+      <button id="tabPitchBtn" class="tab-btn admin-gate" type="button" title="Admin: nhân viên cần admin nhập tài khoản để mở"><svg class="lock-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Đo lens &amp; cài máy</button>
+    </nav>
     <div class="admin-menu">
       <span class="chip" title="Phần mềm in chạy trên máy tính nối máy in">
         <span class="dot" id="agentDot"></span> Phần mềm in: <b id="agentStatus">đang kiểm tra…</b>
@@ -38,12 +44,6 @@
     </div>
   </header>
 
-  <!-- Tab (cùng kiểu .tabs/.tab-btn của PHOTONOIR) -->
-  <nav class="tabs page-tabs">
-    <button id="tabStudioBtn" class="tab-btn active" type="button">Tạo &amp; In</button>
-    <button id="tabHistoryBtn" class="tab-btn" type="button">Lịch sử in</button>
-    <button id="tabPitchBtn" class="tab-btn admin-gate" type="button" title="Admin: nhân viên cần admin nhập tài khoản để mở"><svg class="lock-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Đo lens &amp; cài máy</button>
-  </nav>
 
   <!-- Không có quyền / chưa đăng nhập -->
   <div id="accessGate" class="access-gate hidden">
