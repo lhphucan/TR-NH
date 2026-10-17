@@ -14,7 +14,7 @@ const LUONG_CHO = {};
 function moLuong(kieu) {
     return new Promise((ok, no) => {
         let w;
-        try { w = new Worker(new URL('./anhthe-ai.js', import.meta.url), { type: 'module' }); } catch (e) { return no(e); }
+        try { w = new Worker(new URL('./anhthe-ai.js?v=706fddac', import.meta.url), { type: 'module' }); } catch (e) { return no(e); }
         w.onmessage = e => {
             const m = e.data;
             if (m.t === 'tai') LUONG_BAO && LUONG_BAO('Đang tải phần mềm...', { buoc: 'tai', da: m.da, tong: m.tong });
