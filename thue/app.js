@@ -30,6 +30,8 @@ const FILL_STORE = 'pn_fill_alloc';    // lưu {sig, target, seed, prices:{oiKey
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => new Intl.NumberFormat('vi-VN').format(Math.round(n || 0));
 const fmtMoney = (n) => fmt(n) + ' đ';
+// Màu số tiền theo phương thức (style.css .m-tm / .m-ck): tiền mặt cam, chuyển khoản xanh lá
+const mauPT = (m) => (m === 'Tiền mặt' ? 'm-tm' : 'm-ck');
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 let toastTimer;
@@ -655,7 +657,7 @@ function renderReview() {
       <td class="cell-strong">${esc(r.machine_id || '—')}</td>
       <td>${esc(r.method)}</td>
       <td class="cell-sub">${esc(r.reason)}</td>
-      <td class="text-right cell-mono cell-strong">${fmtMoney(r.amount)}</td>
+      <td class="text-right cell-mono cell-strong ${mauPT(r.method)}">${fmtMoney(r.amount)}</td>
     </tr>`).join('');
 }
 
@@ -669,9 +671,9 @@ function renderDaily() {
     rows.push(`
       <tr>
         <td class="cell-strong">${esc(d.date)}</td>
-        <td class="text-right cell-mono">${fmtMoney(d.cash)}</td>
-        <td class="text-right cell-mono">${fmtMoney(d.booth)}</td>
-        <td class="text-right cell-mono">${fmtMoney(d.other)}</td>
+        <td class="text-right cell-mono m-tm">${fmtMoney(d.cash)}</td>
+        <td class="text-right cell-mono m-ck">${fmtMoney(d.booth)}</td>
+        <td class="text-right cell-mono m-ck">${fmtMoney(d.other)}</td>
         <td class="text-right cell-mono cell-strong">${fmtMoney(d.total)}</td>
       </tr>`);
     (d.expenses || []).forEach(e => {
@@ -679,7 +681,7 @@ function renderDaily() {
         <tr class="row-expense">
           <td class="indent">↳ Chi tiêu</td>
           <td colspan="3">${esc(e.description)}</td>
-          <td class="text-right cell-mono">− ${fmtMoney(e.amount)}</td>
+          <td class="text-right cell-mono m-ra">− ${fmtMoney(e.amount)}</td>
         </tr>`);
     });
   });
@@ -759,7 +761,7 @@ function renderConfirm() {
         .join('');
       fillCell = `<td><select class="fill-sel" data-idx="${i}" ${on ? '' : 'disabled'}>${opts}</select></td>`;
       const cashAdd = (chosen && chosen > r.amount) ? (chosen - r.amount) : 0;
-      fillAmtCell = `<td class="text-right cell-mono ${cashAdd ? 'amount-in' : 'cell-faint'}">${cashAdd ? '+ ' + fmtMoney(cashAdd) : '—'}</td>`;
+      fillAmtCell = `<td class="text-right cell-mono ${cashAdd ? 'm-tm cell-strong' : 'cell-faint'}">${cashAdd ? '+ ' + fmtMoney(cashAdd) : '—'}</td>`;
     }
     return `
     <tr class="${on ? 'row-confirmed' : 'row-pending'}">
@@ -770,7 +772,7 @@ function renderConfirm() {
         <input type="text" class="desc-edit" data-idx="${i}"
                value="${esc(shown)}" title="Sửa diễn giải sẽ hiện trong tờ khai">
       </td>
-      <td class="text-right cell-mono cell-strong">${fmtMoney(r.amount)}</td>
+      <td class="text-right cell-mono cell-strong m-ck">${fmtMoney(r.amount)}</td>
       ${fillCell}
       ${fillAmtCell}
     </tr>`;
@@ -840,7 +842,7 @@ function renderLedger() {
       <td>${esc(r.method)}</td>
       <td class="cell-sub">${esc(r.reason)}</td>
       <td class="text-center">${badge(r.status)}</td>
-      <td class="text-right cell-mono cell-strong">${fmtMoney(r.amount)}</td>
+      <td class="text-right cell-mono cell-strong ${mauPT(r.method)}">${fmtMoney(r.amount)}</td>
     </tr>`).join('');
 }
 

@@ -676,3 +676,14 @@ tr.row-flash td { animation: rowFlash 2.6s ease; }
 /* Cần kiểm tra: có số thì đỏ */
 .stat.is-warn { background: #fef2f2; border-color: #fca5a5; }
 .stat.is-warn .stat-value { color: #ef4444; }
+
+/* Thêm màu số tiền: tiền ra (chi tiêu, thuế phải nộp) đỏ; tiền vào ngân hàng xanh lá;
+   ô kiểm tra chốt: cân đối xanh lá, cần rà lại đỏ. */
+.m-ra { color: #b91c1c; }
+#amtTotal { color: #f87171; }                       /* tổng thuế trên ô nền đen */
+.amount-in  { color: var(--m-ck); }
+.amount-out { color: #b91c1c; }
+.checks-head.ok   { color: var(--m-ck); }
+.checks-head.warn { color: #b91c1c; }
+.chk-item.ok   { border-left-color: var(--m-ck); }
+.chk-item.warn { border-left-color: #ef4444; }
