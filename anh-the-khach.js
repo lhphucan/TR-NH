@@ -8,7 +8,7 @@ let AT_REF = null;      // theo dõi nhân viên bật/tắt ảnh thẻ
 let AT_KHUNG = null;    // iframe anh-the.html
 let AT_SAN = false;     // trang ảnh thẻ đã sẵn sàng nhận tin
 let AT_ALBUM = null;    // ảnh của lượt chụp: [{ id, name }]
-const AT_BAN = '20261017a';   // đổi khi sửa anh-the.html: máy khách bỏ bản cũ trong bộ nhớ đệm
+const AT_BAN = '20261017c';   // đổi khi sửa anh-the.html: máy khách bỏ bản cũ trong bộ nhớ đệm
 
 function atSessionReady(data, branch) {
     const btn = document.getElementById('at-entry');

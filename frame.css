@@ -203,3 +203,6 @@
 /* Tiêu đề nhóm frame trong danh sách khách chọn */
 .fr-nhom-ti { grid-column: 1 / -1; font: 700 12px 'Inter', sans-serif; text-transform: uppercase; letter-spacing: .5px; color: #111; margin: 6px 0 -2px; }
 .fr-nhom-ti span { font-weight: 500; text-transform: none; letter-spacing: 0; color: #71717a; }
+
+/* Đang ghép frame: không cho chụm phóng cả trang (frame-khach.js fkKhoaPhong) */
+body.fk-mo, body.fk-mo .fr-modal, body.fk-mo .fk-ed, body.fk-mo .fr-pk { touch-action: pan-x pan-y; }

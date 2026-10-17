@@ -1234,13 +1234,17 @@ export function catThe(r, kho, nen, dau, tren, dpi, lech) {
 export function xepTo(ds, dpi) {
     dpi = dpi || 300;
     const gap = Math.round(2 / 25.4 * dpi);
+    // Lề mép tối thiểu 3 mm: máy in (Epson L8050) không in được ~3 mm sát mép giấy. Tờ một cỡ
+    // ảnh vốn đã cách mép ≥ 3,2 mm nhờ canh giữa, số ảnh mỗi tờ không đổi; chỉ chặn tờ trộn
+    // nhiều cỡ bị xếp sát mép (ảnh ngoài cùng mất mép, sai cỡ).
+    const le = Math.round(3 / 25.4 * dpi);
     const tam = [];
     ds.filter(d => d.so > 0).sort((a, b) => b.c.height - a.c.height).forEach(d => { for (let i = 0; i < d.so; i++) tam.push(d.c); });
     const thu = (PW, PH) => {
-        const vi = []; let x = gap, y = gap, hang = 0;
+        const vi = []; let x = le, y = le, hang = 0;
         for (const t of tam) {
-            if (x + t.width + gap > PW) { x = gap; y += hang + gap; hang = 0; }
-            if (y + t.height + gap > PH || t.width + 2 * gap > PW) break;
+            if (x + t.width + le > PW) { x = le; y += hang + gap; hang = 0; }
+            if (y + t.height + le > PH || t.width + 2 * le > PW) break;
             vi.push([t, x, y]); x += t.width + gap; hang = Math.max(hang, t.height);
         }
         return { PW, PH, vi };
@@ -1251,7 +1255,7 @@ export function xepTo(ds, dpi) {
     x.fillStyle = '#fff'; x.fillRect(0, 0, T.PW, T.PH);
     // canh giữa cả khối ảnh trên tờ
     const mx = T.vi.reduce((m, [t, a]) => Math.max(m, a + t.width), 0), my = T.vi.reduce((m, [t, , b]) => Math.max(m, b + t.height), 0);
-    const dx = Math.round((T.PW - gap - mx) / 2), dy = Math.round((T.PH - gap - my) / 2);
+    const dx = Math.round((T.PW - le - mx) / 2), dy = Math.round((T.PH - le - my) / 2);
     x.strokeStyle = '#bbb'; x.lineWidth = 1;
     for (const [t, a, b] of T.vi) { x.drawImage(t, a + dx, b + dy); x.strokeRect(a + dx - 0.5, b + dy - 0.5, t.width + 1, t.height + 1); }
     return { c, xep: T.vi.length, tong: tam.length };

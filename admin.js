@@ -1113,7 +1113,7 @@ const LE_MAY = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 function leChuKy(c) {
     return JSON.stringify(Object.values((c && c.client_uploads) || {}).map(u => u ? [u.le ? [!!u.le.xong, !!u.le.hong] : 0,
         u.nv ? [u.nv.id, u.nv.tai || 0] : 0, u.tai || 0,
-        u.du ? [!!u.du.xong, !!u.du.hong] : 0, Array.isArray(u.drive) && u.drive[0] ? u.drive[0].id : 0] : 0));
+        u.du ? [!!u.du.xong, !!u.du.hong] : 0, Array.isArray(u.drive) && u.drive[0] ? u.drive[0].id : 0, u.daIn ? u.daIn.at : 0] : 0));
 }
 
 // ===== Việc ngầm tự lo: chưa làm thì làm, làm dở thì làm tiếp, hỏng thì thử lại =====
@@ -1807,9 +1807,11 @@ function load() {
                                         <svg class="icon-sm" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
                                         ${up.kind === 'frame' ? 'Ảnh ghép frame' : up.kind === 'anhthe' ? 'Ảnh thẻ' : 'Yêu cầu in'} ${gioGui(up.time)}
                                         ${up.took != null ? `<span class="up-meta" title="Thời gian khách gửi, dung lượng, đường đi">${+up.took || 0}s · ${+up.mb || 0} MB${/script|cu/.test(up.via || '') ? ' · dự phòng' : ''}</span>` : ''}
+                                        ${up.kind === 'anhthe' && typeof inDaIn === 'function' && inDaIn(up) ? `<span class="up-meta">${inDaIn(up)}</span>` : ''}
                                     </span>
                                     <div style="display:flex; gap:8px;">
                                         ${up.folder ? `<a href="${escapeHTML(up.folder)}" target="_blank" rel="noopener" class="up-btn ghost">MỞ THƯ MỤC</a>` : ''}
+                                        ${up.kind === 'anhthe' && upDrive.length && typeof inThe === 'function' ? `<button onclick="inThe('${client.id}', '${uId}')" class="up-btn ghost" title="In qua phần mềm in ở máy quầy">IN · 10×15</button>` : ''}
                                         <button onclick="downloadAllUploads('${client.id}', '${uId}', this)" class="up-btn solid">TẢI TẤT CẢ (${upCount})</button>
                                     </div>
                                 </div>

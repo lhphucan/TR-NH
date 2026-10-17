@@ -58,11 +58,12 @@ function nvHang(cId, uId, up) {
             <div class="nv-hang-r">
                 <div class="nv-hang-ti">
                     <b>Ảnh ghép frame</b>
-                    <small>${[gioGui(up.time), e(fr), up.took != null ? `${+up.took || 0}s · ${+up.mb || 0} MB` : ''].filter(Boolean).join(' · ')}</small>
+                    <small>${[gioGui(up.time), e(fr), up.took != null ? `${+up.took || 0}s · ${+up.mb || 0} MB` : '', inDaIn(up)].filter(Boolean).join(' · ')}</small>
                 </div>
                 ${khach ? chip('khach', khach.id, 'Bản khách', up.tai ? 'đã tải ' + nvGio(up.tai) : 'bấm để xem') : ''}
                 ${nv ? chip('tiem', nv.id, 'Bản tiệm chỉnh', e(nv.by || '') + ' · ' + (nv.tai ? 'đã tải ' + nvGio(nv.tai) : nvGio(nv.at)), true) : ''}
                 <span class="nv-hang-nut">
+                    ${khach ? inNut(inKhoGhep(cId, up), `inGhep('${cId}', '${uId}')`) : ''}
                     ${up.bo ? `<button type="button" class="up-btn ${nv ? 'ghost' : 'solid'}" onclick="nvMo('${cId}', '${uId}')">${nv ? 'Chỉnh tiếp' : 'Chỉnh lại'}</button>` : ''}
                     ${up.folder ? `<a href="${e(up.folder)}" target="_blank" rel="noopener" class="up-btn ghost nv-thumuc" title="Mở thư mục lượt chụp" aria-label="Mở thư mục"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></svg></a>` : ''}
                 </span>
@@ -193,6 +194,7 @@ function nvXem(cId, uId, ban, nvMoi) {
                 <div class="nvx-foot">
                     <span id="nvx-tt"></span>
                     <button type="button" class="nvx-btn" id="nvx-tai" onclick="nvTai(this)"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>Tải bản này</button>
+                    <button type="button" class="nvx-btn" id="nvx-in" onclick="inGhep(NVX.cId, NVX.uId, NVX.ban)">In</button>
                     <button type="button" class="nvx-btn den" id="nvx-chinh" onclick="nvMo(NVX.cId, NVX.uId)"></button>
                 </div>
             </div>
@@ -236,6 +238,9 @@ function nvXemVe() {
     document.getElementById('nvx-tt').innerText = (tiem ? `Bản tiệm chỉnh · ${nv.by || ''} lúc ${nvGio(nv.at)}` : `Bản khách · gửi lúc ${gioGui(up.time)}`)
         + (tai ? ` · đã tải lúc ${nvGio(tai)}` : ' · chưa tải');
     document.getElementById('nvx-tai').disabled = !id;
+    const kho = IN_GIAY[inKhoGhep(NVX.cId, up)];
+    document.getElementById('nvx-in').innerText = 'In' + (kho ? ' · ' + kho.ten : '');
+    document.getElementById('nvx-in').disabled = !id;
     const chinh = document.getElementById('nvx-chinh');
     chinh.style.display = up.bo ? '' : 'none';
     chinh.innerText = nv ? 'Chỉnh tiếp' : 'Chỉnh lại';

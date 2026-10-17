@@ -137,6 +137,7 @@ async function frOpen() {
     fkBuild();
     document.getElementById('fk-modal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    fkKhoaPhong(true);
     moLop('fk', () => fkClose(true));
     fkStep('pick');
     // Gói frame của đúng lượt này; nhân viên đổi gói thì danh sách mở khoá ngay
@@ -178,11 +179,32 @@ function fkClose(tuBack) {
     if (document.getElementById('fk-pk')) document.getElementById('fk-pk').style.display = 'none';
     FK_PK = null;
     document.getElementById('fk-modal').style.display = 'none';
+    fkKhoaPhong(false);
     if (FK_GOI_REF) { FK_GOI_REF.off(); FK_GOI_REF = null; }
     if (document.getElementById('fk-ed')) { document.getElementById('fk-ed').classList.remove('on'); FK_ED = -1; }
     // Album vẫn đang mở bên dưới: giữ khoá cuộn trang
     const alb = document.getElementById('alb-modal');   // trang nhân viên không có album
     if (!alb || alb.style.display !== 'flex') document.body.style.overflow = '';
+}
+
+// Đang ghép frame: khoá phóng to cả trang. Khách chụm hai ngón ngoài vùng ảnh (thanh trên,
+// thanh phóng to) là iPhone phóng cả trang, nút "Xong" trôi ra ngoài màn hình, khách
+// không thoát ra được. Đổi viewport để iPhone về lại cỡ thường; chặn cử chỉ chụm (Safari
+// bỏ qua user-scalable=no). Phóng ảnh trong ô dùng pointer nên không bị ảnh hưởng.
+let FK_VP = null;
+const fkChanChum = e => e.preventDefault();
+function fkKhoaPhong(khoa) {
+    if (window.FK_NV) return;   // trang nhân viên trên máy tính
+    const m = document.querySelector('meta[name="viewport"]');
+    if (khoa) {
+        if (m && FK_VP === null) { FK_VP = m.getAttribute('content'); m.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'); }
+        ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, fkChanChum, { passive: false }));
+        document.body.classList.add('fk-mo');
+    } else {
+        if (m && FK_VP !== null) { m.setAttribute('content', FK_VP); FK_VP = null; }
+        ['gesturestart', 'gesturechange'].forEach(ev => document.removeEventListener(ev, fkChanChum));
+        document.body.classList.remove('fk-mo');
+    }
 }
 
 function fkStep(s) {
