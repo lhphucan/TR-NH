@@ -561,3 +561,11 @@ input[type=checkbox], input[type=radio], input[type=range] { accent-color: #1818
 .don-cho { font-size: 13px; color: #71717a; }
 .don-bar { height: 6px; background: #f4f4f5; border-radius: 3px; overflow: hidden; margin-bottom: 14px; }
 .don-bar span { display: block; height: 100%; width: 0; background: #111; transition: width .2s; }
+
+/* Thu nhập: số tiền có màu theo hình thức trả cho dễ nhìn (ngoại lệ của tông đen trắng:
+   số tiền được dùng màu có nghĩa). Tông đậm để đọc rõ trên nền trắng. */
+.rev-so { font-size: 16px; font-weight: 700; }
+.rev-tm { color: #b45309; }   /* tiền mặt: cam đậm */
+.rev-ck { color: #047857; }   /* chuyển khoản: xanh lá đậm */
+.rev-nhan { font-size: 11px; color: #666; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+.rev-cham { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: currentColor; }
