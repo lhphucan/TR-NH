@@ -372,4 +372,4 @@ var Ln=Object.defineProperty;var kn=(c,t,e)=>t in c?Ln(c,t,{enumerable:!0,config
     → nhấp đúp file vừa tải (tự cài, tự thay bản cũ, tự chạy khi mở máy).
     Windows báo “Windows protected your PC” thì bấm <b>More info → Run anyway</b>.
     Xong đóng hộp này và bấm In lại.`}document.addEventListener("DOMContentLoaded",()=>{const c=new xe;ta().then(t=>c.applySession(t)).catch(t=>{console.error(t),c.applySession({role:"viewer",user:"",adminUrl:null})})});
-//# sourceMappingURL=index-DbLT2bUA.js.map
+//# sourceMappingURL=index-N-BY9WZi.js.map
