@@ -14,7 +14,7 @@ const IN_DPI = 720;                 // Epson L8050; máy in khác DPI thì phầ
 const IN_BAN_TOI_THIEU = '2.3.0';   // 2.3.0: chỉ nhận lệnh từ trang của tiệm
 const IN_BAN_TU_CAP_NHAT = '2.4.0'; // từ bản này phần mềm in tự cập nhật, nhân viên không phải làm gì
 const IN_BAN_CHUAN = '2.5.0';       // từ bản này có bộ chuẩn (/settings trả chuan, chuanAt)
-const IN_CHUA_CAI = 'Chuột phải biểu tượng phần mềm in (góc phải dưới màn hình) → "Cài thông số in…", chọn preset giấy đúng rồi bấm OK.';
+const IN_CHUA_CAI = 'Chuột phải biểu tượng phần mềm in (chữ N trên ô đen, góc phải dưới màn hình; không thấy thì bấm ^ cạnh đồng hồ) → "Cài thông số in…", chọn preset giấy đúng rồi bấm OK.';
 const IN_TAI = 'https://github.com/lhphucan/TR-NH/releases/latest/download/LenticularPrintAgent.exe';
 const IN_GIAY = {
     '4x6': { ten: '10×15', mo: '10×15 cm (4×6 inch)', w: 101.6, h: 152.4 },
