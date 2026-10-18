@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>NOIR BOOTH</title>
+<noscript><meta http-equiv="refresh" content="0;url=https://photo.noirbooth.com/"></noscript>
+<style>body { margin: 0; font: 15px/1.5 system-ui, sans-serif; background: #fff; color: #18181b; display: grid; place-items: center; min-height: 100vh; text-align: center; } a { color: #111; }</style>
+</head>
+<body>
+<p>NOIR BOOTH đã chuyển sang địa chỉ mới.<br><a id="l" href="https://photo.noirbooth.com/">photo.noirbooth.com</a></p>
+<script>
+// Địa chỉ cũ lhphucan.github.io/TR-NH/... -> photo.noirbooth.com (khách) hoặc studio.noirbooth.com (nhân viên)
+(function () {
+    var duong = location.pathname.replace(/^\/TR-NH(?=\/|$)/i, '') || '/';
+    var studio = /^\/(admin\.html|lenticular(\/|$)|thue(\/|$))/i.test(duong);
+    var goc = studio ? 'https://studio.noirbooth.com' : 'https://photo.noirbooth.com';
+    // admin.html, index.html -> trang gốc; các trang .html khác bỏ đuôi (Cloudflare Pages tự bỏ, khỏi một lần chuyển)
+    var den = duong.replace(/^\/(admin|index)\.html$/i, '/').replace(/\.html$/i, '') + location.search;
+    var du = {};
+    try {
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i), v = localStorage.getItem(k);
+            if (/^(pn_|lenticular_)/.test(k) && v && v.length < 50000) du[k] = v;
+        }
+    } catch (e) {}
+    var dich = Object.keys(du).length
+        ? goc + '/chuyen#den=' + encodeURIComponent(den) + '&du=' + encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(du)))))
+        : goc + den;
+    document.getElementById('l').href = goc + den;
+    location.replace(dich);
+})();
+</script>
+</body>
+</html>

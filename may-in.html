@@ -2,203 +2,35 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<title>Máy in quầy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<title>NOIR BOOTH</title>
+<noscript><meta http-equiv="refresh" content="0;url=https://photo.noirbooth.com/"></noscript>
+<style>body { margin: 0; font: 15px/1.5 system-ui, sans-serif; background: #fff; color: #18181b; display: grid; place-items: center; min-height: 100vh; text-align: center; } a { color: #111; }</style>
 </head>
 <body>
-<p>Trang chạy ẩn trong phần mềm in của laptop quầy: nhận lệnh in từ xa. Không cần mở trang này.</p>
-<script src="./frame-core.js?v=fef9b304"></script>
-<script src="./in-to.js?v=dc2c9a4c"></script>
+<p>NOIR BOOTH đã chuyển sang địa chỉ mới.<br><a id="l" href="https://photo.noirbooth.com/">photo.noirbooth.com</a></p>
 <script>
-// ===== Laptop quầy: nhận lệnh in từ xa =====
-// Phần mềm in 2.6.0 mở trang này trong một cửa sổ ẩn (WebView2) và gắn sẵn window.__MAY
-// = { rt (phiên đăng nhập nhân viên của quán, trang nhân viên tự trao khi ghép), uid, branch, ten, ban, may }.
-// Không có Firebase SDK: gọi thẳng REST bằng mã đăng nhập đổi từ rt. Phần mềm in gọi nhip() mỗi vài giây.
-// - Báo "đang bật": may_in/<cơ sở>/<mã máy> = { at (giờ máy chủ), ban, ten, giay, giayAt } mỗi 30 giây.
-// - Lệnh: in_xa/<cơ sở>/J_<giờ> (admin tạo, in-anh.js inXa) tt: cho -> nhan -> dang -> xong | loi.
-// - Dựng tờ bằng in-to.js (giống hệt in tại quầy), gửi phần mềm in như nút In.
-// An toàn: lệnh chờ quá 10 phút thì không in; đã gửi phần mềm in mà không rõ kết quả thì báo lỗi, KHÔNG in lại.
-const API = 'AIzaSyAcih83r2AhH85J3Pp31i7qq8OkuRAIyxw';
-const DB = 'https://tra-anh-khach-default-rtdb.asia-southeast1.firebasedatabase.app';
-const AGENT = 'http://localhost:9100';
-const GS_KEY = '0vRhkkYveiToxF9yK4sG4rWacTaMbfNl';
-const QUA_HAN = 10 * 60000;
-const M = window.__MAY || {};
-let TOKEN = '', TOKEN_HET = 0, DANG = false, BAO_LUC = 0, GS_URL = '', DRIVE = '', DRIVE_HET = 0;
-
-// Nhật ký về phần mềm in (may-in.log)
-const ghi = m => { try { window.chrome.webview.postMessage(String(m)); } catch (e) {} console.log(m); };
-
-async function maDangNhap() {
-    if (TOKEN && Date.now() < TOKEN_HET - 120000) return TOKEN;
-    const r = await fetch('https://securetoken.googleapis.com/v1/token?key=' + API, {
-        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(M.rt)
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.id_token) throw new Error('Đăng nhập ngầm hỏng (' + ((d.error && d.error.message) || r.status) + '): mở trang nhân viên trên laptop một lần để ghép lại');
-    if (M.uid && d.user_id && d.user_id !== M.uid) throw new Error('Phiên đăng nhập không khớp tài khoản đã ghép');
-    TOKEN = d.id_token; TOKEN_HET = Date.now() + (+d.expires_in || 3600) * 1000;
-    return TOKEN;
-}
-async function rest(p, opt, q) {
-    const r = await fetch(`${DB}/${p}.json?auth=${await maDangNhap()}${q ? '&' + q : ''}`, Object.assign({ cache: 'no-store' }, opt || {}));
-    const d = await r.json().catch(() => null);
-    if (!r.ok) throw new Error('Firebase ' + r.status + (d && d.error ? ': ' + d.error : ''));
-    return d;
-}
-const va = (p, o) => rest(p, { method: 'PATCH', body: JSON.stringify(o) });
-
-// Báo laptop đang bật (giờ máy chủ: đồng hồ laptop sai cũng không sao)
-async function baoBat() {
-    const st = await fetch(AGENT + '/health', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
-    await va('may_in/' + M.branch + '/' + M.may, { at: { '.sv': 'timestamp' }, ban: (st && st.version) || M.ban || '', ten: M.ten || '' });
-    BAO_LUC = Date.now();
-}
-
-async function nhip() {
-    if (DANG || !M.rt || !M.branch || !M.may) return;
-    DANG = true;
+// Địa chỉ cũ lhphucan.github.io/TR-NH/... -> photo.noirbooth.com (khách) hoặc studio.noirbooth.com (nhân viên)
+(function () {
+    var duong = location.pathname.replace(/^\/TR-NH(?=\/|$)/i, '') || '/';
+    var studio = /^\/(admin\.html|lenticular(\/|$)|thue(\/|$))/i.test(duong);
+    var goc = studio ? 'https://studio.noirbooth.com' : 'https://photo.noirbooth.com';
+    // admin.html, index.html -> trang gốc; các trang .html khác bỏ đuôi (Cloudflare Pages tự bỏ, khỏi một lần chuyển)
+    var den = duong.replace(/^\/(admin|index)\.html$/i, '/').replace(/\.html$/i, '') + location.search;
+    var du = {};
     try {
-        if (Date.now() - BAO_LUC > 30000) await baoBat();
-        const ds = await rest('in_xa/' + M.branch, null, 'orderBy=%22tt%22&equalTo=%22cho%22');
-        const viec = Object.entries(ds || {}).filter(([, j]) => j && j.tt === 'cho').sort((a, b) => (a[1].at || 0) - (b[1].at || 0));
-        for (const [k, j] of viec) await lam(k, j);
-    } catch (e) { ghi('Lỗi: ' + e.message); }
-    finally { DANG = false; }
-}
-window.nhip = nhip;
-
-async function lam(k, j) {
-    const p = 'in_xa/' + M.branch + '/' + k;
-    if (Date.now() - (j.at || 0) > QUA_HAN) {
-        ghi('Bỏ lệnh quá hạn ' + k);
-        return va(p, { tt: 'loi', may: M.may, loi: 'Quá hạn: laptop nhận lệnh muộn hơn 10 phút nên không in. Bấm In lại nếu vẫn cần.' });
-    }
-    // Giữ lệnh: ghi mã máy mình rồi đọc lại; máy khác đã giữ thì thôi
-    await va(p, { tt: 'nhan', may: M.may, nhanAt: Date.now() });
-    const lai = await rest(p);
-    if (!lai || lai.may !== M.may || lai.tt !== 'nhan') return;
-    let daGui = false;
-    try {
-        const g = IN_GIAY[j.kho];
-        if (!g) throw new Error('Khổ giấy lạ: ' + j.kho);
-        const st = await fetch(AGENT + '/health', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
-        if (!st || !st.ok) throw new Error('Phần mềm in trên laptop chưa chạy');
-        const ch = await fetch(AGENT + '/settings?printer=', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
-        if (ch && ch.settings && ch.settings.chuan === false) throw new Error('Laptop chưa cài thông số in (biểu tượng chữ N → Cài thông số in…)');
-        // Bản khách còn là bản tạm (máy khách ghép nhỏ): ghép bản 100% trước, in bản đó
-        let id = j.id;
-        if (!j.ban || j.ban === 'khach') {
-            const up = await ban100(p, j);
-            if (up && up.kind === 'frame' && Array.isArray(up.drive) && up.drive[0] && up.drive[0].id) id = up.drive[0].id;
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i), v = localStorage.getItem(k);
+            if (/^(pn_|lenticular_)/.test(k) && v && v.length < 50000) du[k] = v;
         }
-        const blob = await taiAnh(id);
-        const u = URL.createObjectURL(blob);
-        let png, W, H;
-        try {
-            const im = new Image(); im.src = u; await im.decode();
-            ({ png, W, H } = await inDungTo(im, g, j.le || 0));
-            im.src = '';
-        } finally { URL.revokeObjectURL(u); }
-        await va(p, { tt: 'dang', inAt: Date.now(), buoc: null });
-        daGui = true;
-        const r = await fetch(AGENT + '/print', {
-            method: 'POST', body: png,
-            headers: {
-                'Content-Type': 'image/png', 'X-Copies': '1', 'X-Dialog': '0', 'X-Paper-As-Is': '1', 'X-Src-Dpi': String(IN_DPI),
-                'X-Width-Mm': (W / IN_DPI * 25.4).toFixed(3), 'X-Height-Mm': (H / IN_DPI * 25.4).toFixed(3),
-                'X-Job-Name': encodeURIComponent(`Từ xa: ${j.viec || 'ảnh'} ${g.ten} #${String(j.cId || '').split('_')[1].slice(-4)}`),
-                'X-User': encodeURIComponent((j.by || 'admin') + ' (từ xa)')
-            }
-        });
-        const d = await r.json().catch(() => ({}));
-        // Phần mềm in trả lỗi có nội dung = nó đã chặn trước khi in (sai khổ, chưa cài thông số...): chắc chưa ra giấy
-        if (!r.ok || !d.ok) { const e = new Error(d.error || 'Phần mềm in báo lỗi'); e.chuaIn = !!d.error; throw e; }
-        const xong = Date.now();
-        await va(p, { tt: 'xong', xongAt: xong });
-        await va(`data/${M.branch}/${j.cId}/client_uploads/${j.uId}/daIn`, { at: xong, by: j.by || 'admin', kho: j.kho, ban: j.ban || null, xa: true }).catch(e => ghi('Không ghi được đã in: ' + e.message));
-        await va('may_in/' + M.branch + '/' + M.may, { giay: j.kho, giayAt: xong }).catch(() => {});
-        ghi('Đã in ' + k);
-    } catch (e) {
-        const loi = daGui && !e.chuaIn ? `Không rõ đã in chưa (${e.message}). Kiểm tra máy in trước khi bấm In lại.` : e.message;
-        ghi('Lệnh ' + k + ' lỗi: ' + loi);
-        await va(p, { tt: 'loi', loi }).catch(() => {});
-    }
-}
-
-// Quyền Drive: xin qua Apps Script bằng mã đăng nhập nhân viên (như trang nhân viên), giữ 45 phút
-async function maDrive() {
-    if (DRIVE && Date.now() < DRIVE_HET) return DRIVE;
-    if (!GS_URL) GS_URL = String((await rest('config/gs_url')) || '').trim();
-    if (!GS_URL) throw new Error('Chưa cấu hình nơi lưu ảnh');
-    const q = new URLSearchParams({ k: GS_KEY, action: 'token', idt: await maDangNhap() });
-    const t = await (await fetch(GS_URL + '?' + q)).json();
-    if (!t || !t.ok || !t.token) throw new Error('Không xin được quyền Drive' + (t && t.error ? ': ' + t.error : ''));
-    DRIVE = t.token; DRIVE_HET = Date.now() + 45 * 60000;
-    return DRIVE;
-}
-async function taiAnh(id) {
-    const r = await fetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media', { headers: { Authorization: 'Bearer ' + await maDrive() } });
-    if (!r.ok) throw new Error('Không tải được ảnh (HTTP ' + r.status + ')');
-    return r.blob();
-}
-
-// Bản khách còn là bản tạm (du chưa xong): ghép bản 100% theo bản xếp bằng FR.ghepBo (frame-core.js, giống hệt
-// việc ngầm "Bản in 100%" ở trang nhân viên), thay bản tạm trong Drive + album khách như việc ngầm. Trả bản ghi mới.
-async function ban100(p, j) {
-    const g = `data/${M.branch}/${j.cId}/client_uploads/${j.uId}`;
-    let up = await rest(g);
-    if (!up || up.kind !== 'frame' || !up.bo || !up.du || up.du.xong) return up;
-    // Máy quầy khác đang ghép: đợi tối đa 3 phút
-    for (let i = 0; i < 36 && up.du && !up.du.xong && up.du.dang && up.du.dang.by !== M.may && Date.now() - (up.du.dang.at || 0) < 120000; i++) {
-        await va(p, { buoc: 'Đang chờ máy khác ghép bản in 100%' });
-        await new Promise(r => setTimeout(r, 5000));
-        up = await rest(g);
-    }
-    if (!up.du || up.du.xong) return up;
-    await va(p, { buoc: 'Đang ghép bản in 100%' });
-    await va(g + '/du', { dang: { by: M.may, at: Date.now() } });
-    const giu = setInterval(() => va(g + '/du/dang', { by: M.may, at: Date.now() }).catch(() => {}), 30000);
-    const urls = [];
-    try {
-        const f = await rest('frames/' + up.bo.frame);
-        if (!f) throw new Error('frame đã bị xoá');
-        const frame = Object.assign({ id: up.bo.frame }, f);
-        let baked = null;
-        if (f.filter) { const rec = await rest('config/filters/' + f.filter); if (rec) baked = await FR.loadFilter(rec); }
-        const tai = async id => { const u = URL.createObjectURL(await taiAnh(id)); urls.push(u); return u; };
-        const { blob, W } = await FR.ghepBo(frame, up.bo, tai, baked, up.du.pt);
-        const cu = Array.isArray(up.drive) && up.drive[0];
-        const ten = String((cu && cu.name) || 'GHEP FRAME').replace(/\.[a-z0-9]+$/i, '') + '_100' + (blob.type === 'image/png' ? '.png' : '.jpg');
-        const dt = await maDrive();
-        const fm = await FR.upload(blob, ten, dt, up.bo.lot);
-        if (!fm || !fm.id) throw new Error('Drive không nhận ảnh');
-        await FR.makePublic(fm.id, dt).catch(() => {});
-        // Album khách: bản ghép trỏ sang bản đủ nét
-        const nhanh = `data/${M.branch}/${j.cId}/framed/${up.bo.lot}`;
-        const frs = (await rest(nhanh).catch(() => null)) || {};
-        for (const [k, v] of Object.entries(frs)) if (v && cu && v.id === cu.id) await va(nhanh + '/' + k, { id: fm.id }).catch(() => {});
-        await va(g, { 'drive/0': { id: fm.id, name: fm.name || ten }, 'du/xong': true, 'du/cu': cu ? cu.id : null, 'du/w': W, 'du/at': Date.now(),
-                      'du/daThu': up.du.thu || null, 'du/dang': null, 'du/loi': null, 'du/thu': null, 'du/sau': null, 'du/hong': null });
-        // Bản nhỏ vào thùng rác Drive (còn khôi phục được 30 ngày)
-        if (cu && cu.id) fetch('https://www.googleapis.com/drive/v3/files/' + cu.id, { method: 'PATCH', headers: { Authorization: 'Bearer ' + dt, 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) }).catch(() => {});
-        ghi('Đã ghép bản in 100% ' + j.uId);
-        return await rest(g);
-    } catch (e) {
-        await va(g + '/du', { dang: null }).catch(() => {});
-        const loi = new Error('Chưa ghép được bản in 100% (' + e.message + '). Chưa in.'); loi.chuaIn = true;
-        throw loi;
-    } finally { clearInterval(giu); urls.forEach(u => URL.revokeObjectURL(u)); }
-}
-
-// Mở trang: ghi vào nhật ký có gọi được phần mềm in trên chính máy không (trang https gọi localhost)
-fetch(AGENT + '/health', { cache: 'no-store' }).then(r => r.json()).then(h => ghi('Gọi được phần mềm in ' + h.version))
-    .catch(e => ghi('Không gọi được phần mềm in trên máy: ' + e.message));
-
-// Phần mềm in gọi nhip() đều đặn; tự gọi thêm phòng khi phần mềm in bản cũ
-setInterval(nhip, 5000);
-nhip();
+    } catch (e) {}
+    var dich = Object.keys(du).length
+        ? goc + '/chuyen#den=' + encodeURIComponent(den) + '&du=' + encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(du)))))
+        : goc + den;
+    document.getElementById('l').href = goc + den;
+    location.replace(dich);
+})();
 </script>
 </body>
 </html>
