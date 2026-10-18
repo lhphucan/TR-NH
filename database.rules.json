@@ -34,8 +34,12 @@
       "$branchId": {
         // Không đăng nhập: chỉ được TRA THEO ĐÚNG MỘT SỐ ĐIỆN THOẠI (cách trang khách tra cứu).
         // Trước đây ".read": true -> ai cũng tải được toàn bộ danh sách khách (tên, SĐT, giá,
-        // link thư mục ảnh) chỉ bằng một lệnh. Nhân viên / admin đăng nhập vẫn đọc như cũ.
-        ".read": "auth != null || (query.orderByChild == 'phone' && query.equalTo != null)",
+        // link thư mục ảnh) chỉ bằng một lệnh.
+        // Đọc cả nhánh: admin, hoặc tài khoản (nhân viên / xem thu nhập) thuộc đúng cơ sở này.
+        // KHÔNG dùng "auth != null": khoá Firebase nằm công khai trong trang, ai cũng tự tạo được
+        // tài khoản email (đã thử thật 18/10/2026: tài khoản tự tạo đọc được hết khách 3 cơ sở).
+        // Tài khoản bị "thu hồi quyền" (xoá users/<uid>) cũng mất quyền đọc.
+        ".read": "(auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('role').exists() && root.child('users').child(auth.uid).child('branch').val() == $branchId))) || (query.orderByChild == 'phone' && query.equalTo != null)",
 
         // Khách tra theo SĐT: có index thì Firebase lọc sẵn ở máy chủ,
         // không phải tải cả nhánh về máy khách (đang 371 KB chỉ riêng Phúc Yên).
