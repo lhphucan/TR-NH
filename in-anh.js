@@ -6,21 +6,17 @@
 // - khổ giấy theo ấn phẩm: ảnh thẻ tờ 10×15 (4×6 inch), frame theo khổ in của frame (A5 / A4).
 // Web dựng sẵn nguyên tờ giấy đúng DPI máy in (720 với Epson L8050), giấy dọc, rồi gửi như
 // app In ảnh Lens (D:\Lenticular App\IN-TU-WEB.md). In đúng 100%, có lề: máy in bỏ ~3 mm sát mép.
+// Dựng tờ in (IN_DPI, IN_GIAY, IN_LE_FRAME_MM, inDungTo) ở in-to.js, dùng chung với in từ xa (may-in.html).
 // Dùng chung: driveToken, db, br, dbPath, currentData, userRole, Swal, Toast, escapeHTML (admin.js);
 // FR (frame-core.js); FK_FRAMES, fkLoadFrames (frame-khach.js); nvUp, nvTen, nvGio (frame-nv.js).
 
 const IN_AGENT = 'http://localhost:9100';
-const IN_DPI = 720;                 // Epson L8050; máy in khác DPI thì phần mềm in chặn và báo
 const IN_BAN_TOI_THIEU = '2.3.0';   // 2.3.0: chỉ nhận lệnh từ trang của tiệm
 const IN_BAN_TU_CAP_NHAT = '2.4.0'; // từ bản này phần mềm in tự cập nhật, nhân viên không phải làm gì
 const IN_BAN_CHUAN = '2.5.0';       // từ bản này có bộ chuẩn (/settings trả chuan, chuanAt)
+const IN_BAN_XA = '2.6.0';          // từ bản này laptop quầy nhận lệnh in từ xa (trang ẩn may-in.html)
 const IN_CHUA_CAI = 'Chuột phải biểu tượng phần mềm in (chữ N trên ô đen, góc phải dưới màn hình; không thấy thì bấm ^ cạnh đồng hồ) → "Cài thông số in…", chọn preset giấy đúng rồi bấm OK.';
 const IN_TAI = 'https://github.com/lhphucan/TR-NH/releases/latest/download/LenticularPrintAgent.exe';
-const IN_GIAY = {
-    '4x6': { ten: '10×15', mo: '10×15 cm (4×6 inch)', w: 101.6, h: 152.4 },
-    A5: { ten: 'A5', mo: 'A5 (148×210 mm)', w: 148, h: 210 },
-    A4: { ten: 'A4', mo: 'A4 (210×297 mm)', w: 210, h: 297 }
-};
 let IN_DANG = false;   // đang in: khoá nút, bấm nhầm hai lần không in trùng
 
 const inBanCu = (v, toi) => { const a = String(v || '0').split('.').map(Number), b = toi.split('.').map(Number); for (let i = 0; i < 3; i++) { if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) < (b[i] || 0); } return false; };
@@ -75,6 +71,9 @@ async function inLam({ cId, uId, id, kho, ban, viec, le = 0 }) {
         kho = r.value;
     }
     const g = IN_GIAY[kho];
+    // Admin ở máy không phải máy quầy (điện thoại, máy ở nhà): in tại quán qua laptop quầy.
+    // Không thử gọi phần mềm in trên máy này: Chrome sẽ bật hộp xin quyền "mạng cục bộ" vô cớ.
+    if (userRole === 'admin' && !inLaMayQuay()) return inXa({ cId, uId, id, kho, ban, viec, le });
 
     IN_DANG = true;
     try {
@@ -163,39 +162,6 @@ async function inTaiAnh(id) {
     return res.blob();
 }
 
-// Nguyên tờ giấy dọc ở DPI máy in; ảnh ngang thì xoay cho khớp giấy. Thu / phóng một lần bằng
-// trình duyệt cho mịn.
-// le = 0 (tờ ảnh thẻ, đã tự chừa lề): ảnh phủ đúng cả tờ.
-// le > 0 (ảnh ghép frame, thiết kế sát mép): như app In ảnh Lens (PAPER_SAFE_MARGIN_MM), không để
-// hình chạm dải le mm sát mép giấy, nơi Epson không in tới (lề cứng ~3 mm) -> thu ảnh vừa khung
-// giấy trừ le mỗi cạnh, giữ tỉ lệ, đặt giữa tờ. Đủ toàn bộ thiết kế, viền trắng đều 4 cạnh.
-const IN_LE_FRAME_MM = 3.5;
-async function inDungTo(im, g, le = 0) {
-    const W = Math.round(g.w / 25.4 * IN_DPI), H = Math.round(g.h / 25.4 * IN_DPI);
-    const iw = im.naturalWidth, ih = im.naturalHeight, ngang = iw > ih;
-    const tiLe = Math.max(iw, ih) / Math.min(iw, ih), tiLeGiay = Math.max(g.w, g.h) / Math.min(g.w, g.h);
-    if (Math.abs(tiLe - tiLeGiay) > tiLeGiay * 0.02) throw new Error(`Ảnh ${iw}×${ih} không đúng tỉ lệ khổ ${g.ten}, in ra sẽ méo. Kiểm tra khổ in của frame.`);
-    // Chỗ ảnh nằm trên tờ (theo chiều giấy, sau khi xoay)
-    let dw = W, dh = H;
-    if (le > 0) {
-        const L = le / 25.4 * IN_DPI, fw = ngang ? ih : iw, fh = ngang ? iw : ih;
-        const s = Math.min((W - 2 * L) / fw, (H - 2 * L) / fh);
-        dw = Math.round(fw * s); dh = Math.round(fh * s);
-    }
-    const ox = Math.round((W - dw) / 2), oy = Math.round((H - dh) / 2);
-    const c = document.createElement('canvas');
-    c.width = W; c.height = H;
-    const x = c.getContext('2d');
-    x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
-    x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
-    if (ngang) { x.translate(ox + dw, oy); x.rotate(Math.PI / 2); x.drawImage(im, 0, 0, dh, dw); }
-    else x.drawImage(im, ox, oy, dw, dh);
-    const png = await new Promise(r => c.toBlob(r, 'image/png'));
-    c.width = c.height = 0;
-    if (!png) throw new Error('Máy không dựng được tờ in (thiếu bộ nhớ)');
-    return { png, W, H };
-}
-
 // ---------- Báo phần mềm in ở máy quầy đã cũ ----------
 // Mở trang nhân viên ở máy quầy: hỏi phần mềm in trên máy đó, bản cũ hơn 2.4.0 (chưa biết tự
 // cập nhật) thì hiện một dòng nhắc tải bản mới. Chỉ hỏi ở máy quầy (từng dùng app In ảnh Lens
@@ -204,6 +170,8 @@ const inLaMayQuay = () => { try { return localStorage.getItem('pn_may_in') === '
 function inGhiMayQuay() { try { localStorage.setItem('pn_may_in', '1'); } catch (e) {} }
 
 async function inKiemBanMay() {
+    // Phần mềm in mở trang này kèm ?ghep=1 ("Bật in từ xa" ở biểu tượng chữ N): đây chắc chắn là máy quầy
+    if (/[?&]ghep=1\b/.test(location.search)) inGhiMayQuay();
     if (!userRole || userRole === 'viewer' || !inLaMayQuay()) return;
     let st = null;
     try {
@@ -213,6 +181,7 @@ async function inKiemBanMay() {
     } catch (e) { return; }   // phần mềm in chưa bật: để lúc bấm In hãy báo
     if (!st || !st.ok) return;
     inGhiMayQuay();
+    if (!inBanCu(st.version, IN_BAN_XA)) inXaGhep().catch(() => {});
     let html = '';
     if (inBanCu(st.version, IN_BAN_TU_CAP_NHAT)) {
         html = `<span>Phần mềm in trên máy này là bản <b>${escapeHTML(st.version)}</b>, đã cũ. Tải bản mới, nhấp đúp file tải về <b>một lần</b> — từ bản ${IN_BAN_TU_CAP_NHAT} máy tự cập nhật.</span>
@@ -234,3 +203,108 @@ async function inKiemBanMay() {
 }
 // Chờ đăng nhập xong (userRole có giá trị) rồi kiểm một lần
 (function cho(n) { if (typeof userRole !== 'undefined' && userRole) inKiemBanMay(); else if (n < 60) setTimeout(() => cho(n + 1), 1000); })(0);
+
+// ---------- In từ xa (chỉ admin): gửi lệnh tới laptop quầy, laptop tự in ----------
+// Lệnh: in_xa/<cơ sở>/J_<giờ> = { cId, uId, id (ảnh trên Drive), kho, le, ban, viec, ten (khách), by, at,
+//        tt: cho | nhan | dang | xong | loi, may, nhanAt, inAt, xongAt, loi }
+// Laptop báo đang bật: may_in/<cơ sở>/<mã máy> = { at, ban, giay (khổ in lần trước), giayAt } mỗi 30 giây.
+// Laptop: phần mềm in 2.6.0 chạy trang ẩn may-in.html (không cần mở Chrome). Luật Firebase: chỉ admin tạo lệnh.
+const IN_XA_SONG = 90000;   // laptop báo trong 90 giây gần nhất = đang bật
+const inXaGio = t => t ? new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+const inXaMay = ds => Object.values(ds || {}).filter(x => x && x.at).sort((a, b) => b.at - a.at)[0] || null;
+
+async function inXa({ cId, uId, id, kho, ban, viec, le }) {
+    const g = IN_GIAY[kho], co = br, ten = (branchesCache[co] || {}).name || co;
+    const c = (currentData && currentData[cId]) || {};
+    let may = null;
+    const ve = () => {
+        const el = document.getElementById('inxa-may'); if (!el) return;
+        const song = may && Date.now() - may.at < IN_XA_SONG;
+        const lech = song && may.giay && IN_GIAY[may.giay] && may.giay !== kho;
+        const ngay = t => new Date(t).toDateString() === new Date().toDateString() ? 'hôm nay' : new Date(t).toLocaleDateString('vi-VN');
+        el.innerHTML = song
+            ? `<span class="inxa-cham"></span><b>Laptop ${escapeHTML(ten)}: đang bật</b><br><span>${may.giay && IN_GIAY[may.giay] ? `Lần in trước: giấy ${IN_GIAY[may.giay].ten} lúc ${inXaGio(may.giayAt)}` : 'Chưa in lần nào'}</span>`
+            : `<span class="inxa-cham tat"></span><b>Laptop ${escapeHTML(ten)}: ${may ? 'đang tắt' : 'chưa bật in từ xa'}</b><br><span>${may ? `Bật lần cuối lúc ${inXaGio(may.at)} ${ngay(may.at)}` : 'Laptop quán chưa ghép (phần mềm in 2.6.0, mở trang nhân viên một lần)'}</span>`;
+        const canh = document.getElementById('inxa-canh');
+        canh.style.display = lech ? '' : 'none';
+        if (lech) canh.innerText = `Khay có thể đang là giấy ${IN_GIAY[may.giay].ten}, lần này cần ${g.ten}. Gọi quán đổi giấy trước khi in.`;
+        document.getElementById('inxa-ghi').style.display = song || !may ? 'none' : '';
+        const nut = Swal.getConfirmButton();
+        if (nut) { nut.disabled = !song; nut.innerText = lech ? 'Vẫn in' : 'In tại quán ' + ten; }
+    };
+    const mayRef = db.ref('may_in/' + co);
+    const nghe = sn => { may = inXaMay(sn.val()); ve(); };
+    mayRef.on('value', nghe, () => {});
+    const hen = setInterval(ve, 10000);   // laptop vừa tắt: quá 90 giây thì đổi sang "đang tắt"
+    let ok;
+    try {
+        ok = await Swal.fire({
+            title: 'In ' + viec,
+            html: `<div class="in-giay"><b>${escapeHTML(g.ten)}</b><span>Giấy ${escapeHTML(g.mo)}</span></div>
+                <div class="inxa-may" id="inxa-may"></div>
+                <div class="inxa-canh" id="inxa-canh" style="display:none"></div>
+                <div class="inxa-ghi" id="inxa-ghi" style="display:none">Nhờ quán bật laptop (không cần mở trang nào), vài giây sau bảng này tự đổi sang "đang bật".</div>`,
+            showCancelButton: true, confirmButtonText: 'In tại quán ' + ten, cancelButtonText: '<span style="color:#111">Huỷ</span>',
+            confirmButtonColor: '#111', cancelButtonColor: '#fff', didOpen: ve
+        });
+    } finally { mayRef.off('value', nghe); clearInterval(hen); }
+    if (!ok.isConfirmed) return;
+    const job = { cId, uId, id, kho, le: le || 0, ban: ban || null, viec, ten: c.name || 'Khách', by: nvTen(), at: Date.now(), tt: 'cho' };
+    const ref = db.ref('in_xa/' + co + '/J_' + job.at);
+    try { await ref.set(job); }
+    catch (e) { return Swal.fire({ title: 'Chưa gửi được lệnh in', text: e.message, icon: 'error', confirmButtonColor: '#111' }); }
+    inXaTheoDoi(ref, job, ten, g);
+}
+
+// Theo dõi lệnh: Đã gửi lệnh → Laptop đã nhận → Đang in → Đã in. Đóng bảng thì laptop vẫn in tiếp.
+function inXaTheoDoi(ref, job, ten, g) {
+    let v = job;
+    const buoc = (xong, dang, chu, t) => `<div class="inxa-b${xong ? ' xong' : dang ? ' dang' : ''}"><i>${xong ? '✓' : ''}</i>${chu}<small>${xong ? inXaGio(t) : ''}</small></div>`;
+    const ve = () => {
+        const el = document.getElementById('inxa-buoc'); if (!el) return;
+        const tt = v.tt;
+        el.innerHTML = buoc(true, false, 'Đã gửi lệnh', v.at)
+            + buoc(!!v.nhanAt, tt === 'cho', 'Laptop đã nhận', v.nhanAt)
+            + buoc(tt === 'xong', tt === 'dang', tt === 'dang' ? 'Đang in...' : 'Đang in', v.inAt)
+            + buoc(tt === 'xong', false, 'Đã in', v.xongAt);
+        const loi = document.getElementById('inxa-loi');
+        loi.style.display = tt === 'loi' ? '' : 'none';
+        if (tt === 'loi') loi.innerText = v.loi || 'Laptop báo lỗi';
+        document.getElementById('inxa-cho').style.display = tt === 'cho' && Date.now() - v.at > 30000 ? '' : 'none';
+        const nut = Swal.getConfirmButton();
+        if (nut) nut.innerText = tt === 'xong' || tt === 'loi' ? 'Đóng' : 'Đóng (vẫn in tiếp)';
+    };
+    const nghe = sn => {
+        const moi = sn.val(); if (!moi) return;
+        const vua = v.tt !== 'xong' && moi.tt === 'xong';
+        v = moi; ve();
+        if (vua && !document.getElementById('inxa-buoc')) Toast.fire({ icon: 'success', title: `Đã in tại quán ${ten}` });
+    };
+    ref.on('value', nghe, () => {});
+    const hen = setInterval(ve, 5000);
+    Swal.fire({
+        title: 'In tại quán ' + ten,
+        html: `<div class="inxa-tom">${escapeHTML(String(job.viec || '').replace(/^./, x => x.toUpperCase()))} · ${escapeHTML(g.ten)} · khách ${escapeHTML(job.ten)}</div>
+            <div class="inxa-buoc" id="inxa-buoc"></div>
+            <div class="inxa-canh" id="inxa-loi" style="display:none"></div>
+            <div class="inxa-ghi" id="inxa-cho" style="display:none">Laptop chưa nhận lệnh. Kiểm tra laptop quán có đang bật và có mạng không.</div>`,
+        confirmButtonText: 'Đóng (vẫn in tiếp)', confirmButtonColor: '#fff', customClass: { confirmButton: 'inxa-dong' }, didOpen: ve
+    }).then(() => {
+        clearInterval(hen);
+        // đóng bảng rồi vẫn nghe tới khi xong / lỗi để báo một dòng
+        if (v.tt === 'xong' || v.tt === 'loi') ref.off('value', nghe);
+        else setTimeout(() => ref.off('value', nghe), 10 * 60000);
+    });
+}
+
+// ---------- Laptop quán: tự ghép in từ xa ----------
+// Máy quầy có phần mềm in 2.6.0: trao phiên đăng nhập nhân viên đang mở cho phần mềm in để nó tự đăng
+// nhập ngầm nhận lệnh in từ xa (kể cả khi tắt Chrome). Không bao giờ ghép bằng tài khoản admin.
+async function inXaGhep() {
+    const u = auth && auth.currentUser;
+    if (!u || userRole === 'admin' || userRole === 'viewer' || !br || !u.refreshToken) return;
+    const s = await (await fetch(IN_AGENT + '/ghep', { cache: 'no-store' })).json().catch(() => null);
+    if (s && s.ghep && s.uid === u.uid && s.branch === br) return;
+    await fetch(IN_AGENT + '/ghep', { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ rt: u.refreshToken, uid: u.uid, branch: br, ten: (branchesCache[br] || {}).name || br }) });
+}

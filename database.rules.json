@@ -113,6 +113,26 @@
       }
     },
 
+    "in_xa": {
+      // In từ xa: CHỈ ADMIN tạo / xoá lệnh (in-anh.js inXa). Laptop quầy (tài khoản nhân viên của đúng
+      // cơ sở, may-in.html) chỉ đọc và cập nhật trạng thái lệnh đã có: không tạo được lệnh in mới.
+      "$branchId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('role').exists() && root.child('users').child(auth.uid).child('role').val() != 'viewer' && root.child('users').child(auth.uid).child('branch').val() == $branchId))",
+        ".indexOn": "tt",
+        "$job": {
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || ((root.child('users').child(auth.uid).child('role').exists() && root.child('users').child(auth.uid).child('role').val() != 'viewer' && root.child('users').child(auth.uid).child('branch').val() == $branchId) && data.exists() && newData.exists()))"
+        }
+      }
+    },
+
+    "may_in": {
+      // Laptop quầy báo đang bật mỗi 30 giây (may-in.html); admin xem trước khi in từ xa
+      "$branchId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('role').exists() && root.child('users').child(auth.uid).child('role').val() != 'viewer' && root.child('users').child(auth.uid).child('branch').val() == $branchId))",
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('role').exists() && root.child('users').child(auth.uid).child('role').val() != 'viewer' && root.child('users').child(auth.uid).child('branch').val() == $branchId))"
+      }
+    },
+
     "trash": {
       "$branchId": {
         ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || root.child('users').child(auth.uid).child('branch').val() == $branchId)",
