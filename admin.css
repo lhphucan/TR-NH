@@ -111,7 +111,7 @@ textarea:focus { border-color: #111; }
 .swal2-popup:not(.swal2-toast) .swal2-html-container,
 .swal2-popup:not(.swal2-toast) .swal2-content { font-size: 13px !important; color: #52525b !important; }
 .swal2-actions { gap: 10px !important; }
-.swal2-styled { border-radius: 10px !important; font-weight: 700 !important; font-size: 13px !important; box-shadow: none !important; padding: 12px 20px !important; }
+.swal2-styled { border-radius: 10px !important; font-weight: 700 !important; font-size: 13px !important; box-shadow: none !important; padding: 12px 20px !important; font-family: 'Inter', sans-serif !important; }
 .swal2-styled.swal2-confirm { background: #111 !important; }
 .swal2-styled.swal2-cancel { background: #f4f4f5 !important; border: 1px solid #d4d4d8 !important; }
 .swal2-input, .swal2-select { border-radius: 10px !important; border: 1px solid #d4d4d8 !important; font-family: 'Inter', sans-serif !important; box-shadow: none !important; }
@@ -660,5 +660,6 @@ input[type=checkbox], input[type=radio], input[type=range] { accent-color: #1818
 .inxa-b.xong { color: #18181b; } .inxa-b.xong i { background: #18181b; border-color: #18181b; color: #fff; }
 .inxa-b.dang { color: #18181b; font-weight: 700; } .inxa-b.dang i { border-color: #18181b; border-top-color: transparent; animation: spin 1s linear infinite; }
 .inxa-b small { margin-left: auto; color: #71717a; font-weight: 500; }
-.swal2-confirm.inxa-dong { color: #111 !important; border: 1px solid #d4d4d8 !important; }
+/* nút Đóng bảng theo dõi: nền trắng (nút xác nhận chung có nền đen !important ở trên) */
+.swal2-styled.swal2-confirm.inxa-dong { background: #fff !important; color: #111 !important; border: 1px solid #d4d4d8 !important; }
 .swal2-confirm:disabled { background: #d4d4d8 !important; opacity: 1; }

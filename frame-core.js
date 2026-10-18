@@ -40,8 +40,9 @@ const FR = (() => {
 
     // Máy yếu có giới hạn cỡ khung vẽ (iPhone khoảng 16,7 triệu điểm ảnh), vượt
     // thì không báo lỗi mà ra ảnh trắng. Thử thật trên máy đang dùng rồi mới vẽ.
-    function canvasFor(W, H) {
-        for (const s of [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3]) {
+    // cac: các mức thu nhỏ thử lần lượt (mặc định 100% -> 30%)
+    function canvasFor(W, H, cac) {
+        for (const s of (cac || [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3])) {
             const w = Math.round(W * s), h = Math.round(H * s);
             try {
                 const c = document.createElement('canvas');
@@ -196,6 +197,38 @@ const FR = (() => {
     }
 
     // srcOf(lớp) -> địa chỉ ảnh của lớp frame/PNG. Truyền chuỗi thì coi là file frame chính.
+    // Ghép đủ cỡ theo bản xếp của khách (bo) từ bản gốc. Dùng chung: việc ngầm "Bản in 100%" (frame-nv.js
+    // duLam), nút In tại quầy, laptop in từ xa (may-in.html) -> ba nơi ra cùng một ảnh.
+    // tai(id) -> địa chỉ ảnh (blob URL) của file Drive; ptCu: % bản khách đã gửi (ghép không to hơn thì thôi).
+    async function ghepBo(frame, bo, tai, baked, ptCu) {
+        const lop = {};
+        for (const l of layersOf(frame)) {
+            const id = l.k === 'frame' ? frame.file : l.k === 'fx' ? l.file : null;
+            if (id && !lop[id]) lop[id] = await tai(id);
+        }
+        const anh = [];
+        for (let i = 0; i < frame.slots.length; i++) {
+            const o = bo.o && bo.o[i];
+            if (!o || !o.id) { anh.push(null); continue; }
+            const src = await tai(o.id);
+            const im = await loadImg(src);
+            anh.push({ src, iw: im.naturalWidth, ih: im.naturalHeight, s: +o.s || 1, ox: +o.ox || 0, oy: +o.oy || 0, r: +o.r || 0 });
+            im.src = '';
+        }
+        // gọi qua FR.: bộ thử giả lập máy yếu bằng cách thay FR.canvasFor
+        const cv = FR.canvasFor(frame.w, frame.h);
+        if (!cv) throw new Error('máy không đủ bộ nhớ');
+        try {
+            const pt = Math.round(cv.s * 100);
+            if (pt <= (+ptCu || 0)) throw new Error(`máy thiếu bộ nhớ (${pt}%)`);
+            await FR.compose(cv.x, cv.s, frame, l => lop[l.k === 'frame' ? frame.file : l.file], anh, p => p.src, null, baked);
+            let blob = await new Promise(r => cv.c.toBlob(r, 'image/png'));
+            if (!blob) blob = await new Promise(r => cv.c.toBlob(r, 'image/jpeg', 1));
+            if (!blob) throw new Error('không xuất được ảnh');
+            return { blob, W: cv.c.width, pt };
+        } finally { cv.c.width = cv.c.height = 0; }   // lỗi giữa chừng cũng trả bộ nhớ vẽ
+    }
+
     async function compose(ctx, sc, frame, srcOf, photos, photoSrc, onStep, baked) {
         if (typeof srcOf === 'string') { const u = srcOf; srcOf = l => l.k === 'frame' ? u : null; }
         ctx.fillStyle = '#ffffff';
@@ -541,6 +574,6 @@ const FR = (() => {
         return hop.length === 1 ? hop[0] : '';
     }
 
-    return { NHOM_GOC, nhomDs, nhomThuTu, nhomCua, nhomMo, KHO_MM, khoDoan, gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, layersOf, thumbHtml, frameOrder, upload, uploadTo, makePublic,
+    return { NHOM_GOC, nhomDs, nhomThuTu, nhomCua, nhomMo, KHO_MM, khoDoan, gUrl, loadImg, shrink, canvasFor, detectHoles, fitRect, geom, clamp, slotAt, boxCss, compose, ghepBo, layersOf, thumbHtml, frameOrder, upload, uploadTo, makePublic,
              haldIdentity, lutFromHald, lutFromCube, lutToHald, lutIsIdentity, bakeFilter, hasAdj, filterRect, filterSlot, filterCanvas, loadFilter };
 })();

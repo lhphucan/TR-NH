@@ -127,30 +127,7 @@ async function duLam(b, cId, uId) {
         const frame = Object.assign({ id: bo.frame }, f);
         const loc = await fkFilterFor(frame);
         // Bản gốc đúng từng byte qua quyền Drive của tiệm: frame, lớp PNG, ảnh từng ô
-        const lop = {};
-        for (const l of FR.layersOf(frame)) {
-            const id = l.k === 'frame' ? frame.file : l.k === 'fx' ? l.file : null;
-            if (id && !lop[id]) lop[id] = await duTai(id, urls);
-        }
-        const anh = [];
-        for (let i = 0; i < frame.slots.length; i++) {
-            const o = bo.o && bo.o[i];
-            if (!o || !o.id) { anh.push(null); continue; }
-            const src = await duTai(o.id, urls);
-            const im = await FR.loadImg(src);
-            anh.push({ src, iw: im.naturalWidth, ih: im.naturalHeight, s: +o.s || 1, ox: +o.ox || 0, oy: +o.oy || 0, r: +o.r || 0 });
-            im.src = '';
-        }
-        const cv = FR.canvasFor(frame.w, frame.h);
-        if (!cv) throw new Error('máy không đủ bộ nhớ');
-        const pt = Math.round(cv.s * 100);
-        if (pt <= (+up.du.pt || 0)) { cv.c.width = cv.c.height = 0; throw new Error(`máy thiếu bộ nhớ (${pt}%)`); }
-        await FR.compose(cv.x, cv.s, frame, l => lop[l.k === 'frame' ? frame.file : l.file], anh, p => p.src, null, loc && loc.baked);
-        let blob = await new Promise(r => cv.c.toBlob(r, 'image/png'));
-        if (!blob) blob = await new Promise(r => cv.c.toBlob(r, 'image/jpeg', 1));
-        const W = cv.c.width;
-        cv.c.width = cv.c.height = 0;
-        if (!blob) throw new Error('không xuất được ảnh');
+        const { blob, W } = await FR.ghepBo(frame, bo, id => duTai(id, urls), loc && loc.baked, up.du.pt);
         const cu = Array.isArray(up.drive) && up.drive[0];
         const ten = String((cu && cu.name) || 'GHEP FRAME').replace(/\.[a-z0-9]+$/i, '') + '_100' + (blob.type === 'image/png' ? '.png' : '.jpg');
         const token = await driveToken();

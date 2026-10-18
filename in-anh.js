@@ -41,14 +41,35 @@ function inNut(kho, onclick) {
 const inDaIn = up => up && up.daIn && up.daIn.at ? `đã in ${nvGio(up.daIn.at)}` : '';
 
 async function inGhep(cId, uId, ban) {
-    const up = nvUp(cId, uId);
+    let up = nvUp(cId, uId);
     if (!up) return;
     // Mặc định in bản tiệm chỉnh nếu có, không thì bản khách (đã được ghép lại đủ 100%)
     const nv = up.nv && up.nv.id ? up.nv : null;
     if (!ban) ban = nv ? 'tiem' : 'khach';
+    // Bản khách còn là bản tạm (máy khách thiếu bộ nhớ ghép nhỏ, việc ngầm "Bản in 100%" chưa xong):
+    // máy quầy ghép bản 100% ngay rồi mới in. In từ xa thì laptop quầy tự ghép (may-in.html).
+    if (ban === 'khach' && up.bo && up.du && !up.du.xong && !(userRole === 'admin' && !inLaMayQuay())) {
+        up = await inChoBan100(cId, uId, up);
+        if (!up) return;
+    }
     const id = ban === 'tiem' ? nv && nv.id : Array.isArray(up.drive) && up.drive[0] && up.drive[0].id;
     await fkLoadFrames().catch(() => {});
     await inLam({ cId, uId, id, kho: inKhoGhep(cId, up), ban, le: IN_LE_FRAME_MM, viec: 'ảnh ghép frame' + (ban === 'tiem' ? ' (bản tiệm chỉnh)' : '') });
+}
+
+async function inChoBan100(cId, uId, up) {
+    Swal.fire({ title: 'Đang ghép bản in 100%...', text: 'Máy khách chỉ gửi được bản nhỏ. Máy này ghép lại bản đủ nét trước khi in.',
+        allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
+    try { await duLam(br, cId, uId); } catch (e) {}
+    const moi = (await db.ref(dbPath + br + '/' + cId + '/client_uploads/' + uId).once('value')).val() || up;
+    Swal.close();
+    if (moi.du && moi.du.xong) return moi;
+    const du = moi.du || {};
+    const vi = du.dang && du.dang.by !== LE_MAY && Date.now() - (du.dang.at || 0) < 120000 ? 'Máy khác đang ghép bản 100%, đợi chút rồi bấm In lại. '
+        : du.loi ? 'Chưa ghép được: ' + du.loi + '. ' : '';
+    const r = await Swal.fire({ title: 'Chưa có bản in 100%', text: `${vi}Bản đang có chỉ ${+du.pt || 0}% cỡ in, in ra sẽ kém nét.`, icon: 'warning', showCancelButton: true,
+        confirmButtonText: 'Vẫn in bản này', cancelButtonText: '<span style="color:#111">Đợi</span>', confirmButtonColor: '#111', cancelButtonColor: '#fff' });
+    return r.isConfirmed ? moi : null;
 }
 
 async function inThe(cId, uId, ban) {
@@ -216,6 +237,8 @@ const inXaMay = ds => Object.values(ds || {}).filter(x => x && x.at).sort((a, b)
 async function inXa({ cId, uId, id, kho, ban, viec, le }) {
     const g = IN_GIAY[kho], co = br, ten = (branchesCache[co] || {}).name || co;
     const c = (currentData && currentData[cId]) || {};
+    const up = (c.client_uploads || {})[uId] || {};
+    const tam = (!ban || ban === 'khach') && up.bo && up.du && !up.du.xong;
     let may = null;
     const ve = () => {
         const el = document.getElementById('inxa-may'); if (!el) return;
@@ -243,7 +266,8 @@ async function inXa({ cId, uId, id, kho, ban, viec, le }) {
             html: `<div class="in-giay"><b>${escapeHTML(g.ten)}</b><span>Giấy ${escapeHTML(g.mo)}</span></div>
                 <div class="inxa-may" id="inxa-may"></div>
                 <div class="inxa-canh" id="inxa-canh" style="display:none"></div>
-                <div class="inxa-ghi" id="inxa-ghi" style="display:none">Nhờ quán bật laptop (không cần mở trang nào), vài giây sau bảng này tự đổi sang "đang bật".</div>`,
+                <div class="inxa-ghi" id="inxa-ghi" style="display:none">Nhờ quán bật laptop (không cần mở trang nào), vài giây sau bảng này tự đổi sang "đang bật".</div>
+                ${tam ? `<div class="inxa-ghi">Khách gửi bản nhỏ (${+up.du.pt || 0}%): laptop sẽ ghép bản in 100% trước khi in, thêm khoảng 1 phút.</div>` : ''}`,
             showCancelButton: true, confirmButtonText: 'In tại quán ' + ten, cancelButtonText: '<span style="color:#111">Huỷ</span>',
             confirmButtonColor: '#111', cancelButtonColor: '#fff', didOpen: ve
         });
@@ -265,7 +289,7 @@ function inXaTheoDoi(ref, job, ten, g) {
         const tt = v.tt;
         el.innerHTML = buoc(true, false, 'Đã gửi lệnh', v.at)
             + buoc(!!v.nhanAt, tt === 'cho', 'Laptop đã nhận', v.nhanAt)
-            + buoc(tt === 'xong', tt === 'dang', tt === 'dang' ? 'Đang in...' : 'Đang in', v.inAt)
+            + buoc(tt === 'xong', tt === 'dang' || (tt === 'nhan' && !!v.buoc), tt === 'dang' ? 'Đang in...' : tt === 'nhan' && v.buoc ? v.buoc + '...' : 'Đang in', v.inAt)
             + buoc(tt === 'xong', false, 'Đã in', v.xongAt);
         const loi = document.getElementById('inxa-loi');
         loi.style.display = tt === 'loi' ? '' : 'none';

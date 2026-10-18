@@ -751,10 +751,16 @@ async function fkExport() {
     }
     const btn = document.getElementById('fk-done');
     btn.disabled = true;
+    let cv = null, pv = null;
     try {
         btn.innerText = 'Đang kiểm tra máy...';
-        const cv = FR.canvasFor(FKF.w, FKF.h);
-        if (!cv) throw new Error('Máy này không đủ bộ nhớ để ghép ảnh cỡ in.');
+        // Máy đang thiếu bộ nhớ (Safari giới hạn tổng bộ nhớ vẽ của trang): lùi tới cỡ nhỏ hơn nữa, khách
+        // vẫn gửi được; tiệm tự ghép lại bản đủ cỡ từ bản xếp (việc ngầm "Bản in 100%", rec.du)
+        // iPhone / iPad: khung vẽ tối đa ~16,7 triệu điểm, cỡ lớn hơn chắc chắn hỏng -> bỏ qua luôn, khỏi tốn bộ nhớ thử
+        const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const cac = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3].filter(s => !ios || FKF.w * FKF.h * s * s <= 16.7e6);
+        cv = FR.canvasFor(FKF.w, FKF.h, cac.length ? cac : null) || FR.canvasFor(FKF.w, FKF.h, [0.25, 0.2, 0.16, 0.12]);
+        if (!cv) throw new Error('Máy đang thiếu bộ nhớ. Đóng bớt các tab khác trong Safari rồi bấm Ghép xong lại nhé.');
         const n = FKP.filter(Boolean).length;
         // Bản gốc chưa tải xong thì chờ, nút ghi rõ đã tải bao nhiêu MB để khách
         // biết web đang chạy chứ không treo
@@ -787,7 +793,7 @@ async function fkExport() {
         if (!blob) throw new Error('Máy không xuất được ảnh.');
 
         // Ảnh xem lại vẽ riêng bản nhỏ: hiện ảnh 27 triệu điểm trên màn sẽ treo máy cũ
-        const pv = document.createElement('canvas');
+        pv = document.createElement('canvas');
         const ps = Math.min(1, 1400 / FKF.w);
         pv.width = Math.round(FKF.w * ps); pv.height = Math.round(FKF.h * ps);
         await FR.compose(pv.getContext('2d'), ps, FKF, l => FR.gUrl(l.k === 'frame' ? FKF.prev : l.prev), FKP, p => p.url);
@@ -805,6 +811,10 @@ async function fkExport() {
     } catch (e) {
         Swal.fire({ title: window.FK_NV ? 'Chưa lưu được' : 'Chưa ghép được', text: e.message, icon: 'error', confirmButtonColor: '#111' });
     } finally {
+        // Lỗi giữa chừng (vd mạng khi tải ảnh gốc) cũng phải trả bộ nhớ vẽ: không thì bấm lại vài lần
+        // là Safari cạn bộ nhớ, tới tờ nhỏ cũng không vẽ được ("Máy này không đủ bộ nhớ")
+        if (cv && cv.c) cv.c.width = cv.c.height = 0;
+        if (pv) pv.width = pv.height = 0;
         btn.disabled = false;
         btn.innerText = window.FK_NV ? 'Lưu bản chỉnh' : 'Ghép xong';
     }
