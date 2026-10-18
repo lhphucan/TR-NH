@@ -48,6 +48,7 @@ function nvHang(cId, uId, up) {
     const khach = Array.isArray(up.drive) && up.drive[0];
     const nv = up.nv && up.nv.id ? up.nv : null;
     const fr = up.bo ? nvTenFrame(up.bo.frame) : '';
+    const phu = [gioGui(up.time), e(fr), up.took != null ? `${+up.took || 0}s · ${+up.mb || 0} MB` : '', inDaIn(up)].filter(Boolean).join(' · ');
     const chip = (ban, id, ten, phu, xanh) => `
         <button type="button" class="nv-chip${xanh ? ' tiem' : ''}" onclick="nvXem('${cId}', '${uId}', '${ban}')" title="Bấm để xem to">
             <span class="nv-chip-im">${id ? `<img src="${e(FR.gUrl(id, 160))}" alt="" loading="lazy">` : ''}</span>
@@ -58,7 +59,7 @@ function nvHang(cId, uId, up) {
             <div class="nv-hang-r">
                 <div class="nv-hang-ti">
                     <b>Ảnh ghép frame</b>
-                    <small>${[gioGui(up.time), e(fr), up.took != null ? `${+up.took || 0}s · ${+up.mb || 0} MB` : '', inDaIn(up)].filter(Boolean).join(' · ')}</small>
+                    <small title="${phu}">${phu}</small>
                 </div>
                 ${khach ? chip('khach', khach.id, 'Bản khách', up.tai ? 'đã tải ' + nvGio(up.tai) : 'bấm để xem') : ''}
                 ${nv ? chip('tiem', nv.id, 'Bản tiệm chỉnh', e(nv.by || '') + ' · ' + (nv.tai ? 'đã tải ' + nvGio(nv.tai) : nvGio(nv.at)), true) : ''}
@@ -194,8 +195,8 @@ function nvXem(cId, uId, ban, nvMoi) {
                 <div class="nvx-foot">
                     <span id="nvx-tt"></span>
                     <button type="button" class="nvx-btn" id="nvx-tai" onclick="nvTai(this)"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>Tải bản này</button>
-                    <button type="button" class="nvx-btn" id="nvx-in" onclick="inGhep(NVX.cId, NVX.uId, NVX.ban)">In</button>
-                    <button type="button" class="nvx-btn den" id="nvx-chinh" onclick="nvMo(NVX.cId, NVX.uId)"></button>
+                    <button type="button" class="nvx-btn" id="nvx-in" onclick="nvXemIn()">In</button>
+                    <button type="button" class="nvx-btn den" id="nvx-chinh" onclick="nvXemChinh()"></button>
                 </div>
             </div>
         </div>`);
@@ -224,9 +225,11 @@ function nvXemVe() {
     const tiem = NVX.ban === 'tiem';
     const khach = Array.isArray(up.drive) && up.drive[0];
     const id = tiem ? nv.id : khach && khach.id;
-    const bo = nvBo(up);
-    document.getElementById('nvx-ten').innerText = 'Ảnh ghép · ' + (c.name || 'Khách');
-    document.getElementById('nvx-phu').innerText = bo && nvTenFrame(bo.frame) ? 'Frame ' + nvTenFrame(bo.frame) : '';
+    const the = up.kind === 'anhthe';   // màn xem dùng chung cho ảnh thẻ (the-nv.js)
+    const bo = the ? null : nvBo(up);
+    document.getElementById('nvx-ten').innerText = (the ? 'Ảnh thẻ · ' : 'Ảnh ghép · ') + (c.name || 'Khách');
+    document.getElementById('nvx-phu').innerText = the ? (up.the && typeof theTomTat === 'function' ? theTomTat((tiem && nv.the && nv.the.st) || up.the.st) : '')
+        : bo && nvTenFrame(bo.frame) ? 'Frame ' + nvTenFrame(bo.frame) : '';
     const seg = document.getElementById('nvx-seg');
     seg.style.display = nv ? '' : 'none';
     seg.innerHTML = nv ? `
@@ -238,12 +241,20 @@ function nvXemVe() {
     document.getElementById('nvx-tt').innerText = (tiem ? `Bản tiệm chỉnh · ${nv.by || ''} lúc ${nvGio(nv.at)}` : `Bản khách · gửi lúc ${gioGui(up.time)}`)
         + (tai ? ` · đã tải lúc ${nvGio(tai)}` : ' · chưa tải');
     document.getElementById('nvx-tai').disabled = !id;
-    const kho = IN_GIAY[inKhoGhep(NVX.cId, up)];
+    const kho = IN_GIAY[the ? '4x6' : inKhoGhep(NVX.cId, up)];
     document.getElementById('nvx-in').innerText = 'In' + (kho ? ' · ' + kho.ten : '');
     document.getElementById('nvx-in').disabled = !id;
     const chinh = document.getElementById('nvx-chinh');
-    chinh.style.display = up.bo ? '' : 'none';
+    chinh.style.display = (the ? up.the : up.bo) ? '' : 'none';
     chinh.innerText = nv ? 'Chỉnh tiếp' : 'Chỉnh lại';
+}
+
+// Nút In / Chỉnh của màn xem: ảnh thẻ hay ảnh ghép frame
+function nvXemIn() { const up = nvUp(NVX.cId, NVX.uId) || {}; if (up.kind === 'anhthe') inThe(NVX.cId, NVX.uId, NVX.ban); else inGhep(NVX.cId, NVX.uId, NVX.ban); }
+function nvXemChinh() {
+    const up = nvUp(NVX.cId, NVX.uId) || {};
+    if (up.kind !== 'anhthe') return nvMo(NVX.cId, NVX.uId);
+    const k = NVX; nvXemDong(); theMo(k.cId, k.uId);   // màn chỉnh ảnh thẻ phủ cả trang
 }
 
 function nvXemDong() {
@@ -274,7 +285,7 @@ async function nvTai(btn) {
         const duoi = /png/.test(blob.type) ? 'png' : 'jpg';
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `${ten}_${cId.split('_')[1].slice(-4)}_GHEP_${tiem ? 'TIEM' : 'KHACH'}.${duoi}`;
+        a.download = `${ten}_${cId.split('_')[1].slice(-4)}_${up.kind === 'anhthe' ? 'ANHTHE' : 'GHEP'}_${tiem ? 'TIEM' : 'KHACH'}.${duoi}`;
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(a.href), 10000);
         // Ghi giờ tải để ai cũng biết bản nào đã tải về in

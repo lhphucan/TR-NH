@@ -8,7 +8,7 @@ let AT_REF = null;      // theo dõi nhân viên bật/tắt ảnh thẻ
 let AT_KHUNG = null;    // iframe anh-the.html
 let AT_SAN = false;     // trang ảnh thẻ đã sẵn sàng nhận tin
 let AT_ALBUM = null;    // ảnh của lượt chụp: [{ id, name }]
-const AT_BAN = '979ada5f';   // đổi khi sửa anh-the.html: máy khách bỏ bản cũ trong bộ nhớ đệm
+const AT_BAN = '9ffe31ad';   // đổi khi sửa anh-the.html: máy khách bỏ bản cũ trong bộ nhớ đệm
 
 function atSessionReady(data, branch) {
     const btn = document.getElementById('at-entry');
@@ -130,10 +130,46 @@ async function atGuiTiem(m) {
     const sent = await guiLenDrive([file], where);
     const up = sent.files[0];
     if (!up || !up.id) throw new Error((up && up.err) || 'Không gửi được ảnh');
+    // Trang nhân viên xem ảnh nhỏ của tờ in như ảnh ghép frame
+    if (sent.token) await FR.makePublic(up.id, sent.token).catch(() => {});
+    else await gsCall({ action: 'publish', id: up.id }).catch(() => {});
+    // Để tiệm mở lại y hệt rồi chỉnh tiếp; lỗi thì vẫn gửi tờ in như cũ
+    let the = null;
+    try { the = await atLuuGoc(m, where, hhmmss); } catch (er) { the = null; }
     const time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + now.toLocaleDateString('vi-VN');
     await db.ref('data/' + branch + '/' + clientId + '/client_uploads/U_' + Date.now()).set({
         time, drive: [{ id: up.id, name: up.name }], folder: sent.folderUrl, kind: 'anhthe',
-        took: Math.round((Date.now() - batDau) / 1000), mb: Math.round(m.blob.size / 104857.6) / 10, via: sent.via || ''
+        took: Math.round((Date.now() - batDau) / 1000), mb: Math.round(m.blob.size / 104857.6) / 10, via: sent.via || '', the
     });
     await Swal.fire({ title: 'Đã gửi cho tiệm', text: 'Nhân viên sẽ in ảnh thẻ giúp bạn.', icon: 'success', confirmButtonColor: '#111' });
+}
+
+// Trạng thái chỉnh để tiệm mở lại y hệt (anh-the.html trangThai): ảnh lấy từ lượt chụp thì chỉ cần mã ảnh;
+// ảnh từ máy khách thì gửi kèm bản gốc (tên KHACH_ nên album khách không hiện). HEIC của iPhone đổi sang
+// JPEG 95% đủ cỡ: máy quầy (Chrome) không đọc được HEIC.
+async function atLuuGoc(m, where, hhmmss) {
+    if (!m.st) return null;
+    if (m.nguon && m.nguon.id) return { v: 1, goc: m.nguon.id, st: m.st };
+    if (!(m.goc instanceof Blob)) return null;
+    Swal.update({ title: 'Đang gửi ảnh gốc...' });
+    let file = m.goc;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+        const u = URL.createObjectURL(file);
+        try {
+            const im = await FR.loadImg(u);
+            const cv = FR.canvasFor(im.naturalWidth, im.naturalHeight);
+            if (!cv) return null;
+            cv.x.drawImage(im, 0, 0, cv.c.width, cv.c.height);
+            im.src = '';
+            const b = await new Promise(r => cv.c.toBlob(r, 'image/jpeg', 0.95));
+            cv.c.width = cv.c.height = 0;
+            if (!b) return null;
+            file = b;
+        } finally { URL.revokeObjectURL(u); }
+    }
+    const duoi = file.type === 'image/png' ? '.png' : file.type === 'image/webp' ? '.webp' : '.jpg';
+    const sent = await guiLenDrive([new File([file], `KHACH_${hhmmss}_ANH THE GOC${duoi}`, { type: file.type || 'image/jpeg' })], where);
+    const f = sent.files[0];
+    if (!f || !f.id) return null;
+    return { v: 1, goc: f.id, may: true, st: m.st };
 }

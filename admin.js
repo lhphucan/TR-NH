@@ -1787,6 +1787,8 @@ function load() {
                         const up = client.client_uploads[uId];
                         // Ảnh ghép frame: một dòng gọn, bấm xem bản khách / bản tiệm chỉnh (frame-nv.js)
                         if (up && up.kind === 'frame' && typeof nvHang === 'function') { clientUploadsHtml += nvHang(client.id, uId, up); return; }
+                        // Ảnh thẻ: một dòng như ảnh ghép frame, chỉnh lại được (the-nv.js)
+                        if (up && up.kind === 'anhthe' && typeof theHang === 'function') { clientUploadsHtml += theHang(client.id, uId, up); return; }
                         // Ảnh cũ nằm trên imgbb (links), ảnh mới nằm trên Drive (drive)
                         const upLinks = Array.isArray(up.links) ? up.links : [];
                         const upDrive = Array.isArray(up.drive) ? up.drive : [];
@@ -1794,14 +1796,14 @@ function load() {
 
                         let imgLinks = "";
                         upLinks.forEach((l, i) => {
-                            imgLinks += `<a href="${escapeHTML(l)}" target="_blank" rel="noopener" style="color:#111; font-size:12px; font-weight:600; text-decoration:underline; margin-right:12px; display:inline-block; margin-top:5px;">Ảnh gốc ${i+1}</a>`;
+                            imgLinks += `<a href="${escapeHTML(l)}" target="_blank" rel="noopener">Ảnh gốc ${i+1}</a>`;
                         });
                         upDrive.forEach((d, i) => {
-                            imgLinks += `<a href="https://drive.google.com/file/d/${escapeHTML(d.id)}/view" target="_blank" rel="noopener" style="color:#111; font-size:12px; font-weight:600; text-decoration:underline; margin-right:12px; display:inline-block; margin-top:5px;">Ảnh gốc ${upLinks.length + i + 1}</a>`;
+                            imgLinks += `<a href="https://drive.google.com/file/d/${escapeHTML(d.id)}/view" target="_blank" rel="noopener">Ảnh gốc ${upLinks.length + i + 1}</a>`;
                         });
                         clientUploadsHtml += `
-                            <div data-up="${escapeHTML(uId)}" style="background:#fafafa; border:1px dashed #d4d4d8; padding:12px 15px; border-radius:10px; margin-bottom:12px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:10px;">
+                            <div data-up="${escapeHTML(uId)}" class="up-hang">
+                                <div class="up-hang-r">
                                     <span style="font-size:12px; font-weight:700; color:#111; display:flex; align-items:center; gap:6px; text-transform:uppercase;">
                                         <svg class="icon-sm" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
                                         ${up.kind === 'frame' ? 'Ảnh ghép frame' : up.kind === 'anhthe' ? 'Ảnh thẻ' : 'Yêu cầu in'} ${gioGui(up.time)}
@@ -1814,17 +1816,22 @@ function load() {
                                         <button onclick="downloadAllUploads('${client.id}', '${uId}', this)" class="up-btn solid">TẢI TẤT CẢ (${upCount})</button>
                                     </div>
                                 </div>
-                                <div style="display:flex; flex-wrap:wrap;">${imgLinks}</div>
+                                <div class="up-hang-anh">${imgLinks}</div>
                                 ${up.kind === 'frame' && up.le && Array.isArray(up.le.photos) ? leDongTrangThai(client.id, uId, up.le) : ''}
                             </div>`;
                     });
                 }
 
-                let actionButtons = (dbPath === 'trash/') ? 
-                    `<button class="btn-restore admin-only" onclick="restoreCustomer('${client.id}', '${safeName}')"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> KHÔI PHỤC</button>
-                    <button class="btn-del-client admin-only" onclick="hardDeleteCustomer('${client.id}', '${safeName}')" style="margin-top:10px;"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> XÓA VĨNH VIỄN</button>` :
-                    `<button class="btn-move-client admin-only" onclick="moveCustomer('${client.id}', '${safeName}')"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg> CHUYỂN CƠ SỞ KHÁC</button>
-                    <button class="btn-del-client admin-only" onclick="softDeleteCustomer('${client.id}', '${safeName}')"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> CHUYỂN VÀO THÙNG RÁC</button>`;
+                // Thùng rác: khôi phục / xoá vĩnh viễn (nút to, ít dùng). Danh sách thường: 2 nút biểu tượng nhỏ
+                // cạnh nhãn trạng thái để thẻ thấp, 2–3 khách trong một màn.
+                const actionButtons = (dbPath === 'trash/') ?
+                    `<div class="ci-thung">
+                    <button class="btn-restore admin-only" onclick="restoreCustomer('${client.id}', '${safeName}')"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> KHÔI PHỤC</button>
+                    <button class="btn-del-client admin-only" onclick="hardDeleteCustomer('${client.id}', '${safeName}')" style="margin-top:10px;"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> XÓA VĨNH VIỄN</button></div>` : '';
+                const nutNho = (dbPath === 'data/') ? `<span class="ci-tac admin-only">
+                    <button type="button" class="ci-nut" onclick="moveCustomer('${client.id}', '${safeName}')" title="Chuyển cơ sở khác" aria-label="Chuyển cơ sở khác"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg></button>
+                    <button type="button" class="ci-nut do" onclick="softDeleteCustomer('${client.id}', '${safeName}')" title="Chuyển vào thùng rác" aria-label="Chuyển vào thùng rác"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                </span>` : '';
 
                 // Chỉ thêm được ảnh khi link đã trả là thư mục Drive
                 const hasDriveFolder = client.links && Object.values(client.links)
@@ -1833,81 +1840,60 @@ function load() {
                 const visits = (cPhone.length >= 9 && visitCount[cPhone]) || 0;
                 const pVal = client.price ? normalizePrice(client.price) : ""; const pmVal = client.payment || "";
                 const isFree = (pVal === 'Miễn phí');
+                const soLink = client.links ? Object.keys(client.links).length : 0;
+                const ANH_NHAN = '.jpg,.jpeg,.png,.heic,.heif,.webp,image/jpeg,image/png,image/heic,image/heif,image/webp';
 
                 html += `
                     <div class="client-card${(!pVal && dbPath === 'data/') ? ' card-no-price' : ''}" data-search="${client.name ? client.name.toLowerCase() : ''} ${client.phone} ${maKh}" data-le="${escapeHTML(leChuKy(client))}">
                         <div class="client-info">
                             ${(dbPath === 'trash/') ? `<div style="margin-bottom:10px; display:flex; align-items:center; gap:10px;"><input type="checkbox" class="trash-checkbox" value="${client.id}" style="width:16px; height:16px; cursor:pointer;"><span style="font-size:12px; font-weight:600; color:#666;">CHỌN XÓA</span></div>` : ''}
-                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                                <div style="font-size: 11px; color: #a1a1aa; font-family: monospace; font-weight: 600;">#${maKh}</div>
+                            <div class="ci-dau">
+                                <span class="ci-ma">#${maKh}</span>
+                                ${nutNho}
                                 <span class="badge ${isDone ? 'done' : 'pending'}">${isDone ? 'ĐÃ TRẢ ẢNH' : 'ĐANG CHỤP'}</span>
                             </div>
                             <h4 class="client-name">
                                 <span>${escapeHTML(client.name || 'Khách hàng')}</span>
                                 ${visits > 1 ? `<span class="badge-loyal" title="Khách đã đến ${visits} lần">Khách quen · ${visits}</span>` : ''}
                             </h4>
-                            <div style="font-size: 13px; color: #52525b; margin-bottom: 5px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> <span>${escapeHTML(client.phone)}</span>
+                            <div class="ci-lh">
+                                <svg class="icon-sm" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg><span>${escapeHTML(client.phone)}</span>
                                 ${(dbPath === 'data/') ? `<button onclick="editClientInfo('${client.id}')" class="btn-edit-info admin-only" title="Sửa tên và số điện thoại">Sửa</button>` : ''}
+                                <svg class="icon-sm ci-gio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg><span>${client.time}</span>
                             </div>
-                            <div style="font-size: 13px; color: #52525b; margin-bottom: 15px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${client.time}</div>
-                            
-                            <div style="margin-top:auto;">
-                                <div style="font-size:11px; font-weight:600; color:#a1a1aa; margin-bottom:5px; text-transform:uppercase;">Thu nhập:</div>
-                                <div style="display:flex; gap:5px;">
-                                    <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="Nhập tiền" list="price-list" inputmode="numeric" ${isFree ? 'disabled' : ''} onchange="updateMoney('${client.id}')" onkeydown="if(event.key==='Enter'){this.blur();}">
-                                    <select id="payment_${client.id}" class="price-select${(!isFree && !pmVal) ? ' is-empty' : ''}" onchange="updatePayment('${client.id}')">
-                                        <option value="" ${(!isFree && !pmVal) ? 'selected' : ''}>Chọn hình thức</option>
-                                        <option value="Tiền mặt" ${(pmVal === 'Tiền mặt' && !isFree) ? 'selected' : ''}>Tiền mặt</option>
-                                        <option value="Chuyển khoản" ${(pmVal === 'Chuyển khoản' && !isFree) ? 'selected' : ''}>Chuyển khoản</option>
-                                        <option value="Miễn phí" ${isFree ? 'selected' : ''}>Miễn phí</option>
-                                    </select>
-                                </div>
-                                ${dbPath === 'data/' ? `<button type="button" id="goi_${client.id}" class="goi-btn${nhomCuaKhach(client).length ? ' cao' : ''}" onclick="doiGoi('${client.id}')" title="Bấm để đổi">${escapeHTML(goiNhan(client))}</button>
-                                    <button type="button" id="the_${client.id}" class="goi-btn${client.the === true ? ' cao' : ''}" onclick="doiThe('${client.id}')" title="Bấm để đổi">Ảnh thẻ: ${client.the === true ? 'Bật' : 'Tắt'}</button>` : ''}
+                            <div class="ci-tien" title="Thu nhập">
+                                <input type="text" id="price_${client.id}" class="price-input" value="${pVal}" placeholder="Nhập tiền" list="price-list" inputmode="numeric" ${isFree ? 'disabled' : ''} onchange="updateMoney('${client.id}')" onkeydown="if(event.key==='Enter'){this.blur();}">
+                                <select id="payment_${client.id}" class="price-select${(!isFree && !pmVal) ? ' is-empty' : ''}" onchange="updatePayment('${client.id}')">
+                                    <option value="" ${(!isFree && !pmVal) ? 'selected' : ''}>Chọn hình thức</option>
+                                    <option value="Tiền mặt" ${(pmVal === 'Tiền mặt' && !isFree) ? 'selected' : ''}>Tiền mặt</option>
+                                    <option value="Chuyển khoản" ${(pmVal === 'Chuyển khoản' && !isFree) ? 'selected' : ''}>Chuyển khoản</option>
+                                    <option value="Miễn phí" ${isFree ? 'selected' : ''}>Miễn phí</option>
+                                </select>
                             </div>
-
-                            <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #e4e4e7;">
-                                ${actionButtons}
-                            </div>
+                            ${dbPath === 'data/' ? `<div class="ci-chip">
+                                <button type="button" id="goi_${client.id}" class="goi-btn${nhomCuaKhach(client).length ? ' cao' : ''}" onclick="doiGoi('${client.id}')" title="Bấm để đổi">${escapeHTML(goiNhan(client))}</button>
+                                <button type="button" id="the_${client.id}" class="goi-btn${client.the === true ? ' cao' : ''}" onclick="doiThe('${client.id}')" title="Bấm để đổi">Ảnh thẻ: ${client.the === true ? 'Bật' : 'Tắt'}</button>
+                            </div>` : ''}
+                            ${actionButtons}
                         </div>
 
                         <div class="link-manager">
                             ${clientUploadsHtml}
-                            <div style="font-size:12px; font-weight:700; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center;"><svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> ẢNH ĐÃ TRẢ KHÁCH (${client.links ? Object.keys(client.links).length : 0})</div>
-                            <div style="flex-grow:1; display:flex; flex-direction:column; gap:5px;">
-                                ${linksHtml}
-                                ${(dbPath === 'data/') ? `
-                                <div class="shoot-picker" id="shoots_${client.id}" data-ts="${client.ts}">
-                                    <button type="button" class="shoot-load" onclick="loadShootPicker('${client.id}')">
-                                        <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                                        ${client.links ? 'GỬI THÊM LƯỢT CHỤP' : 'XEM ẢNH VỪA CHỤP'}
-                                    </button>
-                                </div>` : ''}
-                                ${(dbPath === 'data/' && hasDriveFolder) ? `
-                                <div class="add-to-folder">
-                                    <label for="addfolder_input_${client.id}" id="addfolder_${client.id}" class="add-folder-btn">
-                                        <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                                        THÊM ẢNH GHÉP VÀO THƯ MỤC KHÁCH
-                                    </label>
-                                    <input type="file" id="addfolder_input_${client.id}" multiple accept=".jpg,.jpeg,.png,.heic,.heif,.webp,image/jpeg,image/png,image/heic,image/heif,image/webp" style="display:none;"
-                                           onchange="addToClientFolder('${client.id}', this)">
-                                </div>` : ''}
-                            </div>
-
+                            ${soLink ? `<div class="lm-ti"><svg class="icon-sm" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> ẢNH ĐÃ TRẢ KHÁCH (${soLink})</div>
+                            ${linksHtml}` : ''}
                             ${(dbPath === 'data/') ? `
-                            <div class="add-box">
-                                <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                                    <div style="flex-grow:1; display:flex; gap:10px; background:#fafafa; border:1px dashed #d4d4d8; padding:8px 12px; border-radius:8px; align-items:center;">
-                                        <label for="file_${client.id}" style="cursor:pointer; background:#111; color:#fff; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:600; white-space:nowrap; transition:0.2s;">Chọn file</label>
-                                        <input type="file" id="file_${client.id}" multiple accept=".jpg,.jpeg,.png,.heic,.heif,.webp,image/jpeg,image/png,image/heic,image/heif,image/webp" style="display: none;" onchange="document.getElementById('fname_${client.id}').innerText = this.files.length > 0 ? this.files.length + ' tệp đã chọn' : 'Chưa có tệp'">
-                                        <span id="fname_${client.id}" style="font-size: 11px; color: #666; font-weight:500;">Chưa có tệp</span>
-                                    </div>
-                                    <button id="btn_up_${client.id}" onclick="uploadPhotosToImgBB('${client.id}')" class="btn btn-add"><svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN</button>
-                                </div>
-                                <div style="display: flex; gap: 10px;">
-                                    <textarea id="new_${client.id}" placeholder="Dán link GG Drive vào đây... (Có thể dán nhiều link cách nhau bằng nút Enter)"></textarea>
-                                    <button onclick="addLink('${client.id}')" class="btn btn-add" style="height: auto; align-self: stretch;"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
-                                </div>
+                            <div class="cc-cu">
+                                <button type="button" class="cc-nut" onclick="loadShootPicker('${client.id}')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>${client.links ? 'Gửi thêm lượt chụp' : 'Xem ảnh vừa chụp'}</button>
+                                ${hasDriveFolder ? `<label for="addfolder_input_${client.id}" id="addfolder_${client.id}" class="cc-nut" title="Thêm ảnh ghép vào thư mục ảnh của khách"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Thêm ảnh ghép</label>
+                                <input type="file" id="addfolder_input_${client.id}" multiple accept="${ANH_NHAN}" style="display:none;" onchange="addToClientFolder('${client.id}', this)">` : ''}
+                                <button type="button" id="btn_up_${client.id}" class="cc-nut" onclick="document.getElementById('file_${client.id}').click()" title="Chọn ảnh, chọn xong là tải lên"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Tải ảnh lên</button>
+                                <input type="file" id="file_${client.id}" multiple accept="${ANH_NHAN}" style="display:none;" onchange="ccTaiLen('${client.id}', this)">
+                                <button type="button" class="cc-nut" onclick="ccMoLink('${client.id}')"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>Dán link</button>
+                            </div>
+                            <div class="shoot-picker" id="shoots_${client.id}" data-ts="${client.ts}"></div>
+                            <div class="cc-link" id="lkbox_${client.id}" hidden>
+                                <textarea id="new_${client.id}" placeholder="Dán link Google Drive (nhiều link thì mỗi link một dòng)"></textarea>
+                                <button onclick="addLink('${client.id}')" class="btn btn-add" title="Lưu link"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
                             </div>
                             ` : ''}
                         </div>
@@ -1932,7 +1918,7 @@ function load() {
                 // Trả lại link đang gõ dở sau khi DOM dựng lại
                 Object.keys(_restoreDrafts).forEach(id => {
                     const t = document.getElementById(id);
-                    if (t) t.value = _restoreDrafts[id];
+                    if (t) { t.value = _restoreDrafts[id]; const box = t.closest('.cc-link'); if (box) box.hidden = false; }
                 });
                 _restoreDrafts = {};
 
@@ -2152,6 +2138,21 @@ function load() {
         // hoisting nên để dưới là lỗi.
         const _dangLuuLink = {};
 
+        // Hàng công cụ thẻ khách: chọn ảnh xong là tải lên luôn; xoá lựa chọn sau đó để chọn lại
+        // đúng các ảnh đó (vd vừa bấm Huỷ ở bước hỏi tiền) vẫn chạy.
+        async function ccTaiLen(clientId, input) {
+            if (!input.files || !input.files.length) return;
+            try { await uploadPhotosToImgBB(clientId); }
+            finally { const fi = document.getElementById('file_' + clientId); if (fi) fi.value = ''; }
+        }
+        // "Dán link": ô dán link chỉ hiện khi cần
+        function ccMoLink(clientId) {
+            const box = document.getElementById('lkbox_' + clientId);
+            if (!box) return;
+            box.hidden = !box.hidden;
+            if (!box.hidden) { const t = document.getElementById('new_' + clientId); if (t) t.focus(); }
+        }
+
         async function uploadPhotosToImgBB(clientId) {
             // Cùng lý do như addLink: nút chỉ khoá sau khi hỏi tiền xong, mà lúc
             // đang chờ nhập tiền vẫn bấm tiếp được nên ảnh lên hai lần.
@@ -2170,7 +2171,7 @@ function load() {
             const btn = document.getElementById('btn_up_' + clientId);
             if (!btn) return;
 
-            btn.innerHTML = `<svg class="icon-svg" style="margin-right:4px; animation: spin 1s infinite linear;" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> ĐANG TẢI...`;
+            btn.innerHTML = `<svg style="animation: spin 1s infinite linear;" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>Đang tải...`;
             btn.disabled = true;
 
             try {
@@ -2219,7 +2220,7 @@ function load() {
             } finally {
                 const b = document.getElementById('btn_up_' + clientId);
                 if (b) {
-                    b.innerHTML = `<svg class="icon-svg" style="margin-right:4px;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> TẢI LÊN`;
+                    b.innerHTML = `<svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Tải ảnh lên`;
                     b.disabled = false;
                 }
             }
@@ -2466,13 +2467,8 @@ function load() {
         function closeShootPicker(clientId) {
             const box = document.getElementById('shoots_' + clientId);
             if (!box) return;
-            // Khách đã có link thì lần bấm sau là để gửi thêm lượt nữa
-            const c = currentData && currentData[clientId];
-            const label = (c && c.links) ? 'GỬI THÊM LƯỢT CHỤP' : 'XEM ẢNH VỪA CHỤP';
-            box.innerHTML = `<button type="button" class="shoot-load" onclick="loadShootPicker('${clientId}')">
-                <svg class="icon-sm" style="margin-right:6px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                ${label}
-            </button>`;
+            // Nút mở khung nằm ở hàng công cụ của thẻ khách: đóng là để trống
+            box.innerHTML = '';
             if (!anyDriveViewOpen()) stopDriveWatch();
         }
 

@@ -575,3 +575,73 @@ input[type=checkbox], input[type=radio], input[type=range] { accent-color: #1818
 .in-ban-cu { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border: 1px solid #d4d4d8; border-left: 3px solid #18181b; border-radius: 10px; padding: 10px 14px; margin: -8px 0 16px; font-size: 13px; color: #3f3f46; }
 .in-ban-cu span { flex: 1; min-width: 220px; }
 .in-ban-cu-nut { flex: none; background: #111; color: #fff; text-decoration: none; font-weight: 700; font-size: 12px; padding: 8px 14px; border-radius: 8px; }
+
+/* ===== Thẻ khách gọn (18/10/2026): 2–3 khách trong một màn máy tính ===== */
+.client-card { padding: 14px 16px; gap: 12px; margin-bottom: 12px; }
+@media (min-width: 768px) {
+    .client-card { gap: 16px; }
+    .client-info { width: 236px; padding-right: 16px; }
+}
+.ci-dau { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.ci-ma { font-size: 11px; color: #a1a1aa; font-family: monospace; font-weight: 600; margin-right: auto; }
+.ci-tac { display: flex; gap: 4px; }
+.ci-nut { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e4e4e7; background: #fff; color: #52525b; border-radius: 6px; cursor: pointer; padding: 0; }
+.ci-nut svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ci-nut:hover { border-color: #18181b; color: #18181b; }
+.ci-nut.do { color: #ef4444; border-color: #fee2e2; }
+.ci-nut.do:hover { border-color: #ef4444; background: #fef2f2; }
+.client-info .client-name { margin-bottom: 4px; }
+.ci-lh { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; font-size: 13px; color: #52525b; margin-bottom: 10px; }
+.ci-lh .icon-sm { margin: 0; }
+.ci-lh .ci-gio { margin-left: 8px; }
+.ci-tien { display: flex; gap: 5px; }
+.ci-chip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ci-chip .goi-btn { margin-top: 0; }
+.ci-thung { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e4e4e7; }
+
+.lm-ti { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #52525b; margin: 2px 0 6px; display: flex; align-items: center; gap: 6px; }
+.lm-ti .icon-sm { margin: 0; }
+.link-manager .link-row { margin-bottom: 6px; padding: 6px 8px; }
+
+/* Hàng công cụ: một dòng nút nhỏ thay 4 khối to */
+.cc-cu { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 8px; }
+.cc-nut { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid #e4e4e7; background: #fff; color: #3f3f46; border-radius: 7px; cursor: pointer; font: 600 12px 'Inter', sans-serif; white-space: nowrap; box-sizing: border-box; }
+.cc-nut svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.cc-nut:hover { border-color: #18181b; color: #18181b; }
+.cc-nut:disabled, .cc-nut.busy { opacity: .7; pointer-events: none; }
+.shoot-picker:empty { display: none; }
+.shoot-picker { margin-top: 8px; }
+.cc-link { display: flex; gap: 8px; margin-top: 8px; }
+.cc-link[hidden] { display: none; }
+.cc-link textarea { min-height: 38px; height: 38px; padding: 9px 12px; }
+.cc-link .btn { height: auto; align-self: stretch; }
+
+/* Yêu cầu in / ảnh thẻ khách gửi */
+.up-hang { background: #fafafa; border: 1px dashed #d4d4d8; padding: 8px 12px; border-radius: 10px; margin-bottom: 8px; }
+.up-hang-r { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.up-hang-r > div { display: flex; gap: 6px; }
+.up-hang-anh { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; }
+.up-hang-anh a { color: #111; font-size: 12px; font-weight: 600; text-decoration: underline; }
+
+/* Ảnh ghép frame: một dòng trên máy tính; chữ phụ dài thì cắt, rê chuột xem đủ */
+.nv-hang { padding: 6px 10px; margin-bottom: 8px; }
+@media (min-width: 1100px) {
+    .nv-hang-r { flex-wrap: nowrap; }
+    .nv-hang-ti { flex: 1 1 auto; min-width: 0; }
+    .nv-hang-ti small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nv-chip, .nv-hang-nut { flex: none; }
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .cc-nut { height: 44px; }
+    .ci-nut { width: 40px; height: 40px; }
+}
+/* Safari không tự lấy phông của trang cho nút: chữ có chân */
+.btn-album-link, .btn-del-link, .ci-nut { font-family: 'Inter', sans-serif; }
+
+/* Chỉnh lại ảnh thẻ (the-nv.js): trang ảnh thẻ phủ cả màn */
+.thex { position: fixed; inset: 0; z-index: 3000; background: #f4f4f5; }
+.thex iframe { width: 100%; height: 100%; border: 0; display: block; }
+.thex-cho { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: rgba(244,244,245,.92); z-index: 2; font: 600 14px 'Inter', sans-serif; color: #18181b; }
+.thex-xoay { width: 34px; height: 34px; border: 3px solid #d4d4d8; border-top-color: #18181b; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }

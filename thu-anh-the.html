@@ -282,7 +282,14 @@ window.addEventListener('message', e => {
     else if (m.t === 'anh' && choAnh) { const c = choAnh; choAnh = null; m.blob ? c.ok(m.blob) : c.no(new Error(m.loi || 'Không tải được ảnh')); }
     else if ((m.t === 'gui-xong' || m.t === 'gui-loi') && choGui) { const c = choGui; choGui = null; c(m); }
     else if (m.t === 'mo') { if (!ANH && !dangChay) moBang(); }
+    else if (m.t === 'nap' && m.blob) { try { chonAnh(new File([m.blob], m.ten || 'anh.jpg', { type: m.blob.type || 'image/jpeg' }), m.nguon, JSON.parse(m.st)); } catch (er) { $('nhan').innerText = 'Không mở được trạng thái đã lưu'; } }
+    // Tiệm mở / đóng màn chỉnh: xoá sạch ảnh lần trước (có thể của khách khác), khoá nút tới khi ảnh mới xong
+    else if (m.t === 'xoa') { if (ANH) URL.revokeObjectURL(ANH.url); ANH = null; $('khung').querySelectorAll(':scope > canvas, :scope > img').forEach(x => x.remove()); nutBat(false); $('to-card').style.display = 'none'; $('nhan').innerText = ''; }
+    else if (m.t === 'hoi') guiCha({ t: 'st', st: ANH && ANH.r && !dangChay ? JSON.stringify(trangThai()) : '' });
 });
+// Trang nhân viên mở để chỉnh lại ảnh thẻ khách gửi: nhận ảnh gốc + trạng thái, Gửi = Lưu bản tiệm
+const NV_MO = NHUNG && new URLSearchParams(location.search).has('nv');
+if (NV_MO) { $('gui').innerText = 'Lưu bản tiệm chỉnh'; $('nut-chon').style.display = 'none'; document.querySelector('header h1').innerText = 'Chỉnh lại ảnh thẻ'; document.querySelector('.tren-dinh h3').innerText = 'Ảnh thẻ của khách'; }
 if (NHUNG) { $('dong').style.display = 'grid'; guiCha({ t: 'san' }); }
 // Đóng: gọi thẳng trang ngoài (cùng nguồn) cho chắc; trang ngoài bản cũ thì gửi tin như trước
 $('dong').onclick = () => {
@@ -310,16 +317,19 @@ $('luoi-anh').onclick = async e => {
     $('cho').classList.remove('toi'); cho(false); $('cho').classList.add('on'); $('cho-chu').innerText = 'Đang lấy ảnh'; $('cho-phu').innerText = 'Ảnh gốc của lượt chụp';
     try {
         const blob = await new Promise((ok, no) => { choAnh = { ok, no }; guiCha({ t: 'lay', id: a.id }); setTimeout(() => { if (choAnh) { choAnh = null; no(new Error('Mạng chậm, chưa lấy được ảnh. Thử lại nhé.')); } }, 120000); });
-        dangChay = false; chonAnh(new File([blob], a.name || 'anh.jpg', { type: blob.type || 'image/jpeg' }));
+        dangChay = false; chonAnh(new File([blob], a.name || 'anh.jpg', { type: blob.type || 'image/jpeg' }), { id: a.id });
     } catch (er) { dangChay = false; $('cho').classList.remove('on'); $('nhan').innerText = er.message; if (ANH && ANH.r) ve(); }
 };
 $('nut-chon').onclick = moBang;
-$('chon').onchange = e => { const f = e.target.files[0]; if (f) chonAnh(f); };
+$('chon').onchange = e => { const f = e.target.files[0]; if (f) chonAnh(f, { may: true }); };
 
-function chonAnh(f) {
+// nguon: ảnh lấy từ đâu ({ id } ảnh lượt chụp, { may: true } ảnh từ máy) để tiệm chỉnh lại được.
+// st: trạng thái đã lưu (tiệm mở lại bản khách / bản tiệm): tách nền đúng thông số máy đã dùng rồi áp lại.
+function chonAnh(f, nguon, st) {
     if (ANH) URL.revokeObjectURL(ANH.url);
-    ANH = { file: f, url: URL.createObjectURL(f), r: null };
+    ANH = { file: f, url: URL.createObjectURL(f), r: null, nguon: nguon || { may: true }, st: st || null, toiDa: (st && st.toiDa) || TOI_DA };
     veMacDinh();
+    if (st && st.mem != null) { $('mem').value = st.mem; nhanChinh(); }
     $('nut-chon').classList.add('nho');
     $('nut-chon').innerHTML = 'Đổi ảnh khác';
     chay();
@@ -376,7 +386,7 @@ async function chay() {
         let truoc = 0; try { truoc = +localStorage.getItem(NHO) || 0; } catch (e) {}
         batDau = Date.now(); duKien = truoc; buoc = 'mat'; veCho();
         // ?nhin=512 để thử chế độ nhanh (AI nhìn ảnh nhỏ hơn)
-        a.r = await xuLy(a.file, Object.assign({ gon: 0, mem: +$('mem').value, toiDa: TOI_DA, giuNen: false }), (s, x) => {
+        a.r = await xuLy(a.file, Object.assign({ gon: 0, mem: +$('mem').value, toiDa: a.toiDa || TOI_DA, giuNen: false }), (s, x) => {
             if (!x) return;
             buoc = x.buoc;
             // Lần đầu trên máy này: đoán theo thời gian tìm mặt (xoá phông lâu hơn khoảng 8 lần)
@@ -389,11 +399,34 @@ async function chay() {
         $('toc-goiy').innerText = 'Máy đoán: ' + TEN_DOAN[kieu] + '. Chưa ưng thì chọn lại.';
         buoc = 'gon'; duKien = 0; veCho(); await new Promise(r => setTimeout(r, 30));
         if (a === ANH) { apToc(); veNutToc(); }
+        if (a === ANH && a.st) apTrangThai(a);
     } catch (e) { a.loi = e.message; }
     cho(false);
     dangChay = false;
     if (a !== ANH) return chay();   // khách đã đổi ảnh khác trong lúc chờ
     ve();
+}
+
+// ---------- Trạng thái chỉnh: tiệm mở lại y hệt khách đã làm ----------
+// Ảnh gốc + thông số tách nền (toiDa: máy điện thoại 1600, máy tính 3000; độ mềm viền) + lựa chọn
+// + mọi nét sửa tay (toạ độ lớp người, nên phải tách nền đúng thông số cũ thì nét mới khớp).
+// Nét chỉ giữ trường cần để vẽ lại, bỏ bộ nhớ đệm hoàn tác (ảnh trước / sau, tham chiếu).
+const TRUONG_NET = ['loai', 'R', 'd', 'o', 'C', 'aL', 'span', 'yE', 'pts', 'neo'];
+const so2 = v => Array.isArray(v) ? v.map(so2) : typeof v === 'number' ? Math.round(v * 100) / 100 : v;
+function trangThai() {
+    tinhSo();
+    const tt = (ANH.tt || []).map(t => { const o = {}; TRUONG_NET.forEach(k => { if (t[k] != null) o[k] = so2(t[k]); }); return o; });
+    return { v: 1, toiDa: ANH.toiDa || TOI_DA, mem: +$('mem').value, muc: ANH.muc || 0, kho, nen,
+             dau: +$('dau').value, tren: +$('tren').value, ngang: +$('ngang').value, so: Object.assign({}, SO), tuDong: TU_DONG, tt };
+}
+function apTrangThai(a) {
+    const st = a.st;
+    if (st.muc != null && st.muc !== a.muc) { a.muc = st.muc; apToc(); veNutToc(); }
+    a.tt = (st.tt || []).map(t => JSON.parse(JSON.stringify(t))); a.lui = []; a.toi = []; a._xoa = null;
+    if (KHO[st.kho]) { kho = st.kho; [...$('kho').children].forEach(x => x.classList.toggle('on', x.dataset.k === kho)); }
+    if (st.nen) { nen = st.nen; [...$('nen').children].forEach(x => x.classList.toggle('on', x.dataset.m === nen)); }
+    $('dau').value = st.dau || 0; $('tren').value = st.tren || 0; $('ngang').value = st.ngang || 0; nhanThanh();
+    SO = Object.assign({}, st.so || {}); TU_DONG = st.tuDong !== false;
 }
 
 function nutBat(on) { ['gui', 'tai-the', 'tai-to'].forEach(id => $(id).disabled = !on); $('thanh-cu').classList.toggle('co', on); if (!on && CU) { CU = ''; nutBoi(); } }
@@ -1367,7 +1400,8 @@ $('gui').onclick = async () => {
         if (!blob) throw new Error('Không xuất được tờ in');
         const so = Object.entries(SO).filter(([, v]) => v > 0).map(([k, v]) => `${v} ảnh ${k}`).join(', ');
         btn.innerText = 'Đang gửi...';
-        const kq = await new Promise(ok => { choGui = ok; guiCha({ t: 'gui', blob, kho: tenKho(), so }); });
+        const st = JSON.stringify(trangThai()), nguon = ANH.nguon || { may: true };
+        const kq = await new Promise(ok => { choGui = ok; guiCha({ t: 'gui', blob, kho: tenKho(), so, st, nguon, goc: nguon.may ? ANH.file : null }); });
         if (kq.t === 'gui-loi') throw new Error(kq.msg || 'Chưa gửi được');
     } catch (e) { $('to-nhan').innerText = e.message; }
     finally { btn.disabled = false; btn.innerText = cu; }

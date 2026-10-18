@@ -55,10 +55,13 @@ async function inGhep(cId, uId, ban) {
     await inLam({ cId, uId, id, kho: inKhoGhep(cId, up), ban, le: IN_LE_FRAME_MM, viec: 'ảnh ghép frame' + (ban === 'tiem' ? ' (bản tiệm chỉnh)' : '') });
 }
 
-async function inThe(cId, uId) {
+async function inThe(cId, uId, ban) {
     const up = nvUp(cId, uId);
-    const id = up && Array.isArray(up.drive) && up.drive[0] && up.drive[0].id;
-    await inLam({ cId, uId, id, kho: '4x6', viec: 'ảnh thẻ' });
+    // Mặc định in bản tiệm chỉnh nếu có (the-nv.js), không thì tờ khách gửi
+    const nv = up && up.nv && up.nv.id ? up.nv : null;
+    if (!ban) ban = nv ? 'tiem' : 'khach';
+    const id = ban === 'tiem' ? nv && nv.id : up && Array.isArray(up.drive) && up.drive[0] && up.drive[0].id;
+    await inLam({ cId, uId, id, kho: '4x6', ban, viec: 'ảnh thẻ' + (ban === 'tiem' ? ' (bản tiệm chỉnh)' : '') });
 }
 
 async function inLam({ cId, uId, id, kho, ban, viec, le = 0 }) {
